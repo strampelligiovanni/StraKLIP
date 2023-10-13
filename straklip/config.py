@@ -239,5 +239,6 @@ def configure_dataframe(dataset):
                        maxsep=dataset.data_cfg.tiles['max_separation'],
                        minsep=dataset.data_cfg.tiles['min_separation'],
                        steps=[],
-                       fitsext=str(dataset.data_cfg.target['fitsext']))
+                       fitsext=str(dataset.data_cfg.target['fitsext']),
+                       dq2mask=list(dataset.pipe_cfg.buildhdf['dq2mask']))
     return(DF)

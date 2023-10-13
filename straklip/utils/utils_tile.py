@@ -218,7 +218,7 @@ def make_tile_from_flat(flat, indices=None, shape=None, squeeze=True):
     if shape is None:
         # assume that you have been given the full square imae
         Npix = oldshape[-1]
-        Nside = np.int(np.sqrt(Npix))
+        Nside = int(np.sqrt(Npix))
         indices = np.array(range(Npix))
         shape = (Nside, Nside)
         return flat.reshape(oldshape[:-1]+shape)
@@ -319,7 +319,7 @@ def psf_tile_from_basis(target, kl_basis, numbasis=None):
         numbasis = len(kl_basis)
     if isinstance(numbasis, int):
         numbasis = np.array([numbasis])
-    numbasis = numbasis.astype(np.int)
+    numbasis = numbasis.astype(int)
 
     coeffs = np.inner(target, kl_basis)
     psf_model = kl_basis * np.expand_dims(coeffs, [i+1 for i in range(kl_basis.ndim-1)])

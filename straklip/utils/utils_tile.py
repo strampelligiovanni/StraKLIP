@@ -240,7 +240,7 @@ def make_tile_from_flat(flat, indices=None, shape=None, squeeze=True):
         img = np.squeeze(img)
     return img
 
-def perform_PSF_subtraction(targ_tiles,ref_tiles,Kmodes_list=[],no_PSF_models=False):
+def perform_PSF_subtraction(targ_tiles,ref_tiles,kmodes_list=[],no_PSF_models=False):
     '''
     Perform KLIP subtraction on all the stamps for one star. Since stamps
     of the same star share the same references, this computes the Z_k's for
@@ -252,7 +252,7 @@ def perform_PSF_subtraction(targ_tiles,ref_tiles,Kmodes_list=[],no_PSF_models=Fa
         tile on which perform PSF subtraction.
     ref_tiles : numpy ndarray
         reference tiles to use for the PSF library.
-    Kmodes_list : list, optional
+    kmodes_list : list, optional
         list of KLIP modes to use in the PSF subtraction. If empty, use all The default is [].
     no_PSF_models : bool, optional
         choose to retrun the psf models. The default is False.
@@ -267,10 +267,10 @@ def perform_PSF_subtraction(targ_tiles,ref_tiles,Kmodes_list=[],no_PSF_models=Fa
     ref_stamps_flat = flatten_tile_axes(np.stack(ref_tiles))
 
     # apply KLIP
-    if len(Kmodes_list) ==0: numbasis = np.arange(1, len(ref_stamps_flat)-1)
+    if len(kmodes_list) ==0: numbasis = np.arange(1, len(ref_stamps_flat)-1)
     else: 
-        if isinstance(Kmodes_list,np.ndarray): numbasis=Kmodes_list
-        else:numbasis = np.array(Kmodes_list)
+        if isinstance(kmodes_list,np.ndarray): numbasis=kmodes_list
+        else:numbasis = np.array(kmodes_list)
         numbasis=numbasis[numbasis<=len(ref_stamps_flat)*5]
     klip_results = targ_stamps_flat.apply(lambda x: klip_math(x,
                                                                    ref_stamps_flat,

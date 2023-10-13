@@ -36,3 +36,4 @@ def run(packet):
                              parallel_runs=dataset.pipe_cfg.psfsubtraction['parallel_runs'],
                              skip_flags=dataset.pipe_cfg.psfsubtraction['skip_flags'],
                              overwrite=dataset.pipe_cfg.psfsubtraction['overwrite'])
+    DF.save_dataframes(__name__)

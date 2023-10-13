@@ -1,0 +1,85 @@
+loggers:
+  __main__:
+    handlers: [ default, file ]
+    level: DEBUG
+    propagate': False
+  __mp_main__:
+    handlers: [ default, file ]
+    level: DEBUG
+    propagate': False
+  straklip:
+    handlers: [ default, file ]
+    level: DEBUG
+    propagate: False
+  config:
+    handlers: [ default, file ]
+    level: DEBUG
+    propagate: False
+  tables:
+    handlers: [ default, file ]
+    level: DEBUG
+    propagate: False
+  dataframe:
+    handlers: [ default, file ]
+    level: DEBUG
+    propagate: False
+  steps.buildhdf:
+    handlers: [ default, file ]
+    level: DEBUG
+    propagate: False
+  steps.mktiles:
+    handlers: [ default, file ]
+    level: DEBUG
+    propagate: False
+  steps.mkphotometry:
+    handlers: [ default, file ]
+    level: DEBUG
+    propagate: False
+  steps.psfsubtraction:
+    handlers: [ default, file ]
+    level: DEBUG
+    propagate: False
+  utils_dataframe:
+    handlers: [ default, file ]
+    level: DEBUG
+    propagate: False
+  utils_photometry:
+    handlers: [ default, file ]
+    level: DEBUG
+    propagate: False
+  utils_straklip:
+    handlers: [ default, file ]
+    level: DEBUG
+    propagate: False
+  utils_plot:
+    handlers: [ default, file ]
+    level: DEBUG
+    propagate: False
+  ancillary:
+    handlers: [ default, file ]
+    level: DEBUG
+    propagate: False
+
+
+
+version: 1
+disable_existing_loggers: False
+handlers:
+  default:
+    class : logging.StreamHandler
+    formatter: default
+    level   : DEBUG
+    stream  : ext://sys.stdout
+  file:
+    (): stralog.MakeFileHandler
+    filename: default.log
+    mode: a
+    level: DEBUG
+    formatter: default
+
+formatters:
+  brief:
+    format: '%(message)s'
+  default:
+    format: '%(asctime)s %(name)-28s:%(levelname)-8s (%(funcName)s:%(lineno)d[pid=%(process)d]) %(message)s'
+    datefmt: '%Y-%m-%d %H:%M:%S'

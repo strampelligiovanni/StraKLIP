@@ -481,7 +481,7 @@ def KLIP_aperture_photometry_handler(DF,id,filter,data_label='',dq_label='',hdul
             DQ_list=list(set(dqdata.ravel()))
             xdata = data.copy()
             mask_x=dqdata.copy()
-            for i in [i for i in DQ_list if i not in DF.DQ_values2mask_list]:  mask_x[(mask_x==i)]=0
+            for i in [i for i in DQ_list if i not in DF.dq2mask]:  mask_x[(mask_x==i)]=0
             mx = ma.masked_array(xdata, mask=mask_x)
             mx.data[mx.mask]=-9999
             mx.data[mx.data<0]=0

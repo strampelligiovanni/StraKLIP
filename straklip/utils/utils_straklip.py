@@ -59,7 +59,8 @@ def check4duplicants(DF,filter,mvs_ids_list,showduplicants=False):
 
         for id in ids_list:
             if not DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==id,'%s_flag'%filter].str.contains('rejected').values[0]:
-                path2tile='%s/%s/%s/%s/mvs_tiles/%s/tile_ID%i.fits'%(path2data,DF.project,DF.target,DF.inst,filter,id)
+                path2tile = '%s/mvs_tiles/%s/tile_ID%i.fits' % (DF.path2out, filter, id)
+
                 target=Tile(x=(DF.tilebase-1)/2,y=(DF.tilebase-1)/2,tile_base=DF.tilebase,delta=0,inst=DF.inst,Python_origin=True)
                 data=target.load_tile(path2tile)
                 list_of_target4test.append(data)
@@ -109,13 +110,17 @@ def check4duplicants(DF,filter,mvs_ids_list,showduplicants=False):
     print('All duplicants killed')
 
 def task_perform_KLIP_PSF_subtraction_on_tiles(DF,filter,cell,mvs_ids_list,label_dict,hdul_dict,KLIP_label_dict,skip_flags,label,kmodes_list,overwrite):
-    if len(mvs_ids_list)==0:ids_list=DF.mvs_targets_df.loc[(DF.mvs_targets_df['%s_cell'%filter]==cell)&~DF.mvs_targets_df['%s_flag'%filter].isin([skip_flags])].mvs_ids.unique()
-    else: ids_list=mvs_ids_list
+    if len(mvs_ids_list)==0:
+        ids_list=DF.mvs_targets_df.loc[(DF.mvs_targets_df['cell_%s'%filter]==cell)&~DF.mvs_targets_df['flag_%s'%filter].isin([skip_flags])].mvs_ids.unique()
+    else:
+        ids_list=mvs_ids_list
 
-    psf_ids_list=DF.mvs_targets_df.loc[DF.mvs_targets_df['%s_flag'%filter].str.contains('psf')&(DF.mvs_targets_df['%s_cell'%filter]==cell)].mvs_ids.unique()
+    psf_ids_list=DF.mvs_targets_df.loc[DF.mvs_targets_df['flag_%s'%filter].str.contains('psf')&(DF.mvs_targets_df['cell_%s'%filter]==cell)].mvs_ids.unique()
     for id in ids_list:
-        if not DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==id,'%s_flag'%filter].str.contains('rejected').values[0]:
-            path2tile='%s/%s/%s/%s/mvs_tiles/%s/tile_ID%i.fits'%(path2data,DF.project,DF.target,DF.inst,filter,id)
+        if not DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==id,'flag_%s'%filter].str.contains('rejected').values[0]:
+            path2tile='%s/mvs_tiles/%s/tile_ID%i.fits'%(DF.path2out,filter,id)
+            getLogger(__name__).info(f'Working on tile: {path2tile}.')
+
             if not overwrite:
                 try:
                     with fits.open(path2tile) as hdul:
@@ -133,7 +138,8 @@ def task_perform_KLIP_PSF_subtraction_on_tiles(DF,filter,cell,mvs_ids_list,label
 
                 x = DATA.data.copy()
                 mask_x=DQ.data.copy()
-                for i in [i for i in DQ_list if i not in DF.DQ_values2mask_list]:  mask_x[(mask_x==i)]=0
+                for i in [i for i in DQ_list if i not in DF.dq2mask]:
+                    mask_x[(mask_x==i)]=0
                 mx = ma.masked_array(x, mask=mask_x)
                 mx.data[mx.mask]=-9999
                 mx.data[mx.data<0]=0
@@ -143,7 +149,7 @@ def task_perform_KLIP_PSF_subtraction_on_tiles(DF,filter,cell,mvs_ids_list,label
                     ref_tiles=pd.DataFrame(data=[[[0]]],columns=['data'])
                     avg_ids=DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids==id].avg_ids.unique()[0]
                     for refid in DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(psf_ids_list)&~(DF.mvs_targets_df.mvs_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids==avg_ids].mvs_ids))].mvs_ids.unique():
-                        path2ref='%s/%s/%s/%s/mvs_tiles/%s/tile_ID%i.fits'%(path2data,DF.project,DF.target,DF.inst,filter,refid)
+                        path2ref = '%s/mvs_tiles/%s/tile_ID%i.fits' % (DF.path2out, filter, id)
                         REF=Tile(x=(DF.tilebase-1)/2,y=(DF.tilebase-1)/2,tile_base=DF.tilebase,delta=0,inst=DF.inst,Python_origin=True)
                         REF.load_tile(path2ref,ext=label_dict[label],verbose=False,hdul_max=hdul_dict[label])
                         DQREF=Tile(x=int((DF.tilebase-1)/2),y=int((DF.tilebase-1)/2),tile_base=DF.tilebase,inst=DF.inst)
@@ -151,7 +157,7 @@ def task_perform_KLIP_PSF_subtraction_on_tiles(DF,filter,cell,mvs_ids_list,label
 
                         xref=REF.data.copy()
                         mask_ref=DQREF.data.copy()
-                        for i in [i for i in DQ_list if i not in DF.DQ_values2mask_list]:  mask_ref[(mask_ref==i)]=0
+                        for i in [i for i in DQ_list if i not in DF.dq2mask]:  mask_ref[(mask_ref==i)]=0
                         # mask_ref[(mask_ref!=4096)&(mask_ref!=8192)]=0
                         mref = ma.masked_array(xref, mask=mask_ref)
                         mref.data[mref.mask]=-9999
@@ -218,8 +224,6 @@ def perform_KLIP_PSF_subtraction_on_tiles(DF,filter,label,workers=None,parallel_
     if len(mvs_ids_list)==0: cell_list=DF.mvs_targets_df['cell_%s'%filter].unique()
     else: cell_list=np.sort(DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list), 'cell_%s'%filter].unique())
     cell_list=cell_list[~np.isnan(cell_list)]
-
-    print('Working on %s, cell:'%filter)
 
     if parallel_runs:
         workers,chunksize,ntarget=parallelization_package(workers,len(cell_list),chunksize = chunksize)

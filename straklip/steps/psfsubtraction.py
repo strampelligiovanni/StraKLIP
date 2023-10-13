@@ -17,7 +17,6 @@ def KLIP_PSF_subtraction(DF, filter, label, mvs_ids_list=[], kmodes_list=[], wor
                                           chunksize=chunksize,
                                           overwrite=overwrite)
 
-
 def run(packet):
     dataset = packet['dataset']
     DF = packet['DF']

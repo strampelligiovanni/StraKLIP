@@ -215,8 +215,8 @@ def perform_KLIP_PSF_subtraction_on_tiles(DF,filter,label,workers=None,parallel_
     if label not in ['data','crclean_data']:
         raise ValueError('Chose either data or crclean_data label for subtraction')
 
-    if len(mvs_ids_list)==0: cell_list=DF.mvs_targets_df['%s_cell'%filter].unique()
-    else: cell_list=np.sort(DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list), '%s_cell'%filter].unique())
+    if len(mvs_ids_list)==0: cell_list=DF.mvs_targets_df['cell_%s'%filter].unique()
+    else: cell_list=np.sort(DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list), 'cell_%s'%filter].unique())
     cell_list=cell_list[~np.isnan(cell_list)]
 
     print('Working on %s, cell:'%filter)
@@ -224,10 +224,11 @@ def perform_KLIP_PSF_subtraction_on_tiles(DF,filter,label,workers=None,parallel_
     if parallel_runs:
         workers,chunksize,ntarget=parallelization_package(workers,len(cell_list),chunksize = chunksize)
         with ProcessPoolExecutor(max_workers=workers) as executor:
-            for _ in tqdm(executor.map(task_perform_KLIP_PSF_subtraction_on_tiles,repeat(DF),repeat(filter),cell_list,repeat(mvs_ids_list),repeat(label_dict),repeat(hdul_dict),repeat(KLIP_label_dict),repeat(skip_flags),repeat(label),repeat(kmodes_list),repeat(overwrite),chunksize=chunksize)):pass
+            for _ in executor.map(task_perform_KLIP_PSF_subtraction_on_tiles,repeat(DF),repeat(filter),cell_list,repeat(mvs_ids_list),repeat(label_dict),repeat(hdul_dict),repeat(KLIP_label_dict),repeat(skip_flags),repeat(label),repeat(kmodes_list),repeat(overwrite),chunksize=chunksize):
+                pass
 
     else:
-        for cell in tqdm(cell_list):
+        for cell in cell_list:
             task_perform_KLIP_PSF_subtraction_on_tiles(DF,filter,cell,mvs_ids_list,label_dict,hdul_dict,KLIP_label_dict,skip_flags,label,kmodes_list,overwrite)
 
 def perform_KLIP_PSF_subtraction_on_fakes(DF,filter,target,psf_list,pos,kmodes_list,npsfs,showplot,exptime,aptype,delta,noBGsub):

@@ -55,6 +55,10 @@ loggers:
     handlers: [ default, file ]
     level: DEBUG
     propagate: False
+  utils_tile:
+    handlers: [ default, file ]
+    level: DEBUG
+    propagate: False
   ancillary:
     handlers: [ default, file ]
     level: DEBUG

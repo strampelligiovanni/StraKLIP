@@ -91,7 +91,7 @@ def create_empty_df(row_list,columns_list,set_index2=[],int_columns=None,object_
     
     return(empty_df)
 
-def add_flag2dataframe(DF,filter,avg_ids,suffix='',goodness_phot_label='e',default_sat_px=3,default_psf_sat_px=3,default_bad_px=3,default_psf_bad_px=3,default_mag_limit=10,default_psf_goodness_limit=0.01,default_goodness_limit=0.5,sep_wide=2):
+def update_flags(DF,filter,avg_ids,suffix='',goodness_phot_label='e',sat_px=3,psf_sat_px=3,bad_px=3,psf_bad_px=3,mag_limit=10,psf_goodness_limit=0.01,goodness_limit=0.5,sep_wide=2):
     '''
     This is a wrapper for ta add flags to the targets dataframe
 
@@ -103,22 +103,22 @@ def add_flag2dataframe(DF,filter,avg_ids,suffix='',goodness_phot_label='e',defau
     goodness_phot_label: str, optional
         label to look for to mesure the goodness of the photometry, for example 'e' for the error or 'chi' for the chi square.
         Default is 'e'.
-    default_sat_px : int, optional
+    sat_px : int, optional
         default number of saturated pixels in the tile to limit target selection. 
         The default is 3.
-    default_psf_sat_px : int, optional
+    psf_sat_px : int, optional
         default number of saturated pixels in the tile to limit PSF target selection. 
         The default is 3.
-    default_bad_px : int, optional
+    bad_px : int, optional
         default number of bad pixels in the tile to limit target selection. 
         The default is 3.
-    default_psf_bad_px : int, optional
+    psf_bad_px : int, optional
         default number of bad pixels in the tile to limit PSF target selection. 
         The default is 3.
-    default_psf_goodness_limit : int, optional
+    psf_goodness_limit : int, optional
         default magnitude uncertanties or chi square to limit PSF selection. 
         The default is 0.01.
-    default_goodness_limit : int, optional
+    goodness_limit : int, optional
         default magnitude uncertanties or chi square to limit PSF/Candidate selection. 
         The default is 0.5.
     sep_wide : list, optional
@@ -144,11 +144,7 @@ def add_flag2dataframe(DF,filter,avg_ids,suffix='',goodness_phot_label='e',defau
 
         
     avg_df_sel=DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_ids]
-
-
-    # ID_bad_list=avg_df_sel.loc[avg_df_sel.type==0].avg_ids.values
     ID_good_list=avg_df_sel.loc[(avg_df_sel.FirstDist>sep_wide)].avg_ids.values#&~(avg_df_sel.type.isin([0,2]))
-    # ID_psf_list=avg_df_sel.loc[(avg_df_sel.type==1)&avg_df_sel.avg_ids.isin(ID_good_list)].avg_ids.values
     ID_wide_list=avg_df_sel.loc[(avg_df_sel.FirstDist<=sep_wide)].avg_ids.values #|(avg_df_sel.type==3)
     ID_double_list=avg_df_sel.loc[(avg_df_sel.type==2)].avg_ids.values
     
@@ -158,49 +154,43 @@ def add_flag2dataframe(DF,filter,avg_ids,suffix='',goodness_phot_label='e',defau
         crossmatch_sel=DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids==mvs_ids]
         x_sel=~(mvs_df_sel['x_%s'%filter].isna())&(mvs_df_sel['x_%s'%filter]>=(DF.tilebase-1)/2)&(mvs_df_sel['x_%s'%filter]<=DF.xyaxis['x']-(DF.tilebase-1)/2)
         y_sel=~(mvs_df_sel['x_%s'%filter].isna())&(mvs_df_sel['y_%s'%filter]>=(DF.tilebase-1)/2)&(mvs_df_sel['y_%s'%filter]<=DF.xyaxis['y']-(DF.tilebase-1)/2)
-        # print(mvs_ids,(mvs_df_sel['m_%s%s'%(filter,suffix)].values[0] < default_mag_limit) , (mvs_df_sel['%s%s%s'%(goodness_phot_label,filter,suffix)].values[0] > default_goodness_limit) , (mvs_df_sel['spx%s'%filter].values[0] > default_sat_px) , (mvs_df_sel['bpx%s'%filter].values[0] > default_bad_px) )
-        # print(mvs_ids,(mvs_df_sel['m_%s%s'%(filter,suffix)].values[0] , default_mag_limit) , (mvs_df_sel['%s%s%s'%(goodness_phot_label,filter,suffix)].values[0] , default_goodness_limit) , (mvs_df_sel['spx%s'%filter].values[0] , default_sat_px) , (mvs_df_sel['bpx%s'%filter].values[0] , default_bad_px) )
-        if (mvs_df_sel['m_%s%s'%(filter,suffix)].values[0] < default_mag_limit) or (mvs_df_sel['%s_%s%s'%(goodness_phot_label,filter,suffix)].values[0] > default_goodness_limit) or (mvs_df_sel['spx_%s'%filter].values[0] > default_sat_px) or (mvs_df_sel['bpx_%s'%filter].values[0] > default_bad_px) or not x_sel.values[0] or not y_sel.values[0]:#or crossmatch_sel.avg_ids.isin(ID_bad_list).values[0]
-            # DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==mvs_ids,['flag_%s'%filter]]='rejected'
+        if (mvs_df_sel['m_%s%s'%(filter,suffix)].values[0] < mag_limit) or (mvs_df_sel['%s_%s%s'%(goodness_phot_label,filter,suffix)].values[0] > goodness_limit) or (mvs_df_sel['spx_%s'%filter].values[0] > sat_px) or (mvs_df_sel['bpx_%s'%filter].values[0] > bad_px) or not x_sel.values[0] or not y_sel.values[0]:#or crossmatch_sel.avg_ids.isin(ID_bad_list).values[0]
             flag='rejected'
         else:
             if crossmatch_sel.avg_ids.isin(ID_wide_list).values[0]:
-                # DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==mvs_ids,['flag_%s'%filter]]='known_double'
                 flag='known_double'
             elif crossmatch_sel.avg_ids.isin(ID_double_list).values[0]:
-                # DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==mvs_ids,['flag_%s'%filter]]='unresolved_double'
                 flag='unresolved_double'
             else:
-                if  (mvs_df_sel['spx_%s'%filter].values[0] <=default_psf_sat_px) and (mvs_df_sel['bpx_%s'%filter].values[0] <=default_psf_bad_px) and (mvs_df_sel['%s_%s%s'%(goodness_phot_label,filter,suffix)].values[0] <= default_psf_goodness_limit): #crossmatch_sel.avg_ids.isin(ID_psf_list).values[0] and
-                    # DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==mvs_ids,['flag_%s'%filter]]='good_psf'
+                if  (mvs_df_sel['spx_%s'%filter].values[0] <=psf_sat_px) and (mvs_df_sel['bpx_%s'%filter].values[0] <=psf_bad_px) and (mvs_df_sel['%s_%s%s'%(goodness_phot_label,filter,suffix)].values[0] <= psf_goodness_limit): #crossmatch_sel.avg_ids.isin(ID_psf_list).values[0] and
                     flag='good_psf'
                 elif crossmatch_sel.avg_ids.isin(ID_good_list).values[0]:
-                    # DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==mvs_ids,['flag_%s'%filter]]='good_target'
                     flag='good_target'
-        # else: raise ValueError('No flag matched. Plese check mvs_ids %s'%mvs_ids)
         flag_list.append([float(mvs_ids),flag])
+
     return(flag_list)
 
-    # add_type2dataframe(DF,avg_ids)
-
-def add_type2dataframe(DF,avg_ids):
+def update_type(DF,avg_ids):
     mvs_ids_list=DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids==avg_ids].mvs_ids.unique()
 
-    if DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list),['flag_%s'%(filter) for filter in DF.filters_list]].apply(lambda x: x.str.contains('rejected',case=False)).all(axis=1).all(axis=0):
+    if DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list),['flag_%s'%(filter) for filter in DF.filters]].apply(lambda x: x.str.contains('rejected',case=False)).all(axis=1).all(axis=0):
         DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_ids,['type']]=0
-    elif DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list),['flag_%s'%(filter) for filter in DF.filters_list]].apply(lambda x: x.str.contains('known',case=False)).any(axis=1).any(axis=0):
-        if DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list),['flag_%s'%(filter) for filter in DF.filters_list]].apply(lambda x: x.str.contains('known|rejected',case=False)).all(axis=1).all(axis=0):
-            if DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_ids].type.isin([0,1,2,3]).values[0]: DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_ids,['type']]=3
+    elif DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list),['flag_%s'%(filter) for filter in DF.filters]].apply(lambda x: x.str.contains('known',case=False)).any(axis=1).any(axis=0):
+        if DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list),['flag_%s'%(filter) for filter in DF.filters]].apply(lambda x: x.str.contains('known|rejected',case=False)).all(axis=1).all(axis=0):
+            if DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_ids].type.isin([0,1,2,3]).values[0]:
+                DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_ids,['type']]=3
         else:
             raise ValueError('All flags should be the same for a known_double. Please check avg_ids %s'%avg_ids)
-    elif DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list),['flag_%s'%(filter) for filter in DF.filters_list]].apply(lambda x: x.str.contains('unresolved',case=False)).any(axis=1).any(axis=0):
-        if DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list),['flag_%s'%(filter) for filter in DF.filters_list]].apply(lambda x: x.str.contains('unresolved|rejected',case=False)).all(axis=1).all(axis=0):
-            if DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_ids].type.isin([0,1,2,3]).values[0]: DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_ids,['type']]=2
+    elif DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list),['flag_%s'%(filter) for filter in DF.filters]].apply(lambda x: x.str.contains('unresolved',case=False)).any(axis=1).any(axis=0):
+        if DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list),['flag_%s'%(filter) for filter in DF.filters]].apply(lambda x: x.str.contains('unresolved|rejected',case=False)).all(axis=1).all(axis=0):
+            if DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_ids].type.isin([0,1,2,3]).values[0]:
+                DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_ids,['type']]=2
         else:
             raise ValueError('All flags should be the same for an unresolved_double. Please check avg_ids %s'%avg_ids)
-    elif DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list),['flag_%s'%(filter) for filter in DF.filters_list]].apply(lambda x: x.str.contains('good',case=False)).any(axis=1).any(axis=0):
-        if DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list),['flag_%s'%(filter) for filter in DF.filters_list]].apply(lambda x: x.str.contains('good|rejected',case=False)).all(axis=1).all(axis=0):
-            if DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_ids].type.isin([0,1,2,3]).values[0]: DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_ids,['type']]=1
+    elif DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list),['flag_%s'%(filter) for filter in DF.filters]].apply(lambda x: x.str.contains('good',case=False)).any(axis=1).any(axis=0):
+        if DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list),['flag_%s'%(filter) for filter in DF.filters]].apply(lambda x: x.str.contains('good|rejected',case=False)).all(axis=1).all(axis=0):
+            if DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_ids].type.isin([0,1,2,3]).values[0]:
+                DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_ids,['type']]=1
         else:
             raise ValueError('All flags should be the good for a psf/target. Please check avg_ids %s'%avg_ids)
 

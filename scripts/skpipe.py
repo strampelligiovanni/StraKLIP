@@ -27,10 +27,8 @@ getLogger('straklip', setup=True, logfile=f'straklip_{datetime.now().strftime("%
 
 if __name__ == "__main__":
     args = parse()
-    now = datetime.now()
-    dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
 
-    pipe_cfg = config.configure_pipeline(args.pipe_cfg,pipe_cfg=args.pipe_cfg,data_cfg=args.data_cfg,dt_string=dt_string)
+    pipe_cfg = config.configure_pipeline(args.pipe_cfg,pipe_cfg=args.pipe_cfg,data_cfg=args.data_cfg,dt_string=datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
     data_cfg = config.configure_data(args.data_cfg,pipe_cfg)
 
     if args.make_paths:

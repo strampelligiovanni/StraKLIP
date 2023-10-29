@@ -20,6 +20,7 @@ from scipy.ndimage import zoom,rotate,fourier_shift
 from skimage.registration import phase_cross_correlation
 from functools import reduce
 import matplotlib.patches as patches
+from stralog import getLogger
 
 def allign_images(target_images,rot_angles,PAV_3s,filter,fig=None,ax=None,shift_list=None,cmap='Greys_r',tile_base=15,inst='WFC3',simplenorm='linear',min_percent=0,max_percent=100,power=1,log=1000,xy_m=True,xy_cen=False,legend=False,showplot=False,verbose=False,cbar=True,title='',xy_dmax=None,zfactor=10,alignment_box=0,step=1,Python_origin=True,method='median',kill=False,kill_plots=True,mk_arrow=False):
     '''
@@ -272,28 +273,32 @@ def perform_PSF_subtraction(targ_tiles,ref_tiles,kmodes_list=[],no_PSF_models=Fa
         if isinstance(kmodes_list,np.ndarray): numbasis=kmodes_list
         else:numbasis = np.array(kmodes_list)
         numbasis=numbasis[numbasis<=len(ref_stamps_flat)*5]
-    klip_results = targ_stamps_flat.apply(lambda x: klip_math(x,
-                                                                   ref_stamps_flat,
-                                                                   numbasis = numbasis,
-                                                                   return_basis = True))
-    # subtraction results
-    residuals = klip_results.apply(lambda x: pd.Series(dict(zip(numbasis, x[0].T))))
-    residuals = residuals.applymap(make_tile_from_flat)
-    if no_PSF_models:
-        psf_models=[]
-    else: 
-        # generate PSF models and store in dataframe
-        # klip basis
-        klip_basis = klip_results.apply(lambda x: pd.Series(dict(zip(numbasis, x[1]))))
-        model_gen_df = pd.merge(targ_stamps_flat, klip_basis, left_index=True, right_index=True)
-        psf_models = model_gen_df.apply(lambda x: psf_tile_from_basis(x[targ_tiles.name],
-                                                                       np.stack(x[numbasis]),
-                                                                       numbasis=numbasis),
-                                                                       axis=1)
-        psf_models = psf_models.apply(lambda x: pd.Series(dict(zip(numbasis, x))))
-        psf_models = psf_models.applymap(make_tile_from_flat)
+    try:
+        klip_results = targ_stamps_flat.apply(lambda x: klip_math(x,
+                                                                       ref_stamps_flat,
+                                                                       numbasis = numbasis,
+                                                                       return_basis = True))
+        # subtraction results
+        residuals = klip_results.apply(lambda x: pd.Series(dict(zip(numbasis, x[0].T))))
+        residuals = residuals.applymap(make_tile_from_flat)
+        if no_PSF_models:
+            psf_models=[]
+        else:
+            # generate PSF models and store in dataframe
+            # klip basis
+            klip_basis = klip_results.apply(lambda x: pd.Series(dict(zip(numbasis, x[1]))))
+            model_gen_df = pd.merge(targ_stamps_flat, klip_basis, left_index=True, right_index=True)
+            psf_models = model_gen_df.apply(lambda x: psf_tile_from_basis(x[targ_tiles.name],
+                                                                           np.stack(x[numbasis]),
+                                                                           numbasis=numbasis),
+                                                                           axis=1)
+            psf_models = psf_models.apply(lambda x: pd.Series(dict(zip(numbasis, x))))
+            psf_models = psf_models.applymap(make_tile_from_flat)
 
-    return(residuals,psf_models)
+        return(residuals,psf_models)
+    except:
+        getLogger(__name__).warning(
+            f'Skipping due to a problem with the PSF subtraction. Please chech')
 
 def psf_tile_from_basis(target, kl_basis, numbasis=None):
     """

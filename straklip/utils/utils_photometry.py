@@ -194,8 +194,8 @@ def aperture_photometry_handler(DF,id,filter,data_label='',dq_label='',hdul=None
 
     if not kill_plots:
         fig,ax=plt.subplots(1,rows,figsize=(7*rows,5))
-        if ROTA==None: ROTA=DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==id,'%s_rota'%filter].values[0]
-        if PAV3==None:PAV3=DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==id,'%s_pav3'%filter].values[0]
+        if ROTA==None: ROTA=DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==id,'rota_%s'%filter].values[0]
+        if PAV3==None:PAV3=DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==id,'pav3_%s'%filter].values[0]
 
     else:
         if ROTA==None: ROTA=0
@@ -366,8 +366,9 @@ def aperture_photometry_handler(DF,id,filter,data_label='',dq_label='',hdul=None
     if not kill_plots:
         plt.show()
         if not noBGsub or len(forcedSky)>0:print('bkg median %.3f, std %.3f, nSky %i'%(Sky,eSky,nSky))
-        print('Star counts %e, ecounts %e, Nap %i, Nsigma %.3f, mag %.3f, emag %.3f'%(detection_AP.counts,detection_AP.ecounts,detection_AP.Nap,detection_AP.Nsigma,detection_AP.mag,detection_AP.emag))
-        if grow_curves:print('Grow curve correction: %.3f'%(detection_AP.grow_corr))
+        print('> Star counts %e, ecounts %e, spx %s, bpx %s, Nap %i, Nsigma %.3f\n> mag %.3f, emag %.3f'%(detection_AP.counts,detection_AP.ecounts,spx,bpx,detection_AP.Nap,detection_AP.Nsigma,detection_AP.mag,detection_AP.emag))
+        if grow_curves:
+            print('> Grow curve correction: %.3f\n'%(detection_AP.grow_corr))
 
     del data
     return(detection_AP.counts,detection_AP.ecounts,detection_AP.Nsigma,detection_AP.Nap,detection_AP.mag,detection_AP.emag,spx,bpx,Sky,eSky,nSky,detection_AP.grow_corr)
@@ -604,7 +605,7 @@ def mvs_aperture_photometry(DF,filter,ee_df,zpt_dict,fitsname=None,mvs_ids_list_
     
 def avg_aperture_photometry(DF,avg_ids,filter,goodness_phot_label,suffix,skip_flags):
     getLogger(__name__).info(f'Performing average photometry on ID {avg_ids}')
-    sel_ids=DF.mvs_targets_df.mvs_ids.isin(DF.crossmatch_ids_df.loc[(DF.crossmatch_ids_df.avg_ids==avg_ids)].mvs_ids)&~DF.mvs_targets_df['%s_flag'%filter].str.contains(skip_flags)
+    sel_ids=DF.mvs_targets_df.mvs_ids.isin(DF.crossmatch_ids_df.loc[(DF.crossmatch_ids_df.avg_ids==avg_ids)].mvs_ids)&~DF.mvs_targets_df['flag_%s'%filter].str.contains(skip_flags)
     ydata=DF.mvs_targets_df.loc[sel_ids,['m_%s'%filter]].values#.ravel()
     eydata=DF.mvs_targets_df.loc[sel_ids,['%s_%s%s'%(goodness_phot_label,filter,suffix)]].values#.ravel()
 

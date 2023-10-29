@@ -76,7 +76,7 @@ def configure_pipeline(config_file,pipe_cfg='',data_cfg='',dt_string=''):
 
 def get_paths(config=None):
     """Returns a set of all the required paths from the pipeline config"""
-    return list([config.paths['data'],config.paths['database'],config.paths['out'],config.paths['pam'],config.paths['pyklip'], config.paths['tmp']])
+    return list([config.paths['data'],config.paths['database'],config.paths['out'],config.paths['pam'],config.paths['pyklip']])#, config.paths['tmp']])
 
 def verify_paths(config=None, return_missing=False):
     """
@@ -202,7 +202,7 @@ def get_zpt(dataset):
     zpt_list = filter_zpt.loc[filter_zpt.Filter.astype(str).isin(dataset.data_cfg.filters)].VEGAmag.tolist()
     return {dataset.data_cfg.filters[i]: zpt_list[i] for i in range(len(dataset.data_cfg.filters))}
 
-def configure_dataframe(dataset):
+def configure_dataframe(dataset,load=False):
     files_check_list = ['avg_targets','crossmatch_ids','mvs_targets']
     if 'buildhdf' not in dataset.pipe_cfg.flow or ((not dataset.pipe_cfg.buildhdf['redo'] and not dataset.pipe_cfg.redo) and np.all([os.path.exists(dataset.pipe_cfg.paths['out']+'/'+file+'.h5') for file in files_check_list])):
         getLogger(__name__).info(f'Fetching dataframes from %s'%dataset.pipe_cfg.paths['out'])
@@ -228,7 +228,7 @@ def configure_dataframe(dataset):
                        pixscale=dataset.pipe_cfg.instrument['pixelscale'],
                        gain=dataset.pipe_cfg.instrument['gain'],
                        PAMdict={key: dataset.pipe_cfg.instrument['pam'][key] for key in list(dataset.pipe_cfg.instrument['pam'].keys())},
-                       tilebase=dataset.data_cfg.tiles['tile_base'],
+                       tilebase=dataset.pipe_cfg.mktiles['tile_base'],
                        radec=[dataset.pipe_cfg.buildhdf['default_avg_table']['ra'],dataset.pipe_cfg.buildhdf['default_avg_table']['dec']],
                        filters=[i for i in dataset.data_cfg.filters],
                        xyaxis={key: dataset.pipe_cfg.instrument['ccd_pix'][key] for key in list(dataset.pipe_cfg.instrument['ccd_pix'].keys())},
@@ -236,8 +236,8 @@ def configure_dataframe(dataset):
                        Av=Av_dict,
                        dist=dataset.data_cfg.target['distance'],
                        type=dataset.pipe_cfg.buildhdf['default_avg_table']['type'],
-                       maxsep=dataset.data_cfg.tiles['max_separation'],
-                       minsep=dataset.data_cfg.tiles['min_separation'],
+                       maxsep=dataset.pipe_cfg.mktiles['max_separation'],
+                       minsep=dataset.pipe_cfg.mktiles['min_separation'],
                        steps=[],
                        fitsext=str(dataset.data_cfg.target['fitsext']),
                        dq2mask=list(dataset.pipe_cfg.buildhdf['dq2mask']))

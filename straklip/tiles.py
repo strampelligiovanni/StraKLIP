@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 from utils_plot import mk_arrows
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from astropy.visualization import simple_norm
+from stralog import getLogger
 
 class Tile():
     def __init__(self,data=[],delta=0,x=np.nan,y=np.nan,tile_base=1,inst=None,dqdata=[],Python_origin=True,raise_errors=False):
@@ -199,8 +200,10 @@ class Tile():
         self.ypad_offset=round(self.ypad-self.ypad_floor,3)
 
         if verbose == True:
-            print('inp xy: ',self.xpad,self.ypad)
-            print('floor padded xy: ',self.xpad_floor,self.ypad_floor)
+            # print('inp xy: ',self.xpad,self.ypad)
+            # print('floor padded xy: ',self.xpad_floor,self.ypad_floor)
+            getLogger(__name__).debug('inp xy: ',self.xpad,self.ypad)
+            getLogger(__name__).debug('floor padded xy: ',self.xpad_floor,self.ypad_floor)
 
         if keep_size:
             self.xmin0 = 0
@@ -223,12 +226,18 @@ class Tile():
         self.y_tile=(self.tile_base-1)/2#int(self.ypad-self.ymin0)
         if cr_remove==True and la_cr_remove==False:
             title+=' CR free'
-            if verbose==True:print('\nApplying cosmic ray rejection')
+            if verbose==True:
+                # print('\nApplying cosmic ray rejection')
+                getLogger(__name__).debug('\nApplying cosmic ray rejection')
+
             self.data=cosmic_ray_filter(self,cr_radius,delta=3,verbose=False,kill=kill)
 
         elif la_cr_remove==True and  cr_remove==False:
             title+=' CR free'
-            if verbose==True:print('\nApplying LA cosmic ray rejection')
+            if verbose==True:
+                # print('\nApplying LA cosmic ray rejection')
+                getLogger(__name__).debug('\nApplying LA cosmic ray rejection')
+
             self.data=self.data # Must be counts or electrons, NOT e-/s or c/s
             cosmic_ray_filter_la(self,sigclip=4.5,niter=5,verbose=False)
             self.data=self.cr_clean_im
@@ -269,7 +278,10 @@ class Tile():
             Datacube.append(fits.PrimaryHDU())
         data=self.data[int(self.delta/2):self.tile_base-int(self.delta/2),int(self.delta/2):self.tile_base-int(self.delta/2)].copy()
         Datacube.append(fits.ImageHDU(data=data,name=name))
-        if verbose: print(Datacube.info())
+        if verbose:
+            # print(Datacube.info())
+            getLogger(__name__).debug(Datacube.info())
+
         if return_Datacube: 
             return(Datacube)
         else: 
@@ -283,7 +295,10 @@ class Tile():
                 Datacube=fits.open(path2tile,memmap=False,mode=mode)
                 if hdul_max!=None: 
                     for n in range(hdul_max,len(Datacube)-1):Datacube.pop(hdul_max+1)
-                if verbose: print(Datacube.info())
+                if verbose:
+                    # print(Datacube.info())
+                    getLogger(__name__).debug(Datacube.info())
+
             except:
                 if raise_errors: raise ValueError('%s do not exist'%path2tile) 
                 else:Datacube=None
@@ -432,15 +447,22 @@ class Tile():
             cax = divider.append_axes('right', size='5%', pad=0.05)
             fig.colorbar(im, cax=cax, orientation='vertical')
 
-        if verbose==True:print('tile xy: ',self.x_tile,self.y_tile)
+        if verbose==True:
+            # print('tile xy: ',self.x_tile,self.y_tile)
+            getLogger(__name__).debug('tile xy: ',self.x_tile,self.y_tile)
+
 
         if xy_cen:
             my_circle_scatter(ax, [self.x_cen], [self.y_cen], radius=0.2, alpha=1, color='g')
-            if verbose==True:print('centroids xy: ',self.x_cen,self.y_cen)
+            if verbose==True:
+                # print('centroids xy: ',self.x_cen,self.y_cen)
+                getLogger(__name__).debug('centroids xy: ',self.x_cen,self.y_cen)
 
         if xy_m:
             my_circle_scatter(ax, [self.x_m], [self.y_m], radius=0.2, alpha=1, color='r')
-            if verbose==True:print('max xy: ',self.x_m,self.y_m)
+            if verbose==True:
+                # print('max xy: ',self.x_m,self.y_m)
+                getLogger(__name__).debug('max xy: ',self.x_m,self.y_m)
 
         my_circle_scatter(ax, [self.x_tile], [self.y_tile], radius=0.2, alpha=1, color='b')
         if legend==True:
@@ -449,7 +471,10 @@ class Tile():
         if tight==True:plt.tight_layout()
         if savename!=None:
             plt.savefig(savename)
-            print('Saving ',savename)
+            if verbose:
+                # print('Saving ',savename)
+                getLogger(__name__).debug('Saving ',savename)
+
         if showplot: 
             plt.show()
         if kill_plots: 

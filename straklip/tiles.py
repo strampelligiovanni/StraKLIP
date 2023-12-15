@@ -67,7 +67,7 @@ class Tile():
         self.x0=int(tile_base/2)
         self.y0=int(tile_base/2)
 
-    def mk_tile(self,fig=None,ax=None,step=2,title='',cmap='viridis',xy_tile=False,xy_m=False,xy_cen=False,xy_dmax=3,box_size=3,fwhm=2.5,sigma=4,background=0,std=0,showplot=True,cbar=False,lpad=0.5,fx=5,fy=5,legend=False,mk_arrow=False,xa=None,ya=None,theta=0,PAV3=None,L=None,dtx=0.3,dty=0.15,head_width=0.5, head_length=0.5,width=0.15, fc='k', ec='k',tc='k',north=True,east=False,roll=True,simplenorm=None,min_percent=0,max_percent=100,power=1,log=1000,cr_remove=False, la_cr_remove=False,cr_radius=3,verbose=False,kill=False,close=True,vmin=None,vmax=None,pad_data=False,pad=None,keep_size=False,return_tile=False,kill_plots=False):
+    def mk_tile(self,fig=None,ax=None,step=2,title='',cmap='viridis',xy_tile=False,xy_m=False,xy_cen=False,xy_dmax=3,box_size=3,fwhm=2.5,sigma=4,background=0,std=0,showplot=True,cbar=False,lpad=0.5,fx=5,fy=5,legend=False,mk_arrow=False,xa=None,ya=None,theta=0,PAV3=None,L=None,dtx=0.3,dty=0.15,head_width=0.5, head_length=0.5,width=0.15, fc='k', ec='k',tc='k',north=True,east=False,roll=True,simplenorm=None,min_percent=0,max_percent=100,power=1,log=1000,cr_remove=False, la_cr_remove=False,cr_radius=3,verbose=False,kill=False,close=True,vmin=None,vmax=None,pad_data=False,pad=None,keep_size=False,return_tile=False,kill_plots=False,path2savefig=None):
         '''
         Select a smaller portion of an imput image and create a new tile from it.
 
@@ -260,7 +260,7 @@ class Tile():
             self.y_m=None
         if fig == None and ax==None: 
             fig,ax=plt.subplots(1,1,figsize=(fx,fy))
-        im=self.plot_tile(fig,ax,title=title,cmap=cmap,xy_tile=xy_tile,xy_cen=xy_cen,xy_m=xy_m,cbar=cbar,lpad=lpad,legend=legend,mk_arrow=mk_arrow,xa=xa,ya=ya,theta=theta,PAV3=PAV3,L=L,dtx=dtx,dty=dty,head_width=head_width, head_length=head_length,width=width, fc=fc, ec=ec,tc=tc,north=north,east=east,roll=roll,showplot=showplot,step=step,simplenorm=simplenorm,min_percent=min_percent,max_percent=max_percent,power=power,log=log,verbose=verbose,kill=kill,close=close,vmin=vmin,vmax=vmax,extent=None,kill_plots=kill_plots)
+        im=self.plot_tile(fig,ax,title=title,cmap=cmap,xy_tile=xy_tile,xy_cen=xy_cen,xy_m=xy_m,cbar=cbar,lpad=lpad,legend=legend,mk_arrow=mk_arrow,xa=xa,ya=ya,theta=theta,PAV3=PAV3,L=L,dtx=dtx,dty=dty,head_width=head_width, head_length=head_length,width=width, fc=fc, ec=ec,tc=tc,north=north,east=east,roll=roll,showplot=showplot,step=step,simplenorm=simplenorm,min_percent=min_percent,max_percent=max_percent,power=power,log=log,verbose=verbose,kill=kill,close=close,vmin=vmin,vmax=vmax,extent=None,kill_plots=kill_plots,savename=path2savefig)
         if return_tile: return(im)
 
     def append_tile(self, path2tile,Datacube=None,verbose=False,name='SCI',return_Datacube=False,write=True):

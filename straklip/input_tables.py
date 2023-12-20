@@ -24,7 +24,7 @@ class Tables:
     def canonize(self,label_list=['vis']):
         """ Enforce cannonicity of df str values lowercase"""
         for label in label_list:
-            self.mvs_table[label] = self.mvs_table[label].str.lower()
+            self.mvs_table[label] = self.mvs_table[label].astype(str).str.lower()
 
     def rename_df(self,table,table_labels='mvs_table',default_labels='default_mvsdf_labels',new_labels_dict={}):
         selected_labels=[]
@@ -58,6 +58,16 @@ class Tables:
         if table_name == 'mvs_table':
             self.ancillary_info()
 
+    def check_fits_file_existence(self):
+        path = self.pipe_cfg.paths['data']
+        fits_list = glob.glob(path + '/*.fits')
+        if len(fits_list) == 0:
+            getLogger(__name__).critical(f'No fits files found in {path}.')
+            raise ValueError(f'No fits files found in {path}.')
+        else:
+            getLogger(__name__).info(f'{len(fits_list)} fits files found in {path}.')
+            return(fits_list)
+
 
     def ancillary_info(self):
         self.canonize()
@@ -68,12 +78,17 @@ class Tables:
                 else:
                     d = np.nan
                 self.mvs_table['%s_%s' % (label,filter.lower())] = np.nan
-        for file in glob.glob(self.pipe_cfg.paths['data'] + '/*.fits'):
+        fits_list=self.check_fits_file_existence()
+        for file in fits_list:
             hdul = fits.open(file)
             filename = hdul[0].header['ROOTNAME']
             vis = filename[4:6].lower()
-            filter1 = hdul[0].header['FILTER1'].lower()
-            filter2 = hdul[0].header['FILTER2'].lower()
+            try:
+                filter1 = hdul[0].header['FILTER1'].lower()
+                filter2 = hdul[0].header['FILTER2'].lower()
+            except:
+                filter1 = hdul[0].header['FILTER'].lower()
+                filter2=''
             if np.any([filter in self.data_cfg.filters for filter in [filter1,filter2]]):
                     if filter1[0] == 'f':
                         filter = filter1

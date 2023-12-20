@@ -166,11 +166,12 @@ def closing_statement(pipe_cfg,dataset,DF):
     getLogger(__name__).info(f'=========================================================')
     getLogger(__name__).info(f'=============== Pipeline closing summary ================')
     getLogger(__name__).info(f'Closing the pipeline after the following steps:')
-    for step in pipe_cfg.flow:
-        if not f'steps.{step}' in DF.steps or getattr(dataset.pipe_cfg,'redo') or getattr(dataset.pipe_cfg,step)['redo']:
-            getLogger(__name__).info(f' - {step}: new.')
-        else:
-            getLogger(__name__).info(f' - {step}: retrieved.')
+    getLogger(__name__).info(f' - {step}')
+    # for step in pipe_cfg.flow:
+    #     if not f'steps.{step}' in DF.steps or getattr(dataset.pipe_cfg,'redo') or getattr(dataset.pipe_cfg,step)['redo']:
+    #         getLogger(__name__).info(f' - {step}: new.')
+    #     else:
+    #         getLogger(__name__).info(f' - {step}: retrieved.')
     getLogger(__name__).info(f'==========================================================')
 
 def get_Av_dict(dataset):

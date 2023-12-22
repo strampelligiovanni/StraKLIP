@@ -9,7 +9,7 @@ class Tables:
     def __init__(self,data_cfg, pipe_cfg):
         self.pipe_cfg = pipe_cfg
         self.data_cfg = data_cfg
-        for table_name in ['avg_table','mvs_table']:
+        for table_name in ['mvs_table','avg_table']:
             self.load_table_into_df(table_name)
         self.select_tables()
 
@@ -26,21 +26,20 @@ class Tables:
         for label in label_list:
             self.mvs_table[label] = self.mvs_table[label].astype(str).str.lower()
 
-    def rename_df(self,table,table_labels='mvs_table',default_labels='default_mvsdf_labels',new_labels_dict={}):
+    def rename_df(self,table,table_labels='mvs_table',default_labels='default_mvs_table',new_labels_dict={}):
         selected_labels=[]
         for key in [x for x in list(getattr(self.data_cfg,table_labels).keys()) if x in list(self.pipe_cfg.buildhdf[default_labels].keys())]:
-            if np.any(key in ['id','x','y']) and table_labels == 'mvs_table':
-                if key =='id':
+            if table_labels == 'mvs_table' and key =='id':
                     for elno in range(len(list(getattr(self.data_cfg, table_labels)[key].keys()))):
                         label = list(getattr(self.data_cfg, table_labels)[key].values())[elno]
                         newlabel = list(getattr(self.data_cfg, table_labels)[key].keys())[elno]
                         new_labels_dict[label] = newlabel
                         selected_labels.append(newlabel)
-                else:
-                    for elno in range(len(getattr(self.data_cfg,table_labels)[key])):
-                        label = self.data_cfg.mvs_table[key][elno]
-                        new_labels_dict[label]= self.pipe_cfg.buildhdf['default_mvs_table'][key]+'_%s'%self.data_cfg.filters[elno]
-                        selected_labels.append(self.pipe_cfg.buildhdf['default_mvs_table'][key]+'_%s'%self.data_cfg.filters[elno])
+            elif isinstance(getattr(self.data_cfg, table_labels)[key],list):
+                for elno in range(len(getattr(self.data_cfg,table_labels)[key])):
+                    label =getattr(self.data_cfg,table_labels)[key][elno]
+                    new_labels_dict[label]= self.pipe_cfg.buildhdf[default_labels][key]+'_%s'%self.data_cfg.filters[elno]
+                    selected_labels.append(self.pipe_cfg.buildhdf[default_labels][key]+'_%s'%self.data_cfg.filters[elno])
             else:
                 new_labels_dict[getattr(self.data_cfg,table_labels)[key]] = self.pipe_cfg.buildhdf[default_labels][key]
                 selected_labels.append(self.pipe_cfg.buildhdf[default_labels][key])
@@ -49,9 +48,23 @@ class Tables:
         getLogger(__name__).info(f'Renamed df columns to default')
 
     def load_table_into_df(self,table_name):
-        setattr(self, table_name, pd.read_table(getattr(self.pipe_cfg,'paths')['database'] + '/' + getattr(self.data_cfg,table_name)['name'],
-                                       sep=getattr(self.data_cfg,table_name)['sep'], skip_blank_lines=True).dropna(
-            how='all').reset_index(drop=True))
+        if table_name == 'mvs_table':
+            setattr(self, table_name, pd.read_table(getattr(self.pipe_cfg,'paths')['database'] + '/' +
+                                                    getattr(self.data_cfg,table_name)['name'],
+                                                    sep=getattr(self.data_cfg,table_name)['sep'], skip_blank_lines=True,
+                                                    converters={getattr(self.data_cfg, table_name)['id']['avg_ids']: int,
+                                                    getattr(self.data_cfg, table_name)['id']['mvs_ids']: int,
+                                                    getattr(self.data_cfg, table_name)['vis']: str}
+                                                    ).dropna(
+                                                    how='all').reset_index(drop=True))
+        else:
+            setattr(self, table_name, pd.read_table(
+                getattr(self.pipe_cfg, 'paths')['database'] + '/' + getattr(self.data_cfg, table_name)['name'],
+                sep=getattr(self.data_cfg, table_name)['sep'], skip_blank_lines=True,
+                converters = {getattr(self.data_cfg, table_name)['id']: int,
+                              getattr(self.data_cfg, table_name)['type']: int}
+                ).dropna(
+                how='all').reset_index(drop=True))
         getLogger(__name__).info('Loaded "%s" into df' % getattr(self.data_cfg,table_name)['name'])
         self.rename_df(table=table_name, table_labels=table_name, default_labels='default_%s'%table_name,
                        new_labels_dict={})
@@ -71,7 +84,7 @@ class Tables:
 
     def ancillary_info(self):
         self.canonize()
-        for label in ['rota','pav3','exptime','fits']:
+        for label in ['rota','pav3','exptime']:
             for filter in self.data_cfg.filters:
                 if label =='fits':
                     d = ''
@@ -83,6 +96,7 @@ class Tables:
             hdul = fits.open(file)
             filename = hdul[0].header['ROOTNAME']
             vis = filename[4:6].lower()
+            ext = 1 if hdul[1].header['CCDCHIP'] == 2 else 4
             try:
                 filter1 = hdul[0].header['FILTER1'].lower()
                 filter2 = hdul[0].header['FILTER2'].lower()
@@ -99,10 +113,10 @@ class Tables:
                     PA_V3 = hdul[0].header['PA_V3']
                     ROTA = hdul[1].header['ORIENTAT']
             #
-                    self.mvs_table.loc[(self.mvs_table.vis==str(vis).lower()),['rota_'+filter.lower()]] = round(float(ROTA), 3)
-                    self.mvs_table.loc[(self.mvs_table.vis==str(vis).lower()),['pav3_'+filter.lower()]] = round(float(PA_V3), 3)
-                    self.mvs_table.loc[(self.mvs_table.vis==str(vis).lower()),['exptime_'+filter.lower()]] = round(float(EXPTIME), 3)
-                    self.mvs_table.loc[(self.mvs_table.vis==str(vis).lower()),['fits_'+filter.lower()]] = filename
+                    self.mvs_table.loc[(self.mvs_table.vis==str(vis).lower())&(self.mvs_table.ext==ext)&(self.mvs_table['fits_'+filter.lower()]==filename),['rota_'+filter.lower()]] = round(float(ROTA), 3)
+                    self.mvs_table.loc[(self.mvs_table.vis==str(vis).lower())&(self.mvs_table.ext==ext)&(self.mvs_table['fits_'+filter.lower()]==filename),['pav3_'+filter.lower()]] = round(float(PA_V3), 3)
+                    self.mvs_table.loc[(self.mvs_table.vis==str(vis).lower())&(self.mvs_table.ext==ext)&(self.mvs_table['fits_'+filter.lower()]==filename),['exptime_'+filter.lower()]] = round(float(EXPTIME), 3)
+                    # self.mvs_table.loc[(self.mvs_table.vis==str(vis).lower()),['fits_'+filter.lower()]] = filename
         getLogger(__name__).info(f'Added ancillary info to df')
 
 

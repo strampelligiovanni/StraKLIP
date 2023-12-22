@@ -276,9 +276,9 @@ def distances_cube(df,id_label='avg_ids',coords_labels=['ra','dec'],showplot=Tru
             df_temp.loc[df_temp[id_label]==ID,'SecondDist']=second_min_dist*pixelscale
             df_temp.loc[df_temp[id_label]==ID,'ThirdDist']=third_min_dist*pixelscale
                     
-        df_temp.loc[df_temp[id_label]==ID,'FirstID']=firstID
-        df_temp.loc[df_temp[id_label]==ID,'SecondID']=secondID
-        df_temp.loc[df_temp[id_label]==ID,'ThirdID']=thirdID
+        df_temp.loc[df_temp[id_label]==ID,'FirstID']=int(firstID)
+        df_temp.loc[df_temp[id_label]==ID,'SecondID']=int(secondID)
+        df_temp.loc[df_temp[id_label]==ID,'ThirdID']=int(thirdID)
 
         dist_list.append(list(dist))
         min_dist.append(first_min_dist)

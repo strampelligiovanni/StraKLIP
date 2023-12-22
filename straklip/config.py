@@ -162,17 +162,20 @@ def validate(labels,pipe_cfg):
             errors.append(name)
     return errors
 
-def closing_statement(pipe_cfg,dataset,DF):
-    getLogger(__name__).info(f'=========================================================')
-    getLogger(__name__).info(f'=============== Pipeline closing summary ================')
+def closing_statement(DF,pipe_cfg,dataset):
+    getLogger(__name__).info(f'===============================================================================================')
+    getLogger(__name__).info(f'=============== Pipeline closing summary ======================================================')
     getLogger(__name__).info(f'Closing the pipeline after the following steps:')
-    getLogger(__name__).info(f' - {step}')
-    # for step in pipe_cfg.flow:
-    #     if not f'steps.{step}' in DF.steps or getattr(dataset.pipe_cfg,'redo') or getattr(dataset.pipe_cfg,step)['redo']:
-    #         getLogger(__name__).info(f' - {step}: new.')
-    #     else:
-    #         getLogger(__name__).info(f' - {step}: retrieved.')
-    getLogger(__name__).info(f'==========================================================')
+    for step in pipe_cfg.flow:
+        getLogger(__name__).info(f' - {step}')
+        # if f'steps.{step}' in DF.steps and (getattr(dataset.pipe_cfg,'redo') or getattr(dataset.pipe_cfg,step)['redo']):
+        #     getLogger(__name__).info(f' - {step}: Redo. This step has been already run on the data but redo is set to True')
+        # elif f'steps.{step}' in DF.steps and (not getattr(dataset.pipe_cfg, 'redo') and not getattr(dataset.pipe_cfg, step)['redo']):
+        #     getLogger(__name__).info(
+        #         f' - {step}: Skipped. This step has been already run on the data and redo is set to False')
+        # else:
+        #     getLogger(__name__).info(f' - {step}.')
+    getLogger(__name__).info(f'==============================================================================================')
 
 def get_Av_dict(dataset):
     getLogger(__name__).info(f'Fetching extinction dictionary for filters {dataset.data_cfg.filters}.')
@@ -193,10 +196,9 @@ def get_zpt(dataset):
 
     # Create an instance and search for a specific filter
     q_filter = acszpt.Query(date=dataset.data_cfg.target['zpts'],
-                            detector=dataset.pipe_cfg.instrument['detector'],
+                            detector=dataset.pipe_cfg.instrument['name'],
                             filt=None)
 
-    # Fetch the results for the F435W filter
     filter_zpt = q_filter.fetch().to_pandas()
     filter_zpt['Filter'] = filter_zpt['Filter'].astype(str).apply(str.lower)
 
@@ -224,6 +226,8 @@ def configure_dataframe(dataset,load=False):
                        redo=dataset.pipe_cfg.redo,
                        path2out=dataset.pipe_cfg.paths['out'],
                        path2data=dataset.pipe_cfg.paths['data'],
+                       path2database=dataset.pipe_cfg.paths['database'],
+                       path2pam=dataset.pipe_cfg.paths['pam'],
                        target=dataset.data_cfg.target['name'],
                        inst=dataset.pipe_cfg.instrument['name'],
                        pixscale=dataset.pipe_cfg.instrument['pixelscale'],

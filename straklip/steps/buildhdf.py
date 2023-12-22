@@ -6,8 +6,8 @@ def mk_targets_df(DF,dataset):#,multiple_visit_id_label='id',average_visits_id_l
 
     '''
     getLogger(__name__).info(f'Creating the targets dataframe')
-    mk_avg_targets_df(DF,dataset)
     mk_mvs_targets_df(DF,dataset)
+    mk_avg_targets_df(DF,dataset)
 
 def make_candidates_dataframes(DF):
         '''

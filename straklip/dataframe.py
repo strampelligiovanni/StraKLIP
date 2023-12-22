@@ -18,7 +18,7 @@ class DataFrame():
     # def __getstate__(self):
     #     return {"data": self.values, "columns": self.columns}
 
-    def __init__(self,path2data='',path2out='',target='',inst='',pixscale=1,gain=1,PAMdict={},tilebase=15,radec=[],filters=[],xyaxis=[],fitsext='_flt',skipphot=False,dq2mask=[],zpt={},Av={},dist=0,Kmodes=[],type='type',maxsep=2,minsep=0,redo=False,kind='dataframe',steps=[]):
+    def __init__(self,path2data='',path2out='',path2database='',path2pam='',target='',inst='',pixscale=1,gain=1,PAMdict={},tilebase=15,radec=[],filters=[],xyaxis=[],fitsext='_flt',skipphot=False,dq2mask=[],zpt={},Av={},dist=0,Kmodes=[],type='type',maxsep=2,minsep=0,redo=False,kind='dataframe',steps=[]):
         '''
         Create the dataframe object
 
@@ -68,6 +68,8 @@ class DataFrame():
         self.kind=kind
         self.path2out=path2out
         self.path2data=path2data
+        self.path2database=path2database
+        self.path2pam=path2pam
         self.target=target
         self.inst=inst
         self.filters=filters

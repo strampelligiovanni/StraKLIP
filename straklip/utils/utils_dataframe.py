@@ -289,14 +289,11 @@ def mk_avg_targets_df(DF, dataset):
     '''
     getLogger(__name__).info(f'Creating the multi-visit targets dataframe')
     df_new = create_empty_df([], [dataset.pipe_cfg.buildhdf['default_avg_table']['id']] + DF.radec + ['m_%s' % i for i in
-                                                                                               DF.filters] + [
-                                 'e_%s' % i for i in DF.filters] + ['type', 'FirstDist', 'SecondDist',
-                                                                              'ThirdDist', 'FirstID', 'SecondID',
-                                                                              'ThirdID'],
-                             int_columns=['avg_ids', 'type'],
-                             flt_columns=DF.radec + ['m_%s' % i for i in DF.filters] + ['e_%s' % i
-                                                                                                       for i in
-                                                                                                       DF.filters])
+                             DF.filters] + ['e_%s' % i for i in DF.filters] + ['type', 'FirstDist', 'SecondDist',
+                             'ThirdDist', 'FirstID', 'SecondID','ThirdID'],
+                             int_columns=['avg_ids', 'type', 'FirstID', 'SecondID','ThirdID'],
+                             flt_columns=DF.radec + ['m_%s' % i for i in DF.filters] + ['e_%s' % i for i in DF.filters] +
+                             ['FirstDist', 'SecondDist','ThirdDist'])
 
     df_new[dataset.pipe_cfg.buildhdf['default_avg_table']['id']] = dataset.avg_table[
         dataset.pipe_cfg.buildhdf['default_avg_table']['id']].values
@@ -341,12 +338,9 @@ def mk_mvs_targets_df(DF, dataset):
 
     '''
     getLogger(__name__).info(f'Creating the average targets dataframe')
-    df_new = create_empty_df([], ['mvs_ids'] + ['x_%s' % i for i in DF.filters] + ['y_%s' % i for i in
-                                                                                        DF.filters] + ['vis',
-                                                                                                            'ext'] + [
-                                 'counts_%s' % i for i in DF.filters] + ['ecounts_%s' % i for i in
-                                                                              DF.filters] + ['m_%s' % i for i in
-                                                                                                  DF.filters] + [
+    df_new = create_empty_df([], ['mvs_ids'] + ['x_%s' % i for i in DF.filters] + ['y_%s' % i for i in DF.filters]
+                             + ['vis', 'ext'] + ['counts_%s' % i for i in DF.filters] + ['ecounts_%s' % i for i in DF.filters] +
+                             ['m_%s' % i for i in DF.filters] + [
                                  'e_%s' % i for i in DF.filters] + ['spx_%s' % i for i in DF.filters] + [
                                  'bpx_%s' % i for i in DF.filters] + ['nap_%s' % i for i in DF.filters] + [
                                  'sky_%s' % i for i in DF.filters] + ['esky_%s' % i for i in DF.filters] + [
@@ -389,10 +383,32 @@ def mk_mvs_targets_df(DF, dataset):
                              str_columns=['vis'] + ['fits_%s' % i for i in DF.filters] + ['flag_%s' % i for i in
                                                                                                DF.filters])
 
-    df_new[['mvs_ids', 'ext']] = dataset.mvs_table[[dataset.pipe_cfg.buildhdf['default_mvs_table']['id'], 'ext']].values
-    df_new['vis'] = dataset.mvs_table['vis'].values
-    df_new[['x_%s' % i for i in DF.filters]] = dataset.mvs_table[['x_%s' % i for i in DF.filters]].values
-    df_new[['y_%s' % i for i in DF.filters]] = dataset.mvs_table[['y_%s' % i for i in DF.filters]].values
+    try:
+        df_new['mvs_ids'] = dataset.mvs_table[dataset.pipe_cfg.buildhdf['default_mvs_table']['id']].values
+    except:
+        getLogger(__name__).critical('mvs_ids is required as input to build the dataframe')
+        raise ValueError('mvs_ids is required as input to build the dataframe')
+    try:
+        df_new[ 'ext'] = dataset.mvs_table['ext'].values
+    except:
+        getLogger(__name__).critical('ext is required as input to build the dataframe')
+        raise ValueError('ext is required as input to build the dataframe')
+    try:
+        df_new['vis'] = dataset.mvs_table['vis'].values
+    except:
+        getLogger(__name__).critical('vis is required as input to build the dataframe')
+        raise ValueError('vis is required as input to build the dataframe')
+    try:
+        df_new[['x_%s' % i for i in DF.filters]] = dataset.mvs_table[['x_%s' % i for i in DF.filters]].values
+    except:
+        getLogger(__name__).critical('x is required as input to build the dataframe')
+        raise ValueError('x is required as input to build the dataframe')
+    try:
+        df_new[['y_%s' % i for i in DF.filters]] = dataset.mvs_table[['y_%s' % i for i in DF.filters]].values
+    except:
+        getLogger(__name__).critical('y is required as input to build the dataframe')
+        raise ValueError('y is required as input to build the dataframe')
+
     try:
         df_new[['rota_%s' % i for i in DF.filters]] = dataset.mvs_table[['rota_%s' % i for i in DF.filters]].values
     except:
@@ -410,11 +426,16 @@ def mk_mvs_targets_df(DF, dataset):
         df_new[['fits_%s' % i for i in DF.filters]] = dataset.mvs_table[
             ['fits_%s' % i for i in DF.filters]].values
     except:
-        df_new[['fits_%s' % i for i in DF.filters]] = 'N/A'
+        getLogger(__name__).critical('fitsroot name is required as input to build the dataframe')
+        raise ValueError('fitsroot name is required as input to build the dataframe')
 
-    df_new[['flag_%s' % i for i in DF.filters]] = 'rejected'
-    for filter in DF.filters:
-        df_new.loc[~df_new['x_%s' % filter].isna(), ['flag_%s' % filter]] = 'good_target'
+    try:
+        df_new[['flag_%s' % i for i in DF.filters]] = dataset.mvs_table[
+            ['flag_%s' % i for i in DF.filters]].values
+    except:
+        df_new[['flag_%s' % i for i in DF.filters]] = 'rejected'
+        for filter in DF.filters:
+            df_new.loc[~df_new['x_%s' % filter].isna(), ['flag_%s' % filter]] = 'good_target'
     df_new[['cell_%s' % i for i in DF.filters]] = np.nan
     DF.mvs_targets_df = df_new
 

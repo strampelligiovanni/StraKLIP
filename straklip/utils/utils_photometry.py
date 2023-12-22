@@ -208,7 +208,7 @@ def aperture_photometry_handler(DF,id,filter,data_label='',dq_label='',hdul=None
         f = interp1d(eex, eey)
         Ei=f(radius_a*DF.pixscale)
     elif isinstance(ee_df,dict):
-        ext=ROTA=DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==id,'ext'].values[0].astype(int)
+        ext=DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==id,'ext'].values[0].astype(int)
         ee_df0=ee_df[ext]
         eex=ee_df0.loc[ee_df0.FILTER==filter].columns[1:].astype(float)
         eey=ee_df0.loc[ee_df0.FILTER==filter].values[0][1:].astype(float)
@@ -281,44 +281,9 @@ def aperture_photometry_handler(DF,id,filter,data_label='',dq_label='',hdul=None
         DATA=Tile(data=data,x=x,y=y,tile_base=radius2*2+5,inst=DF.inst,Python_origin=Python_origin,dqdata=dq)
         DATA.mk_tile(fig=fig,ax=ax[0],la_cr_remove=la_cr_remove,cr_radius=cr_radius,pad_data=True,verbose=False,xy_m=False,legend=False,showplot=False,keep_size=False,xy_dmax=None,cbar=True,title='ID%i ROTA %i PAV3 %i'%(id,ROTA,PAV3),return_tile=False,kill_plots=kill_plots)
         
-        if aptype=='4pixels': raise ValueError('aptype = 4pixels not supported for primaries when evaluating Sky')
-            # bkg=Detection(data,x,y)
-            # photometry_AP.aperture_mask(bkg,aptype='4pixels')
-            # photometry_AP.mask_aperture_data(bkg)
-            # photometry_AP.aperture_stats(bkg,aperture=bkg.aperture,sigmaclip=True,sigma=sigma,sat_thr=sat_thr,fill=np.nan)
-            # Sky=round(np.nanmean(bkg.data_mask_out[bkg.data_mask_out>0]),3)
-            # eSky=np.nanstd(bkg.data_mask_out[bkg.data_mask_out>0],ddof=1)
-            # nSky=len(bkg.data_mask_out[bkg.data_mask_out>0])
-    
-            # if not kill_plots:
-            #     BG = Tile(data=bkg.data_mask_out, x=DATA.x_tile, y=DATA.y_tile,
-            #                     tile_base=bkg.data_mask_out.shape[0], inst=DF.inst, Python_origin=False)
-            #     BG.mk_tile(fig=fig, ax=ax[3], pad_data=False, verbose=False, xy_m=False, legend=False, showplot=False,
-            #                keep_size=True, xy_dmax=None, cbar=True, title='Sky Area', return_tile=False, kill_plots=kill_plots)
-    
-            # detection_AP=Detection(DATA.data,DATA.x_tile,DATA.y_tile,Sky=Sky,nSky=nSky,eSky=eSky,thrpt=thrpt,ethrpt=ethrpt,Ei=Ei)
-            # Sky,eSky,nSky=[bkg.median,bkg.std,bkg.Nap]          
-    
+        if aptype=='4pixels':
+            raise ValueError('aptype = 4pixels not supported for primaries when evaluating Sky')
         else:
-            # if candidate:
-            #     bkg=Detection(data,x,y)
-            #     photometry_AP.aperture_mask(bkg,aptype=aptype)
-            #     photometry_AP.mask_aperture_data(bkg)
-            #     photometry_AP.aperture_stats(bkg,aperture=bkg.aperture,sigmaclip=True,sigma=sigma,sat_thr=sat_thr,fill=np.nan)
-            #     Sky=round(np.nanmean(bkg.data_mask_out[bkg.data_mask_out>0]),3)
-            #     eSky=np.nanstd(bkg.data_mask_out[bkg.data_mask_out>0],ddof=1)
-            #     nSky=len(bkg.data_mask_out[bkg.data_mask_out>0])
-        
-            #     if not kill_plots:
-            #         BG = Tile(data=bkg.data_mask_out, x=DATA.x_tile, y=DATA.y_tile,
-            #                         tile_base=bkg.data_mask_out.shape[0], inst=DF.inst, Python_origin=False)
-            #         BG.mk_tile(fig=fig, ax=ax[3], pad_data=False, verbose=False, xy_m=False, legend=False, showplot=False,
-            #                    keep_size=True, xy_dmax=None, cbar=True, title='Sky Area', return_tile=False, kill_plots=kill_plots)
-        
-            #     detection_AP=Detection(DATA.data,DATA.x_tile,DATA.y_tile,Sky=Sky,nSky=nSky,eSky=eSky,thrpt=thrpt,ethrpt=ethrpt,Ei=Ei)
-            #     Sky,eSky,nSky=[bkg.median,bkg.std,bkg.Nap]   
-            
-            # else:
             bkg=Detection(DATA.data,DATA.x_tile,DATA.y_tile)
             
             photometry_AP.aperture_mask(bkg,aptype=aptype,radius1=radius1,radius2=radius2,method='center',ap_x=delta,ap_y=delta)
@@ -326,8 +291,8 @@ def aperture_photometry_handler(DF,id,filter,data_label='',dq_label='',hdul=None
             photometry_AP.aperture_stats(bkg,aperture=bkg.aperture,sigmaclip=True,sigma=sigma,sat_thr=sat_thr,fill=np.nan)
 
             if not kill_plots:
-                BG = Tile(data=bkg.data_mask_out, x=DATA.x_tile, y=DATA.y_tile,
-                            tile_base=bkg.data_mask_out.shape[0], inst=DF.inst, Python_origin=False)
+                BG = Tile(data=bkg.data_mask_in, x=DATA.x_tile, y=DATA.y_tile,
+                            tile_base=bkg.data_mask_in.shape[0], inst=DF.inst, Python_origin=False)
                 BG.mk_tile(fig=fig, ax=ax[3], pad_data=False, verbose=False, xy_m=False, legend=False, showplot=False,
                            keep_size=True, xy_dmax=None, cbar=True, title='Sky Area', return_tile=False, kill_plots=kill_plots)
             Sky=bkg.median
@@ -501,15 +466,15 @@ def KLIP_aperture_photometry_handler(DF,id,filter,data_label='',dq_label='',hdul
         photometry_AP.mask_aperture_data(bkg)
         photometry_AP.aperture_stats(bkg,aperture=bkg.aperture,sigma=sigma,sat_thr=sat_thr,fill=np.nan)
         if not kill_plots:
-            BG = Tile(data=bkg.data_mask_out, x=x_tile, y=y_tile,
-                            tile_base=bkg.data_mask_out.shape[0], inst=DF.inst, Python_origin=False)
+            BG = Tile(data=bkg.data_mask_in, x=x_tile, y=y_tile,
+                            tile_base=bkg.data_mask_in.shape[0], inst=DF.inst, Python_origin=False)
             BG.mk_tile(fig=fig, ax=ax[2], pad_data=False, verbose=False, xy_m=False, legend=False, showplot=False,
                        keep_size=True, xy_dmax=None, cbar=True, title='Sky Area', return_tile=False, kill_plots=kill_plots)
 
         
-        Sky=round(np.nanmean(bkg.data_mask_out[bkg.data_mask_out>0]),3)
-        eSky=np.nanstd(bkg.data_mask_out[bkg.data_mask_out>0],ddof=1)
-        nSky=len(bkg.data_mask_out[bkg.data_mask_out>0])
+        Sky=round(np.nanmean(bkg.data_mask_in[bkg.data_mask_in>0]),3)
+        eSky=np.nanstd(bkg.data_mask_in[bkg.data_mask_in>0],ddof=1)
+        nSky=len(bkg.data_mask_in[bkg.data_mask_in>0])
         
     detection_AP=Detection(data,x,y,Sky=Sky,nSky=nSky,eSky=eSky,thrpt=thrpt,ethrpt=ethrpt)
     photometry_AP.aperture_mask(detection_AP,aptype=aptype,radius1=radius,ap_x=delta,ap_y=delta)
@@ -532,7 +497,7 @@ def KLIP_aperture_photometry_handler(DF,id,filter,data_label='',dq_label='',hdul
     return(detection_AP.counts,detection_AP.ecounts,detection_AP.Nsigma,detection_AP.Nap,detection_AP.mag,detection_AP.emag,spx,bpx,Sky,eSky,nSky,detection_AP.grow_corr)
 
 
-def mvs_aperture_photometry(DF,filter,ee_df,zpt_dict,fitsname=None,mvs_ids_list_in=[],data_label='',dq_label='',label='data',bpx_list=[],spx_list=[],la_cr_remove=False,cr_radius=1,radius_in=10,radius1_in=10,radius2_in=15,sat_thr=np.inf,kill_plots=True,grow_curves=True,gstep=0.01,p=30,r_in=4,Python_origin=False,remove_candidate=False,flag='',multiply_by_exptime=False,multiply_by_gain=False,multiply_by_PAM=False,noBGsub=False,forceSky=False):
+def mvs_aperture_photometry(DF,filter,ee_dict,zpt_dict,fitsname=None,mvs_ids_list_in=[],data_label='',dq_label='',label='data',bpx_list=[],spx_list=[],la_cr_remove=False,cr_radius=1,radius_in=10,radius1_in=10,radius2_in=15,sat_thr=np.inf,kill_plots=True,grow_curves=True,gstep=0.01,p=30,r_in=4,Python_origin=False,remove_candidate=False,flag='',multiply_by_exptime=False,multiply_by_gain=False,multiply_by_PAM=False,noBGsub=False,forceSky=False):
     getLogger(__name__).info(f'Starting mvs photometry on ids {mvs_ids_list_in}')
     label_dict={'data':1,'crclean_data':4}
     label_KLIP_dict={'data':'','crcleaxn_data':'crclean_'}
@@ -540,11 +505,12 @@ def mvs_aperture_photometry(DF,filter,ee_df,zpt_dict,fitsname=None,mvs_ids_list_
         hdul = fits.open(DF.path2data+'/'+fitsname+DF.fitsext+'.fits',memmap=False)
         data=None
         dqdata=None
-    if len(mvs_ids_list_in)==0:mvs_ids_list=DF.mvs_targets_df.loc[DF.mvs_targets_df['fits_%s'%filter]==fitsname].mvs_ids.unique()
+    if len(mvs_ids_list_in)==0:mvs_ids_list=DF.mvs_targets_df.loc[(DF.mvs_targets_df['fits_%s'%filter]==fitsname)].mvs_ids.unique()
     else: mvs_ids_list=mvs_ids_list_in
     
     if len(mvs_ids_list_in)>1:phot=[]
     for mvs_ids in mvs_ids_list:
+        # ee_df=ee_dict[DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==mvs_ids].ext.values[0]]
         if noBGsub:
             if forceSky: forcedSky=DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==mvs_ids,['sky_%s'%filter,'esky_%s'%filter,'nsky_%s'%filter]].values[0].tolist()
             else:forcedSky=[]
@@ -592,7 +558,7 @@ def mvs_aperture_photometry(DF,filter,ee_df,zpt_dict,fitsname=None,mvs_ids_list_
         else: 
             zpt=zpt_dict
         try:
-            counts,ecounts,Nsigma,Nap,mag,emag,spx,bpx,skym,esky,nSky,grow_corr=aperture_photometry_handler(DF,mvs_ids,filter,bpx_list=bpx_list,spx_list=spx_list,data_label=data_label,dq_label=dq_label,la_cr_remove=la_cr_remove,cr_radius=cr_radius,data=data,dqdata=dqdata,hdul=hdul,zpt=zpt,radius_a=radius,radius1=radius1,radius2=radius2,sat_thr=sat_thr,kill_plots=kill_plots,grow_curves=grow_curves,ee_df=ee_df,gstep=gstep,p=p,r_in=r_in,r_min=radius1,r_max=radius2,Python_origin=Python_origin,ext=ext,exptime=exptime,multiply_by_exptime=multiply_by_exptime,multiply_by_gain=multiply_by_gain,multiply_by_PAM=multiply_by_PAM,noBGsub=noBGsub,forcedSky=forcedSky)
+            counts,ecounts,Nsigma,Nap,mag,emag,spx,bpx,skym,esky,nSky,grow_corr=aperture_photometry_handler(DF,mvs_ids,filter,bpx_list=bpx_list,spx_list=spx_list,data_label=data_label,dq_label=dq_label,la_cr_remove=la_cr_remove,cr_radius=cr_radius,data=data,dqdata=dqdata,hdul=hdul,zpt=zpt,radius_a=radius,radius1=radius1,radius2=radius2,sat_thr=sat_thr,kill_plots=kill_plots,grow_curves=grow_curves,ee_df=ee_dict,gstep=gstep,p=p,r_in=r_in,r_min=radius1,r_max=radius2,Python_origin=Python_origin,ext=ext,exptime=exptime,multiply_by_exptime=multiply_by_exptime,multiply_by_gain=multiply_by_gain,multiply_by_PAM=multiply_by_PAM,noBGsub=noBGsub,forcedSky=forcedSky)
             if len(mvs_ids_list_in)>1: phot.append([int(mvs_ids),float(ext),float(counts),float(ecounts),float(Nap),float(mag),float(emag),float(spx),float(bpx),float(radius),float(radius1),float(radius2),float(skym),float(esky),float(nSky),float(grow_corr),str(flag)])
             else: phot=[int(mvs_ids),float(ext),float(counts),float(ecounts),float(Nap),float(mag),float(emag),float(spx),float(bpx),float(radius),float(radius1),float(radius2),float(skym),float(esky),float(nSky),float(grow_corr),str(flag)]
         except:

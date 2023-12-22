@@ -47,5 +47,5 @@ if __name__ == "__main__":
         else:
             getLogger('straklip').info(f'Skipping step "{step}" because is already been succesfully run for this dataframe and redo is False')
 
-    config.closing_statement(pipe_cfg,dataset,DF)
+    config.closing_statement(DF,pipe_cfg,dataset)
 

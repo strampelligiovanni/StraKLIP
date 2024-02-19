@@ -4,7 +4,7 @@ import ruamel.yaml
 import datetime
 import sys
 from dataframe import DataFrame
-from ancillary import get_Av_list
+from ancillary import get_Av_dict
 from stralog import getLogger
 from acstools import acszpt
 import numpy as np
@@ -72,6 +72,17 @@ def configure_pipeline(config_file,pipe_cfg='',data_cfg='',dt_string=''):
     getLogger(__name__).info(opening)
     config = load(config_file)
     config['name']=config_file
+    for key in config.keys():
+        try:
+            if 'redo' in config[key]:
+                if config['redo']:
+                    config[key]['redo'] = True
+        except: pass
+        try:
+            if 'debug' in config[key]:
+                if config['debug']:
+                    config[key]['debug'] = True
+        except: pass
     return objectify(config)
 
 def get_paths(config=None):
@@ -168,21 +179,19 @@ def closing_statement(DF,pipe_cfg,dataset):
     getLogger(__name__).info(f'Closing the pipeline after the following steps:')
     for step in pipe_cfg.flow:
         getLogger(__name__).info(f' - {step}')
-        # if f'steps.{step}' in DF.steps and (getattr(dataset.pipe_cfg,'redo') or getattr(dataset.pipe_cfg,step)['redo']):
-        #     getLogger(__name__).info(f' - {step}: Redo. This step has been already run on the data but redo is set to True')
-        # elif f'steps.{step}' in DF.steps and (not getattr(dataset.pipe_cfg, 'redo') and not getattr(dataset.pipe_cfg, step)['redo']):
-        #     getLogger(__name__).info(
-        #         f' - {step}: Skipped. This step has been already run on the data and redo is set to False')
-        # else:
-        #     getLogger(__name__).info(f' - {step}.')
     getLogger(__name__).info(f'==============================================================================================')
 
-def get_Av_dict(dataset):
-    getLogger(__name__).info(f'Fetching extinction dictionary for filters {dataset.data_cfg.filters}.')
-
-    Av1_extinction=list(get_Av_list(dataset.data_cfg.filters,verbose=dataset.pipe_cfg.verbose,Rv=dataset.data_cfg.target['Rv']).values())
-
-    return {dataset.data_cfg.filters[i]: Av1_extinction[i] for i in range(len(dataset.data_cfg.filters))}
+# def get_Av_dict(dataset):
+#     getLogger(__name__).info(f'Fetching extinction dictionary for filters {dataset.data_cfg.filters}.')
+#     if isinstance(dataset.data_cfg.target['AVs'],dict):
+#         Av1_extinction=list(get_Av_list(dataset.data_cfg.filters,verbose=True,Rv=dataset.data_cfg.target['Rv'],path2saveim=dataset.pipe_cfg.paths['database']).values())
+#     elif isinstance(dataset.data_cfg.target['AVs'],list):
+#         getLogger(__name__).info(f'Loading Av extinctions at 1 magnitudes from data.yaml')
+#         Av1_extinction=dataset.data_cfg.target['AVs']
+#     else:
+#         getLogger(__name__).critical(f'AVs needs to be either a dictionary for the get_Av_list to work, or a list of values. Please check.')
+#         raise ValueError(f'AVs needs to be either a dictionary for the get_Av_list to work, or a list of values. Please check.')
+#     return {dataset.data_cfg.filters[i]: Av1_extinction[i] for i in range(len(dataset.data_cfg.filters))}
 
 def get_zpt(dataset):
     getLogger(__name__).info(f'Zero points not provided, fetch them from acstool')
@@ -195,35 +204,39 @@ def get_zpt(dataset):
     # zpt_table = q.fetch()
 
     # Create an instance and search for a specific filter
-    q_filter = acszpt.Query(date=dataset.data_cfg.target['zpts'],
+    q_filter = acszpt.Query(date=dataset.data_cfg.target['zpts']['date'],
                             detector=dataset.pipe_cfg.instrument['name'],
                             filt=None)
 
     filter_zpt = q_filter.fetch().to_pandas()
     filter_zpt['Filter'] = filter_zpt['Filter'].astype(str).apply(str.lower)
 
-    zpt_list = filter_zpt.loc[filter_zpt.Filter.astype(str).isin(dataset.data_cfg.filters)].VEGAmag.tolist()
+    zpt_list = filter_zpt.loc[filter_zpt.Filter.astype(str).isin(dataset.data_cfg.filters)][dataset.data_cfg.target['zpts']['system']].tolist()
     return {dataset.data_cfg.filters[i]: zpt_list[i] for i in range(len(dataset.data_cfg.filters))}
 
-def configure_dataframe(dataset,load=False):
+def configure_dataframe(dataset):
     files_check_list = ['avg_targets','crossmatch_ids','mvs_targets']
-    if 'buildhdf' not in dataset.pipe_cfg.flow or ((not dataset.pipe_cfg.buildhdf['redo'] and not dataset.pipe_cfg.redo) and np.all([os.path.exists(dataset.pipe_cfg.paths['out']+'/'+file+'.h5') for file in files_check_list])):
+    if 'buildhdf' not in dataset.pipe_cfg.flow or (not dataset.pipe_cfg.buildhdf['redo'] and np.all([os.path.exists(dataset.pipe_cfg.paths['out']+'/'+file+'.h5') for file in files_check_list])):
         getLogger(__name__).info(f'Fetching dataframes from %s'%dataset.pipe_cfg.paths['out'])
         DF = DataFrame(path2out=dataset.pipe_cfg.paths['out'])
         DF.load_dataframe()
     else:
-        Av_dict = get_Av_dict(dataset)
-        getLogger(__name__).info(f'Fetching zero points for filters {dataset.data_cfg.filters}')
-        if isinstance(dataset.data_cfg.target['zpts'],datetime.date):
+        if 'AVs' in dataset.data_cfg.target and isinstance(dataset.data_cfg.target['AVs'],dict):
+            Av_dict = dataset.data_cfg.target['AVs']
+        else:
+            getLogger(__name__).warning('get_Av_dict currently only supports VEGAmag system. Please provide your own set of AVs if in a differest system as AVs : {ext: {mag_filter : value}} in the data.yaml under target')
+            Av_dict = get_Av_dict(dataset.data_cfg.filters, verbose=True, Rv=dataset.data_cfg.target['Rv'],
+                                  path2saveim=dataset.pipe_cfg.paths['database'], band_dict=dataset.pipe_cfg.instrument['AVs'])
+
+        if isinstance(dataset.data_cfg.target['zpts'],dict):
             zpt_dict = get_zpt(dataset)
         elif isinstance(dataset.data_cfg.target['zpts'],list):
-            zpt_dict = dataset.data_cfg.target['zpts']
+            zpt_dict = {dataset.data_cfg.filters[i]: dataset.data_cfg.target['zpts'][i] for i in range(len(dataset.data_cfg.filters))}
         else:
-            getLogger(__name__).critical(f'Zero points option from data.yaml as to be either a "datetime.date" obj or a list')
+            getLogger(__name__).critical(f'Zero points option from data.yaml as to be either a dictionary with "datetime.date" and "filters" obj or a filterwise list of values')
             raise ValueError
 
         DF = DataFrame(kind=dataset.data_cfg.target['kind'],
-                       redo=dataset.pipe_cfg.redo,
                        path2out=dataset.pipe_cfg.paths['out'],
                        path2data=dataset.pipe_cfg.paths['data'],
                        path2database=dataset.pipe_cfg.paths['database'],

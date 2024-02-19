@@ -31,11 +31,19 @@ loggers:
     handlers: [ default, file ]
     level: DEBUG
     propagate: False
+  steps.fow2cells:
+    handlers: [ default, file ]
+    level: DEBUG
+    propagate: False
   steps.mkphotometry:
     handlers: [ default, file ]
     level: DEBUG
     propagate: False
   steps.psfsubtraction:
+    handlers: [ default, file ]
+    level: DEBUG
+    propagate: False
+  steps.klipphotometry:
     handlers: [ default, file ]
     level: DEBUG
     propagate: False

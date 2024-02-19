@@ -6,7 +6,7 @@ import pkg_resources as pkg
 import argparse
 from datetime import datetime
 import steps
-from steps import buildhdf, mktiles, mkphotometry,fow2cells,psfsubtraction
+from steps import buildhdf, mktiles, mkphotometry,fow2cells,psfsubtraction,klipphotometry
 
 def parse():
     # read in command line arguments
@@ -42,10 +42,16 @@ if __name__ == "__main__":
     dataset = input_tables.Tables(data_cfg, pipe_cfg)
     DF = config.configure_dataframe(dataset)
     for step in pipe_cfg.flow:
-        if not f'steps.{step}' in DF.steps or pipe_cfg.redo or getattr(pipe_cfg, step)['redo']:
-            getattr(steps,step).run({'DF':DF,'dataset':dataset})
+        if step == 'fow2cells':
+            getattr(steps, step).run({'DF': DF, 'dataset': dataset})
         else:
-            getLogger('straklip').info(f'Skipping step "{step}" because is already been succesfully run for this dataframe and redo is False')
+            if step in DF.steps:
+                if getattr(pipe_cfg, step)['redo']:
+                    getattr(steps, step).run({'DF': DF, 'dataset': dataset})
+                else:
+                    getLogger('straklip').info(f'Skipping step "{step}" because is already been succesfully run for this dataframe and redo is False')
+            else:
+                getattr(steps, step).run({'DF': DF, 'dataset': dataset})
 
     config.closing_statement(DF,pipe_cfg,dataset)
 

@@ -162,7 +162,7 @@ def update_flags(DF,filter,avg_ids,suffix='',goodness_phot_label='e',sat_px=3,ps
             elif crossmatch_sel.avg_ids.isin(ID_double_list).values[0]:
                 flag='unresolved_double'
             else:
-                if  (mvs_df_sel['spx_%s'%filter].values[0] <=psf_sat_px) and (mvs_df_sel['bpx_%s'%filter].values[0] <=psf_bad_px) and (mvs_df_sel['%s_%s%s'%(goodness_phot_label,filter,suffix)].values[0] <= psf_goodness_limit): #crossmatch_sel.avg_ids.isin(ID_psf_list).values[0] and
+                if (mvs_df_sel['spx_%s'%filter].values[0] <=psf_sat_px) and (mvs_df_sel['bpx_%s'%filter].values[0] <=psf_bad_px) and (mvs_df_sel['%s_%s%s'%(goodness_phot_label,filter,suffix)].values[0] <= psf_goodness_limit): #crossmatch_sel.avg_ids.isin(ID_psf_list).values[0] and
                     flag='good_psf'
                 elif crossmatch_sel.avg_ids.isin(ID_good_list).values[0]:
                     flag='good_target'
@@ -196,7 +196,7 @@ def update_type(DF,avg_ids):
 
     else:
        raise ValueError('No type/flag match. Please check avg_ids %s'%avg_ids)
-    return(type)
+    return(DF)
 
 def fk_writing(DF,filter,out,df_label,labels):
     '''

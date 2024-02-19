@@ -29,10 +29,11 @@ for filter in ['f814w']:
                         radius_in=dataset.pipe_cfg.mkphotometry['radius_in']/DF.pixscale,
                         radius1_in=dataset.pipe_cfg.mkphotometry['radius1_in']/DF.pixscale,
                         radius2_in=dataset.pipe_cfg.mkphotometry['radius2_in']/DF.pixscale,
-                        kill_plots=False,
+                        kill_plots=not dataset.pipe_cfg.mkphotometry['debug'],
                         grow_curves=dataset.pipe_cfg.mkphotometry['grow_curves'],
                         p=dataset.pipe_cfg.mkphotometry['p'],
                         gstep=dataset.pipe_cfg.mkphotometry['gstep'],
                         bpx_list=dataset.pipe_cfg.mkphotometry['bad_pixel_flags'],
                         spx_list=dataset.pipe_cfg.mkphotometry['sat_pixel_flags'],
-                        skip_flags=dataset.pipe_cfg.mkphotometry['skip_flags'])
+                        skip_flags=dataset.pipe_cfg.mkphotometry['skip_flags'],
+                        path2savefile=dataset.pipe_cfg.paths['database']+f'/targets_photometry_tiles/{filter}')

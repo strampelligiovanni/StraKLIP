@@ -103,7 +103,7 @@ def KLIP_throughput(DF_fk,candidate_sep,filter,magbin,dmag,Kmode,verbose=False):
     if verbose:plt.show()
     return(pr_model_median.predict(pre_process_median.fit_transform([[candidate_sep]])),pr_model_std.predict(pre_process_std.fit_transform([[candidate_sep]])))
 
-def aperture_photometry_handler(DF,id,filter,data_label='',dq_label='',hdul=None,data=[],dqdata=None,ext=None,x=None,y=None,bpx_list=[],spx_list=[],la_cr_remove=False,cr_radius=1,Python_origin=False,forcedSky=[],exptime=1,zpt=0,ezpt=0,thrpt=1,ethrpt=0,sat_thr=np.inf,radius_a=3,radius1=5,radius2=15,aptype='circular',df_label='mvs_tiles_df',df_ids='mvs_ids',kill_plots=False,noBGsub=False,grow_curves=False,ee_df=None,sigma=3,delta=3,gstep=0.01,p=5,r_in=6,r_min=6,r_max=15,multiply_by_exptime=False,multiply_by_gain=False,multiply_by_PAM=False,ROTA=None,PAV3=None,gain=None):
+def aperture_photometry_handler(DF,id,filter,data_label='',dq_label='',hdul=None,data=[],dqdata=None,ext=None,x=None,y=None,bpx_list=[],spx_list=[],la_cr_remove=False,cr_radius=1,Python_origin=False,forcedSky=[],exptime=1,zpt=0,ezpt=0,thrpt=1,ethrpt=0,sat_thr=np.inf,radius_a=3,radius1=5,radius2=15,aptype='circular',df_label='mvs_tiles_df',df_ids='mvs_ids',kill_plots=False,noBGsub=False,grow_curves=False,ee_df=None,sigma=3,delta=3,gstep=0.01,p=5,r_in=6,r_min=6,r_max=15,multiply_by_exptime=False,multiply_by_gain=False,multiply_by_PAM=False,ROTA=None,PAV3=None,gain=None,path2savefile=None):
     '''
     Wrapper for the photometry routines on target tile.
 
@@ -225,8 +225,7 @@ def aperture_photometry_handler(DF,id,filter,data_label='',dq_label='',hdul=None
             data*=DF.gain
             
         if multiply_by_PAM: 
-            path2PAM='%s/PAM'%(DF.path2data)
-            phdul=fits.open(path2PAM+'/'+str(DF.PAMdict[ext]+'.fits'))
+            phdul=fits.open(DF.path2pam+'/'+str(DF.PAMdict[ext]+'.fits'))
             try:PAM=phdul[1].data
             except:PAM=phdul[0].data
             data*=PAM
@@ -329,11 +328,19 @@ def aperture_photometry_handler(DF,id,filter,data_label='',dq_label='',hdul=None
     if gain==None: gain=DF.gain
     flux_converter.flux2mag(detection_AP,exptime=exptime,zpt=zpt,ezpt=ezpt,gain=gain)
     if not kill_plots:
-        plt.show()
-        if not noBGsub or len(forcedSky)>0:print('bkg median %.3f, std %.3f, nSky %i'%(Sky,eSky,nSky))
-        print('> Star counts %e, ecounts %e, spx %s, bpx %s, Nap %i, Nsigma %.3f\n> mag %.3f, emag %.3f'%(detection_AP.counts,detection_AP.ecounts,spx,bpx,detection_AP.Nap,detection_AP.Nsigma,detection_AP.mag,detection_AP.emag))
-        if grow_curves:
-            print('> Grow curve correction: %.3f\n'%(detection_AP.grow_corr))
+        # plt.text(0.02, 0.03,'> Star counts %e, ecounts %e, spx %s, bpx %s, Nap %i, Nsigma %.3f\n> mag %.3f, emag %.3f'%(detection_AP.counts,detection_AP.ecounts,spx,bpx,detection_AP.Nap,detection_AP.Nsigma,detection_AP.mag,detection_AP.emag), fontsize=14)
+        # if not noBGsub or len(forcedSky) > 0:
+        #     plt.text(0.02, 0.02,'bkg median %.3f, std %.3f, nSky %i'%(Sky,eSky,nSky), fontsize=14)
+        # if grow_curves:
+        #     plt.text(0.02, 0.1, '> Grow curve correction: %.3f\n'%(detection_AP.grow_corr), fontsize=14)
+        # plt.subplots_adjust(bottom=0.3)
+        plt.tight_layout()
+        if path2savefile is None:
+            plt.show()
+        else:
+            getLogger(__name__).debug('Saved %s' % (path2savefile + f'/targets_tiles_{id}.png'))
+            plt.savefig(path2savefile+f'/targets_tiles_{id}.png')
+            plt.close()
 
     del data
     return(detection_AP.counts,detection_AP.ecounts,detection_AP.Nsigma,detection_AP.Nap,detection_AP.mag,detection_AP.emag,spx,bpx,Sky,eSky,nSky,detection_AP.grow_corr)
@@ -497,7 +504,7 @@ def KLIP_aperture_photometry_handler(DF,id,filter,data_label='',dq_label='',hdul
     return(detection_AP.counts,detection_AP.ecounts,detection_AP.Nsigma,detection_AP.Nap,detection_AP.mag,detection_AP.emag,spx,bpx,Sky,eSky,nSky,detection_AP.grow_corr)
 
 
-def mvs_aperture_photometry(DF,filter,ee_dict,zpt_dict,fitsname=None,mvs_ids_list_in=[],data_label='',dq_label='',label='data',bpx_list=[],spx_list=[],la_cr_remove=False,cr_radius=1,radius_in=10,radius1_in=10,radius2_in=15,sat_thr=np.inf,kill_plots=True,grow_curves=True,gstep=0.01,p=30,r_in=4,Python_origin=False,remove_candidate=False,flag='',multiply_by_exptime=False,multiply_by_gain=False,multiply_by_PAM=False,noBGsub=False,forceSky=False):
+def mvs_aperture_photometry(DF,filter,ee_dict,zpt_dict,fitsname=None,mvs_ids_list_in=[],data_label='',dq_label='',label='data',bpx_list=[],spx_list=[],la_cr_remove=False,cr_radius=1,radius_in=10,radius1_in=10,radius2_in=15,sat_thr=np.inf,kill_plots=True,grow_curves=True,gstep=0.01,p=30,r_in=4,Python_origin=False,remove_candidate=False,multiply_by_exptime=False,multiply_by_gain=False,multiply_by_PAM=False,noBGsub=False,forceSky=False,path2savefile=None):
     getLogger(__name__).info(f'Starting mvs photometry on ids {mvs_ids_list_in}')
     label_dict={'data':1,'crclean_data':4}
     label_KLIP_dict={'data':'','crcleaxn_data':'crclean_'}
@@ -558,9 +565,9 @@ def mvs_aperture_photometry(DF,filter,ee_dict,zpt_dict,fitsname=None,mvs_ids_lis
         else: 
             zpt=zpt_dict
         try:
-            counts,ecounts,Nsigma,Nap,mag,emag,spx,bpx,skym,esky,nSky,grow_corr=aperture_photometry_handler(DF,mvs_ids,filter,bpx_list=bpx_list,spx_list=spx_list,data_label=data_label,dq_label=dq_label,la_cr_remove=la_cr_remove,cr_radius=cr_radius,data=data,dqdata=dqdata,hdul=hdul,zpt=zpt,radius_a=radius,radius1=radius1,radius2=radius2,sat_thr=sat_thr,kill_plots=kill_plots,grow_curves=grow_curves,ee_df=ee_dict,gstep=gstep,p=p,r_in=r_in,r_min=radius1,r_max=radius2,Python_origin=Python_origin,ext=ext,exptime=exptime,multiply_by_exptime=multiply_by_exptime,multiply_by_gain=multiply_by_gain,multiply_by_PAM=multiply_by_PAM,noBGsub=noBGsub,forcedSky=forcedSky)
-            if len(mvs_ids_list_in)>1: phot.append([int(mvs_ids),float(ext),float(counts),float(ecounts),float(Nap),float(mag),float(emag),float(spx),float(bpx),float(radius),float(radius1),float(radius2),float(skym),float(esky),float(nSky),float(grow_corr),str(flag)])
-            else: phot=[int(mvs_ids),float(ext),float(counts),float(ecounts),float(Nap),float(mag),float(emag),float(spx),float(bpx),float(radius),float(radius1),float(radius2),float(skym),float(esky),float(nSky),float(grow_corr),str(flag)]
+            counts,ecounts,Nsigma,Nap,mag,emag,spx,bpx,skym,esky,nSky,grow_corr=aperture_photometry_handler(DF,mvs_ids,filter,bpx_list=bpx_list,spx_list=spx_list,data_label=data_label,dq_label=dq_label,la_cr_remove=la_cr_remove,cr_radius=cr_radius,data=data,dqdata=dqdata,hdul=hdul,zpt=zpt,radius_a=radius,radius1=radius1,radius2=radius2,sat_thr=sat_thr,kill_plots=kill_plots,grow_curves=grow_curves,ee_df=ee_dict,gstep=gstep,p=p,r_in=r_in,r_min=radius1,r_max=radius2,Python_origin=Python_origin,ext=ext,exptime=exptime,multiply_by_exptime=multiply_by_exptime,multiply_by_gain=multiply_by_gain,multiply_by_PAM=multiply_by_PAM,noBGsub=noBGsub,forcedSky=forcedSky,path2savefile=path2savefile)
+            if len(mvs_ids_list_in)>1: phot.append([int(mvs_ids),float(ext),float(counts),float(ecounts),float(Nap),float(mag),float(emag),float(spx),float(bpx),float(radius),float(radius1),float(radius2),float(skym),float(esky),float(nSky),float(grow_corr)])
+            else: phot=[int(mvs_ids),float(ext),float(counts),float(ecounts),float(Nap),float(mag),float(emag),float(spx),float(bpx),float(radius),float(radius1),float(radius2),float(skym),float(esky),float(nSky),float(grow_corr)]
         except:
             getLogger(__name__).critical(f'Something went wrong during aperture photometry on id {mvs_ids}')
             raise ValueError

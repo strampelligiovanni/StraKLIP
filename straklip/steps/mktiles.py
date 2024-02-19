@@ -9,6 +9,7 @@ from concurrent.futures import ProcessPoolExecutor
 from itertools import repeat
 from ancillary import parallelization_package
 from utils_tile import allign_images
+from utils_tile import small_tiles
 
 def task_mvs_tiles(DF,fitsname,ids_list,filter,use_xy_SN,use_xy_m,use_xy_cen,xy_shift_list,xy_dmax,legend,verbose,Python_origin,cr_remove,la_cr_remove,cr_radius,multiply_by_exptime,multiply_by_gain,multiply_by_PAM,overwrite):
     '''
@@ -178,13 +179,14 @@ def mk_mvs_tiles(DF,filter,mvs_ids_test_list=[],xy_SN=True,xy_m=False,xy_cen=Fal
                     out[1], out[2]]
 
 
-def make_mvs_tiles(DF,filter,pipe_cfg, avg_ids_test_list=[],redo=False, xy_SN=False, xy_m=True,
-                                  xy_cen=False, xy_shift_list=[], xy_dmax=3, verbose=False, workers=None, look4duplicants=True,
-                                  showduplicants=False, Python_origin=False, parallel_runs=True, cr_remove=False,
-                                  la_cr_remove=False, cr_radius=3,
-                                  chunksize=None, multiply_by_exptime=False,
-                                  multiply_by_gain=False, multiply_by_PAM=False,
-                                  update_dataframe=False):
+def make_mvs_tiles(DF,filter,pipe_cfg, avg_ids_test_list=[],redo=False, debug=False,
+                   xy_SN=False, xy_m=True,
+                   xy_cen=False, xy_shift_list=[], xy_dmax=3, verbose=False, workers=None, look4duplicants=True,
+                   showduplicants=False, Python_origin=False, parallel_runs=True, cr_remove=False,
+                   la_cr_remove=False, cr_radius=3,
+                   chunksize=None, multiply_by_exptime=False,
+                   multiply_by_gain=False, multiply_by_PAM=False,
+                   update_dataframe=False):
     '''
     This is a wrapper for the updating of tiles dataframe and the median tile target dataframe
 
@@ -225,6 +227,11 @@ def make_mvs_tiles(DF,filter,pipe_cfg, avg_ids_test_list=[],redo=False, xy_SN=Fa
 
     if look4duplicants:
         check4duplicants(DF, filter, mvs_ids_test_list, showduplicants=showduplicants)
+    if debug:
+         _ = small_tiles(DF.mvs_targets_df, pipe_cfg.paths['data'], pipe_cfg.paths['database'],
+                         [filter], dict={}, nrows=10,ncols=10, crossmatch_ids_df=DF.crossmatch_ids_df,
+                         ext=DF.fitsext, fistsroot=pipe_cfg.buildhdf['default_mvs_table']['fitsroot'])
+
 
 def task_median_tiles(DF,id,filter,zfactor,alignment_box,legend,showplot,method,cr_remove,la_cr_remove,kill,
                       kill_plots,skip_flag,overwrite):
@@ -289,7 +296,7 @@ def task_median_tiles(DF,id,filter,zfactor,alignment_box,legend,showplot,method,
     else:
         getLogger(__name__).info(f'Median Tile {path2tile} already exist. Skipping.')
 
-def make_median_tiles(DF,filter,avg_ids_list=[],column_name='data',workers=None,
+def make_median_tiles(DF,filter,avg_ids_list=[],debug=False,workers=None,
                    zfactor=10,alignment_box=3,legend=False,showplot=False,verbose=False,
                    parallel_runs=True,method='median',cr_remove=False,la_cr_remove=False,
                    chunksize = None,kill=False,kill_plots=False,suffix='',goodness_phot_label='e',
@@ -334,13 +341,13 @@ def run(packet):
                         multiply_by_PAM=dataset.pipe_cfg.mktiles['multiply_by_PAM'],
                         multiply_by_gain=dataset.pipe_cfg.mktiles['multiply_by_gain'],
                         cr_radius=dataset.pipe_cfg.mktiles['cr_radius'] / dataset.pipe_cfg.instrument['pixelscale'],
-                        redo=True,
+                        redo=dataset.pipe_cfg.mktiles['redo'],
+                        debug=dataset.pipe_cfg.mktiles['debug'],
                         xy_dmax=dataset.pipe_cfg.mktiles['xy_dmax'])
 
 
         make_median_tiles(DF, filter,
                             avg_ids_list=[],
-                            column_name='data',
                             workers=int(dataset.pipe_cfg.ncpu),
                             zfactor=dataset.pipe_cfg.mktiles['zfactor'],
                             alignment_box=dataset.pipe_cfg.mktiles['alignment_box'],
@@ -348,6 +355,7 @@ def run(packet):
                             cr_remove=dataset.pipe_cfg.mktiles['cr_remove'],
                             la_cr_remove=dataset.pipe_cfg.mktiles['la_cr_remove'],
                             kill_plots=dataset.pipe_cfg.mktiles['kill_plots'],
-                            redo=True)
+                            debug=dataset.pipe_cfg.mktiles['debug'],
+                            redo=dataset.pipe_cfg.mktiles['redo'])
 
     DF.save_dataframes(__name__)

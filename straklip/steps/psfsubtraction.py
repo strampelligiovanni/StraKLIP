@@ -30,7 +30,7 @@ def run(packet):
     for filter in dataset.data_cfg.filters:
         KLIP_PSF_subtraction(DF, filter,
                              label=label,
-                             mvs_ids_list=dataset.pipe_cfg.psfsubtraction['mvs_ids_list'],
+                             mvs_ids_list=[],
                              kmodes_list=dataset.pipe_cfg.psfsubtraction['kmodes_list'],
                              workers=dataset.pipe_cfg.ncpu,
                              parallel_runs=dataset.pipe_cfg.psfsubtraction['parallel_runs'],

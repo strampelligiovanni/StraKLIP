@@ -1,7 +1,7 @@
 """
 utilities functions that can be use by or with the tile class
 """
-import sys,math
+import os,math
 # sys.path.append('/')
 # from pipeline_config import path2data,path2pyKLIP
 
@@ -21,6 +21,10 @@ from skimage.registration import phase_cross_correlation
 from functools import reduce
 import matplotlib.patches as patches
 from stralog import getLogger
+from astropy.visualization import simple_norm
+import matplotlib.patches as patches
+from astropy.io import fits
+from tqdm import tqdm
 
 def allign_images(target_images,rot_angles,PAV_3s,filter,fig=None,ax=None,shift_list=None,cmap='Greys_r',tile_base=15,inst='WFC3',simplenorm='linear',min_percent=0,max_percent=100,power=1,log=1000,xy_m=True,xy_cen=False,legend=False,showplot=False,verbose=False,cbar=True,title='',xy_dmax=None,zfactor=10,alignment_box=0,step=1,Python_origin=True,method='median',kill=False,kill_plots=True,mk_arrow=False):
     '''
@@ -298,7 +302,7 @@ def perform_PSF_subtraction(targ_tiles,ref_tiles,kmodes_list=[],no_PSF_models=Fa
         return(residuals,psf_models)
     except:
         getLogger(__name__).warning(
-            f'Skipping due to a problem with the PSF subtraction. Please chech')
+            f'Skipping due to a problem with the PSF subtraction. Please check')
 
 def psf_tile_from_basis(target, kl_basis, numbasis=None):
     """
@@ -546,3 +550,73 @@ def show_binary_PA(binary_df,DF=None,path2dir='',path2fits='',tag_label=None,lab
             fig.savefig('%s_%s.pdf'%(path2savedir+save_name.split('.pdf')[0],n_row),bbox_inches='tight')
             plt.close('all')
     else: plt.show()
+
+def small_tiles(DF,path2fits, path2tiles, filters, dict={},nrows=10, ncols=10, figsize=None, crossmatch_ids_df=None,ext='_flc', fistsroot = 'fistsroot'):
+    if not os.path.exists(path2tiles+'/targets_tiles'):
+        os.makedirs(path2tiles+'/targets_tiles')
+        getLogger(__name__).info(f'Making {path2tiles}/targets_tiles directory')
+
+    for filter in filters:
+        getLogger(__name__).debug(f'Making targets_tiles images for filter {filter}')
+        elno = 0
+        elno1 = 0
+        c=0
+        if figsize is None:
+            figsize=(ncols,nrows)
+        fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
+
+        for idx, row in DF.loc[~DF[f'x_{filter}'.lower()].isna()].iterrows():
+            if crossmatch_ids_df is None:
+                id = int(row.avg_ids)
+            else:
+                id = crossmatch_ids_df.loc[crossmatch_ids_df.mvs_ids==row.mvs_ids].avg_ids.unique()
+            fitsname = row[fistsroot.lower()+f'_{filter}'] + f'{ext}.fits'
+            getLogger(__name__).debug(f'Loading {fitsname} for mvs_ids {row.mvs_ids}')
+            hdul = fits.open(path2fits+'/'+fitsname)
+            SCI = hdul[1].data
+            hdul.close()
+            x, y = DF.loc[idx, [f'x_{filter}'.lower(), f'y_{filter}'.lower()]].values
+            DATA = Tile(data=SCI, x=x, y=y, tile_base=11, delta=0, inst='WFC3', Python_origin=False)
+            DATA.mk_tile(pad_data=True, legend=False, showplot=False, verbose=False, kill_plots=True, cbar=True,
+                         return_tile=False)
+            norm = simple_norm(DATA.data, 'sqrt')
+
+            axes[elno][elno1].imshow(DATA.data, cmap='gray', origin='lower', norm=norm)
+            axes[elno][elno1].set_title(f'{id}/{idx}', pad=-4, fontdict={'fontsize': 8})
+
+            if len(dict) > 0:
+                if idx in dict[f'bad_{filter}']:
+                    rect = patches.Rectangle((-0.25, -0.25), 10.5, 10.5, linewidth=3, edgecolor='r', facecolor='none')
+                    axes[elno][elno1].add_patch(rect)
+                elif idx in dict[f'good_{filter}']:
+                    DF.loc[idx, f'flag_{filter}'.lower()] = 'good_target'
+                    rect = patches.Rectangle((-0.25, -0.25), 10.5, 10.5, linewidth=3, edgecolor='g', facecolor='none')
+                    axes[elno][elno1].add_patch(rect)
+                else:
+                    DF.loc[idx, f'flag_{filter}'.lower()] = 'good_psf'
+
+            if elno1 >= ncols-1:
+                elno1 = 0
+                elno += 1
+            else:
+                elno1 += 1
+
+            if elno >= nrows:
+                elno = 0
+                elno1 = 0
+                [ax.axis('off') for ax in axes.flatten()]
+                plt.tight_layout(pad=0.0, w_pad=0.1, h_pad=0.1)
+                c+=1
+                fig.savefig(path2tiles+ f'/targets_tiles/targets_tiles_{filter}_{c}.png')
+                getLogger(__name__).debug('Saved %s'%(path2tiles + f'/targets_tiles/targets_tiles_{filter}_{c}.png'))
+                plt.close()
+                fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
+
+        [ax.axis('off') for ax in axes.flatten()]
+        plt.tight_layout(pad=0.0, w_pad=0.1, h_pad=0.1)
+        c += 1
+        fig.savefig(path2tiles + f'/targets_tiles/targets_tiles_{filter}_{c}.png')
+        getLogger(__name__).debug('Saved %s' % (path2tiles + f'/targets_tiles/targets_tiles_{filter}_{c}.png'))
+        plt.close()
+    if len(dict) > 0:
+        return(DF)

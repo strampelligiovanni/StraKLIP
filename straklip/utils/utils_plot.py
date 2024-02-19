@@ -7,8 +7,7 @@ import sys
 from ancillary import auc,solve,dataframe_2D_finer_interpolator,KDE,find_closer,print_mean_median_and_std_sigmacut,power_law_fitting,latex_table
 from utils_completeness import mk_histogram_from_completeness
 # from mcmc_utils import read_samples
-
-import pandas as pd 
+import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -22,6 +21,7 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from scipy.stats import norm
 # from astropy.stats import sigma_clip
 from stralog import getLogger
+
 
 def add_subplot_axes(ax,rect,axisbg='w'):
     fig = plt.gcf()
@@ -246,7 +246,6 @@ def fow_stamp(self,filter,qx,qy,fig=None,axes=None,path2savedir='./Plots/',title
     y_label='y_%s'%filter
     quad_label='cell_%s'%filter
     flag_label='flag_%s'%filter
-    # if showplot == True:
     if fig==None:fig,axes=plt.subplots(1,1,figsize=(n,n*ylen/xlen))
     axes.set_xlim([0,xlen])
     axes.set_ylim([0,ylen])
@@ -1244,3 +1243,4 @@ def plot_gaussian_comparison(DF, avg_id, labels=['MCMC_d','MCMC_ed_d','MCMC_ed_u
 #     else: area_r=0
 #
 #     return(area_r)
+

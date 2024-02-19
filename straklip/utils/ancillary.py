@@ -402,8 +402,8 @@ def frac_above_thresh(data, thresh):
 def gaussian_func(x, a, x0, sigma,c):
     return (a * np.exp(-(x-x0)**2/(2*sigma**2)) + c)
 
-def get_Av_list(filter_label_list,date='2005-01-1',verbose=False,Av=1,Rv=3.1):
-    obsdate = Time(date).mjd
+def get_Av_dict(filter_label_list,date='2005-01-1',verbose=False,Av=1,Rv=3.1,band_dict={},path2saveim=None):
+    # obsdate = Time(date).mjd
     vegaspec = SourceSpectrum.from_vega()  
     Dict = {}
     
@@ -420,8 +420,11 @@ def get_Av_list(filter_label_list,date='2005-01-1',verbose=False,Av=1,Rv=3.1):
     sp_stim = sp_obs.effstim(flux_unit='vegamag', vegaspec=vegaspec)
     
     if verbose:
-        print('before dust, V =', np.round(sp_stim_before,4))
-        print('after dust, V =', np.round(sp_stim,4))
+        # print('before dust, V =', np.round(sp_stim_before,4))
+        # print('after dust, V =', np.round(sp_stim,4))
+        getLogger(__name__).info(f'before dust, V =  {np.round(sp_stim_before,4)}')
+        getLogger(__name__).info(f'after dust, V = {np.round(sp_stim,4)}')
+
         flux_spectrum_norm = vegaspec(wav).to(FLAM, u.spectral_density(wav))
         flux_spectrum_ext = vegaspec_ext(wav).to(FLAM, u.spectral_density(wav))
 
@@ -431,11 +434,16 @@ def get_Av_list(filter_label_list,date='2005-01-1',verbose=False,Av=1,Rv=3.1):
         plt.ylabel('Flux [FLAM]')
         plt.xlabel('Wavelength [A]')
         plt.xlim(3000, 15000)
-        plt.show()
+        if path2saveim is not None:
+            plt.savefig(path2saveim+'/Vega_spectrum.png')
+            plt.close()
+        else:
+            plt.show()
     
         # Calculate extinction and compare to our chosen value.
         Av_calc = sp_stim - sp_stim_before
-        print('Av = ', np.round(Av_calc,4))
+        getLogger(__name__).info(f'Av = {np.round(Av_calc, 4)}')
+        # print('Av = ', np.round(Av_calc,4))
     
     if any('johnson' in string for string in filter_label_list):
         for filter in filter_label_list:
@@ -443,27 +451,44 @@ def get_Av_list(filter_label_list,date='2005-01-1',verbose=False,Av=1,Rv=3.1):
             obs_ext = Observation(vegaspec_ext, SpectralElement.from_filter(filter))
             if verbose: 
                 # print('AV=0 %s'%filter,obs.effstim('vegamag',vegaspec=vegaspec))
-                print('AV=1 %s'%filter,np.round(obs_ext.effstim('vegamag',vegaspec=vegaspec)-obs.effstim('vegamag',vegaspec=vegaspec),4))
-            Dict[filter]=np.round((obs_ext.effstim('vegamag',vegaspec=vegaspec)-obs.effstim('vegamag',vegaspec=vegaspec)).value,4)
+                # print('AV=1 %s'%filter,np.round(obs_ext.effstim('vegamag',vegaspec=vegaspec)-obs.effstim('vegamag',vegaspec=vegaspec),4))
+                obs_before=obs.effstim('vegamag',vegaspec=vegaspec)
+                obs_delta=np.round(obs_ext.effstim('vegamag',vegaspec=vegaspec)-obs.effstim('vegamag',vegaspec=vegaspec),4)
+                getLogger(__name__).info(f'AV=0 {filter} {obs_before}')
+                getLogger(__name__).info(f'AV=1 {filter} {obs_delta}')
+
+            Dict[filter]=np.round(obs_delta.value,4)
     else:
-        for filter in filter_label_list:
-            if filter in ['F130N','F139M']:
-                obs = Observation(vegaspec, band('wfc3,ir,%s'%filter.lower()))
-                obs_ext = Observation(vegaspec_ext, band('wfc3,ir,%s'%filter.lower()))
-            elif filter in ['F336W','F439W','F656N','F814W']:
-                obs = Observation(vegaspec, band('acs,wfpc2,%s'%filter.lower()))
-                obs_ext = Observation(vegaspec_ext, band('acs,wfpc2,%s'%filter.lower()))            
-            elif filter in ['F110W','F160W']:
-                obs = Observation(vegaspec, band('nicmos,3,%s'%filter.lower()))
-                obs_ext = Observation(vegaspec_ext, band('nicmos,3,%s'%filter.lower()))            
-            else:
-                obs = Observation(vegaspec, band(f'acs,wfc1,%s,mjd#{obsdate}'%filter.lower()))
-                obs_ext = Observation(vegaspec_ext, band(f'acs,wfc1,%s,mjd#{obsdate}'%filter.lower()))
-                
-            if verbose: 
-                # print('AV=0 %s'%filter,obs.effstim('vegamag',vegaspec=vegaspec))
-                print('AV=1 %s'%filter,np.round(obs_ext.effstim('vegamag',vegaspec=vegaspec)-obs.effstim('vegamag',vegaspec=vegaspec),4))
-            Dict['m%s'%filter[1:4]]=np.round((obs_ext.effstim('vegamag',vegaspec=vegaspec)-obs.effstim('vegamag',vegaspec=vegaspec)).value,4)
+        for ext in band_dict.keys():
+            Dict_temp = {}
+            for filter in filter_label_list:
+                # if filter in ['F130N','F139M']:
+                #     obs = Observation(vegaspec, band('wfc3,ir,%s'%filter.lower()))
+                #     obs_ext = Observation(vegaspec_ext, band('wfc3,ir,%s'%filter.lower()))
+                # elif filter in ['F336W','F439W','F656N','F814W']:
+                #     obs = Observation(vegaspec, band('acs,wfpc2,%s'%filter.lower()))
+                #     obs_ext = Observation(vegaspec_ext, band('acs,wfpc2,%s'%filter.lower()))
+                # elif filter in ['F110W','F160W']:
+                #     obs = Observation(vegaspec, band('nicmos,3,%s'%filter.lower()))
+                #     obs_ext = Observation(vegaspec_ext, band('nicmos,3,%s'%filter.lower()))
+                # else:
+                #     obs = Observation(vegaspec, band(f'acs,wfc1,%s,mjd#{obsdate}'%filter.lower()))
+                #     obs_ext = Observation(vegaspec_ext, band(f'acs,wfc1,%s,mjd#{obsdate}'%filter.lower()))
+                bad_filter = band_dict[ext] + f',{filter.lower()}'
+                obs = Observation(vegaspec, band(bad_filter))
+                obs_ext = Observation(vegaspec_ext, band(bad_filter))
+                if verbose:
+                    # print('Av=0 %s'%filter,obs.effstim('vegamag',vegaspec=vegaspec))
+                    # print('Av=1 %s'%filter,np.round(obs_ext.effstim('vegamag',vegaspec=vegaspec)-obs.effstim('vegamag',vegaspec=vegaspec),4))
+                    obs_before=obs.effstim('vegamag',vegaspec=vegaspec)
+                    obs_delta=np.round(obs_ext.effstim('vegamag',vegaspec=vegaspec)-obs.effstim('vegamag',vegaspec=vegaspec),4)
+                    getLogger(__name__).info(f'AV=0 {bad_filter} {obs_before}')
+                    getLogger(__name__).info(f'AV=1 {bad_filter} {obs_delta}')
+
+                Dict_temp[f'm_{filter.lower()}']=np.round(obs_delta.value,4)
+
+            Dict[ext] = Dict_temp
+
     return(Dict)
 
 def get_Av_mass_and_Teff_from_isochrone(self,iso_df,filter1,filter2,DM,sel_good,show_plot=False,Av_MAX=32):

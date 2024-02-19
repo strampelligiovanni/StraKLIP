@@ -15,9 +15,18 @@ def break_FOW_in_cells(DF, filter, suffix='', goodness_phot_label='e', showplot=
 
     '''
 
-    getLogger(__name__).info(f'Working on {filter} to braking FOW in {qx*qy} cells.')
+    getLogger(__name__).info(f'Braking {filter} FOW in {qx*qy} cells.')
 
     if add_flags:
+        # type_flag = DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids == DF.crossmatch_ids_df.loc[
+        #     DF.crossmatch_ids_df.mvs_ids == mvs_ids].avg_ids.unique()[0]].type.values[0]
+        # if type_flag == 2:
+        #     flag = 'unresolved_double'
+        # else:
+        #     flag = DF.mvs_targets_df.loc[(DF.mvs_targets_df.mvs_ids == mvs_ids), f'flag_{filter}'].values[0]
+        #     if np.isnan(flag):
+        #         flag = 'good_target'
+
         getLogger(__name__).info(f'Updating flag for mvs detections.')
         avg_ids_list = DF.avg_targets_df.avg_ids.unique()
         workers, chunksize, ntarget = parallelization_package(workers, len(avg_ids_list), chunksize=chunksize)
@@ -32,6 +41,7 @@ def break_FOW_in_cells(DF, filter, suffix='', goodness_phot_label='e', showplot=
                         DF.mvs_targets_df.mvs_ids == float(out[elno][0]), ['flag_%s' % filter]] = out[elno][1]
     fow_stamp(DF, filter, qx, qy, n=20, no_sel=False, path2savedir=path2savedir, psf_nmin=psf_nmin,
               showplot=showplot)
+    return(DF)
 
 
 def run(packet):
@@ -39,7 +49,7 @@ def run(packet):
     DF = packet['DF']
     dataset = packet['dataset']
     for filter in dataset.data_cfg.filters:
-        break_FOW_in_cells(DF, filter,
+        DF=break_FOW_in_cells(DF, filter,
                            qx=dataset.pipe_cfg.fow2cells['qx'],
                            qy=dataset.pipe_cfg.fow2cells['qy'],
                            psf_nmin=dataset.pipe_cfg.fow2cells['psf_nmin'],
@@ -49,14 +59,14 @@ def run(packet):
                            bad_px=dataset.pipe_cfg.fow2cells['bad_px'],
                            psf_bad_px=dataset.pipe_cfg.fow2cells['psf_bad_px'],
                            mag_limit=dataset.pipe_cfg.fow2cells['mag_limit'][elno],
-                           psf_goodness_limit=dataset.pipe_cfg.fow2cells[
-                               'psf_goodness_limit'],
+                           psf_goodness_limit=dataset.pipe_cfg.fow2cells['psf_goodness_limit'],
                            goodness_limit=dataset.pipe_cfg.fow2cells['goodness_limit'],
-                           path2savedir=dataset.pipe_cfg.paths['database'] + '/')
+                           path2savedir=dataset.pipe_cfg.paths['database'] + '/',
+                           add_flags=dataset.pipe_cfg.fow2cells['add_flags'])
         elno+=1
 
     getLogger(__name__).info(f'Updating type for unique detections.')
     for avg_ids in DF.crossmatch_ids_df.avg_ids.unique():
-        update_type(DF, avg_ids)
+        DF=update_type(DF, avg_ids)
 
     DF.save_dataframes(__name__)

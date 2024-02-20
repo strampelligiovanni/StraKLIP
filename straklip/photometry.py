@@ -367,7 +367,7 @@ class photometry_AP:
             if sigmaclip: data = sigma_clip(data[~np.isnan(data)], sigma=sigma)
         
         # data[data<=0]=np.nan
-        self.nsat=(data>=sat_thr).astype(int).sum()
+        self.nsat=(data>=np.float64(sat_thr)).astype(int).sum()
         self.sum=np.round(np.nansum(data[data>0]),r)#[data>0])
         self.mean, self.median, self.std = np.round(sigma_clipped_stats(data[data>0],sigma=sigma),r)
 

@@ -214,51 +214,8 @@ def get_zpt(dataset):
     zpt_list = filter_zpt.loc[filter_zpt.Filter.astype(str).isin(dataset.data_cfg.filters)][dataset.data_cfg.target['zpts']['system']].tolist()
     return {dataset.data_cfg.filters[i]: zpt_list[i] for i in range(len(dataset.data_cfg.filters))}
 
-def configure_dataframe(dataset):
-    files_check_list = ['avg_targets','crossmatch_ids','mvs_targets']
-    # if 'buildhdf' not in dataset.pipe_cfg.flow or (not dataset.pipe_cfg.buildhdf['redo'] and np.all([os.path.exists(dataset.pipe_cfg.paths['out']+'/'+file+'.h5') for file in files_check_list])):
-    #     getLogger(__name__).info(f'Fetching dataframes from %s'%dataset.pipe_cfg.paths['out'])
-    #     DF = DataFrame(path2out=dataset.pipe_cfg.paths['out'])
-    #     DF.load_dataframe()
-    # else:
-    #     if 'AVs' in dataset.data_cfg.target and isinstance(dataset.data_cfg.target['AVs'],dict):
-    #         Av_dict = dataset.data_cfg.target['AVs']
-    #     else:
-    #         getLogger(__name__).warning('get_Av_dict currently only supports VEGAmag system. Please provide your own set of AVs if in a differest system as AVs : {ext: {mag_filter : value}} in the data.yaml under target')
-    #         Av_dict = get_Av_dict(dataset.data_cfg.filters, verbose=True, Rv=dataset.data_cfg.target['Rv'],
-    #                               path2saveim=dataset.pipe_cfg.paths['database'], band_dict=dataset.pipe_cfg.instrument['AVs'])
-    #
-    #     if isinstance(dataset.data_cfg.target['zpts'],dict):
-    #         zpt_dict = get_zpt(dataset)
-    #     elif isinstance(dataset.data_cfg.target['zpts'],list):
-    #         zpt_dict = {dataset.data_cfg.filters[i]: dataset.data_cfg.target['zpts'][i] for i in range(len(dataset.data_cfg.filters))}
-    #     else:
-    #         getLogger(__name__).critical(f'Zero points option from data.yaml as to be either a dictionary with "datetime.date" and "filters" obj or a filterwise list of values')
-    #         raise ValueError
-    #
-    #     DF = DataFrame(kind=dataset.data_cfg.target['kind'],
-    #                    path2out=dataset.pipe_cfg.paths['out'],
-    #                    path2data=dataset.pipe_cfg.paths['data'],
-    #                    path2database=dataset.pipe_cfg.paths['database'],
-    #                    path2pam=dataset.pipe_cfg.paths['pam'],
-    #                    target=dataset.data_cfg.target['name'],
-    #                    inst=dataset.pipe_cfg.instrument['name'],
-    #                    pixscale=dataset.pipe_cfg.instrument['pixelscale'],
-    #                    gain=dataset.pipe_cfg.instrument['gain'],
-    #                    PAMdict={key: dataset.pipe_cfg.instrument['pam'][key] for key in list(dataset.pipe_cfg.instrument['pam'].keys())},
-    #                    tilebase=dataset.pipe_cfg.mktiles['tile_base'],
-    #                    radec=[dataset.pipe_cfg.buildhdf['default_avg_table']['ra'],dataset.pipe_cfg.buildhdf['default_avg_table']['dec']],
-    #                    filters=[i for i in dataset.data_cfg.filters],
-    #                    xyaxis={key: dataset.pipe_cfg.instrument['ccd_pix'][key] for key in list(dataset.pipe_cfg.instrument['ccd_pix'].keys())},
-    #                    zpt=zpt_dict,
-    #                    Av=Av_dict,
-    #                    dist=dataset.data_cfg.target['distance'],
-    #                    type=dataset.pipe_cfg.buildhdf['default_avg_table']['type'],
-    #                    maxsep=dataset.pipe_cfg.mktiles['max_separation'],
-    #                    minsep=dataset.pipe_cfg.mktiles['min_separation'],
-    #                    steps=[],
-    #                    fitsext=str(dataset.data_cfg.target['fitsext']),
-    #                    dq2mask=list(dataset.pipe_cfg.buildhdf['dq2mask']))
+def configure_dataframe(dataset,load=False):
+    files_check_list = ['crossmatch_ids','avg_targets','mvs_targets','avg_candidates','mvs_candidates']
     if 'AVs' in dataset.data_cfg.target and isinstance(dataset.data_cfg.target['AVs'],dict):
         Av_dict = dataset.data_cfg.target['AVs']
     else:
@@ -300,7 +257,7 @@ def configure_dataframe(dataset):
                    kmodes=dataset.pipe_cfg.psfsubtraction['kmodes'])
 
 
-    if 'buildhdf' not in dataset.pipe_cfg.flow or (not dataset.pipe_cfg.buildhdf['redo'] and np.all([os.path.exists(dataset.pipe_cfg.paths['out']+'/'+file+'.h5') for file in files_check_list])):
+    if 'buildhdf' not in dataset.pipe_cfg.flow or (not dataset.pipe_cfg.buildhdf['redo'] and np.all([os.path.exists(dataset.pipe_cfg.paths['out']+'/'+file+'.h5') for file in files_check_list])) or load:
         getLogger(__name__).info(f'Fetching dataframes from %s'%dataset.pipe_cfg.paths['out'])
         DF.load_dataframe()
 

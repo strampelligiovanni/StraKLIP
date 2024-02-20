@@ -18,7 +18,7 @@ class DataFrame():
     # def __getstate__(self):
     #     return {"data": self.values, "columns": self.columns}
 
-    def __init__(self,path2data='',path2out='',path2database='',path2pam='',target='',inst='',pixscale=1,gain=1,PAMdict={},tilebase=15,radec=[],filters=[],xyaxis=[],fitsext='_flt',skipphot=False,dq2mask=[],zpt={},Av={},dist=0,Kmodes=[],type='type',maxsep=2,minsep=0,kind='dataframe',steps=[]):
+    def __init__(self,path2data='',path2out='',path2database='',path2pam='',target='',inst='',pixscale=1,gain=1,PAMdict={},tilebase=15,radec=[],filters=[],xyaxis=[],fitsext='_flt',skipphot=False,dq2mask=[],zpt={},Av={},dist=0,kmodes=[],type='type',maxsep=2,minsep=0,kind='dataframe',steps=[]):
         '''
         Create the dataframe object
 
@@ -50,8 +50,8 @@ class DataFrame():
             name extension of fits file. The default is flt.
         Av : list, optional
             list of Av=1 extinctions for each filter.
-        Kmodes : list, optional
-            list of Kmodes for PSF subtraction.
+        kmodes : list, optional
+            list of kmodes for PSF subtraction.
         dist : float, optional
             distance of the target in parsec. The default is 0.
         load : bool, optional
@@ -81,7 +81,7 @@ class DataFrame():
         self.dq2mask=dq2mask
         self.zpt=zpt
         self.Av=Av
-        self.Kmodes=Kmodes
+        self.kmodes=kmodes
         self.pixscale=pixscale
         self.tilebase=tilebase
         self.dist=dist

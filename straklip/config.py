@@ -296,7 +296,9 @@ def configure_dataframe(dataset):
                    minsep=dataset.pipe_cfg.mktiles['min_separation'],
                    steps=[],
                    fitsext=str(dataset.data_cfg.target['fitsext']),
-                   dq2mask=list(dataset.pipe_cfg.buildhdf['dq2mask']))
+                   dq2mask=list(dataset.pipe_cfg.buildhdf['dq2mask']),
+                   kmodes=dataset.pipe_cfg.psfsubtraction['kmodes'])
+
 
     if 'buildhdf' not in dataset.pipe_cfg.flow or (not dataset.pipe_cfg.buildhdf['redo'] and np.all([os.path.exists(dataset.pipe_cfg.paths['out']+'/'+file+'.h5') for file in files_check_list])):
         getLogger(__name__).info(f'Fetching dataframes from %s'%dataset.pipe_cfg.paths['out'])

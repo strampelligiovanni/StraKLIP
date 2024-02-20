@@ -244,11 +244,11 @@ def aperture_photometry_handler(DF,id,filter,data_label='',dq_label='',hdul=None
             DQDATA.mk_tile(fig=fig,ax=ax[2],pad_data=False,legend=False,showplot=False,verbose=False,title='shiftedDQ',kill_plots=kill_plots,cbar=True)
     
     else:
-        if x==None: x=(DF.tile_base-1)/2
-        if y==None: y=(DF.tile_base-1)/2
+        if x==None: x=(DF.tilebase-1)/2
+        if y==None: y=(DF.tilebase-1)/2
     
         if isinstance(dqdata, (list,np.ndarray)): 
-            DQDATA=Tile(data=dqdata,x=x,y=y,tile_base=DF.tile_base,inst=DF.inst,Python_origin=Python_origin)
+            DQDATA=Tile(data=dqdata,x=x,y=y,tile_base=DF.tilebase,inst=DF.inst,Python_origin=Python_origin)
             DQDATA.mk_tile(pad_data=False,legend=False,showplot=False,verbose=False,title='shiftedDQ',kill_plots=True,cbar=True)
             dq=DQDATA.data
             bpx,spx=read_dq_from_tile(DF,dq=dq,bpx_list=bpx_list,spx_list=spx_list)
@@ -264,7 +264,7 @@ def aperture_photometry_handler(DF,id,filter,data_label='',dq_label='',hdul=None
             bpx=np.nan
 
     if np.all(np.isnan(data)):
-        data=np.ones((DF.tile_base,DF.tile_base))*np.nan
+        data=np.ones((DF.tilebase,DF.tilebase))*np.nan
 
 
     if noBGsub:
@@ -437,8 +437,8 @@ def KLIP_aperture_photometry_handler(DF,id,filter,data_label='',dq_label='',hdul
         if PAV3==None:PAV3=0
         fig,ax=[None,[None]*rows]
         
-    x_tile=int(DF.tile_base-1)/2
-    y_tile=int(DF.tile_base-1)/2
+    x_tile=int(DF.tilebase-1)/2
+    y_tile=int(DF.tilebase-1)/2
     if x==None: x=x_tile
     if y==None: y=y_tile
 
@@ -446,7 +446,7 @@ def KLIP_aperture_photometry_handler(DF,id,filter,data_label='',dq_label='',hdul
     spx=np.nan
     bpx=np.nan
     if not kill_plots:
-        DATA=Tile(data=data,x=x,y=y,tile_base=DF.tile_base,inst=DF.inst,Python_origin=Python_origin)
+        DATA=Tile(data=data,x=x,y=y,tile_base=DF.tilebase,inst=DF.inst,Python_origin=Python_origin)
         DATA.mk_tile(fig=fig,ax=ax[0],la_cr_remove=la_cr_remove,pad_data=True,verbose=False,xy_m=False,legend=False,showplot=False,keep_size=False,xy_dmax=None,cbar=True,title='ID%i ROTA %i PAV3 %i'%(id,ROTA,PAV3),return_tile=False,kill_plots=kill_plots)
     
     if noBGsub:
@@ -527,13 +527,13 @@ def mvs_aperture_photometry(DF,filter,ee_dict,zpt_dict,fitsname=None,mvs_ids_lis
         if not isinstance(fitsname, str): 
             path2tile='%s/mvs_tiles/%s/tile_ID%i.fits'%(DF.path2data,filter,mvs_ids)
             hdul=None
-            DATA=Tile(x=int((DF.tile_base-1)/2),y=int((DF.tile_base-1)/2),tile_base=DF.tile_base,inst=DF.inst)
+            DATA=Tile(x=int((DF.tilebase-1)/2),y=int((DF.tilebase-1)/2),tile_base=DF.tilebase,inst=DF.inst)
             DATA.load_tile(path2tile,ext=label_dict[label],verbose=False,return_Datacube=False)
-            DQ=Tile(x=int((DF.tile_base-1)/2),y=int((DF.tile_base-1)/2),tile_base=DF.tile_base,inst=DF.inst)
+            DQ=Tile(x=int((DF.tilebase-1)/2),y=int((DF.tilebase-1)/2),tile_base=DF.tilebase,inst=DF.inst)
             DQ.load_tile(path2tile,ext='dq',verbose=False,return_Datacube=False)
             if remove_candidate:
                 Kmode=DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids==mvs_ids].avg_ids)].mKmode.values[0]
-                KLIP=Tile(x=int((DF.tile_base-1)/2),y=int((DF.tile_base-1)/2),tile_base=DF.tile_base,inst=DF.inst)
+                KLIP=Tile(x=int((DF.tilebase-1)/2),y=int((DF.tilebase-1)/2),tile_base=DF.tilebase,inst=DF.inst)
                 KLIP.load_tile(path2tile,ext='%sKmode%i'%(label_KLIP_dict[label],Kmode),verbose=False,return_Datacube=False)
                 filtered_data = sigma_clip(KLIP.data[KLIP.data<0])
                 KLIP_temp=KLIP.data[KLIP.data<0][filtered_data.mask].copy()
@@ -545,9 +545,9 @@ def mvs_aperture_photometry(DF,filter,ee_dict,zpt_dict,fitsname=None,mvs_ids_lis
                     
                     w=np.where(KLIP_temp[elno]==KLIP.data)
                     if int(w[0])==0:y1=0
-                    if int(w[0])==int(DF.tile_base)-1:y2=0
+                    if int(w[0])==int(DF.tilebase)-1:y2=0
                     if int(w[1])==0:x1=0
-                    if int(w[1])==int(DF.tile_base)-1:x2=0
+                    if int(w[1])==int(DF.tilebase)-1:x2=0
                     KLIP_temp[elno]=np.nanmedian(KLIP.data[int(w[0])-y1:int(w[0])+y2,int(w[1])-x1:int(w[1])+x2])
                 KLIP.data[KLIP.data<0][filtered_data.mask]=KLIP_temp
                 KLIP.mk_tile(showplot=False,title='Klip',keep_size=True,cbar=True,simplenorm='sqrt',return_tile=False,kill_plots=kill_plots)
@@ -593,7 +593,7 @@ def avg_aperture_photometry(DF,avg_ids,filter,goodness_phot_label,suffix,skip_fl
 
 def read_dq_from_tile(DF,path2tile=None,dq=None,bpx_list=[],spx_list=[]):
     if not isinstance(dq,(np.ndarray,list)):
-        DQ=Tile(x=int((DF.tile_base-1)/2),y=int((DF.tile_base-1)/2),tile_base=DF.tile_base,inst=DF.inst)
+        DQ=Tile(x=int((DF.tilebase-1)/2),y=int((DF.tilebase-1)/2),tile_base=DF.tilebase,inst=DF.inst)
         DQ.load_tile(path2tile,ext='dq',verbose=False,return_Datacube=False)
         dq=DQ.data
     bpx=np.sum([np.sum([x==i for x in dq.ravel()]) for i in bpx_list])

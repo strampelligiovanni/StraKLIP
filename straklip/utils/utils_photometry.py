@@ -450,23 +450,40 @@ def KLIP_aperture_photometry_handler(DF,id,filter,data_label='',dq_label='',hdul
         DATA.mk_tile(fig=fig,ax=ax[0],la_cr_remove=la_cr_remove,pad_data=True,verbose=False,xy_m=False,legend=False,showplot=False,keep_size=False,xy_dmax=None,cbar=True,title='ID%i ROTA %i PAV3 %i'%(id,ROTA,PAV3),return_tile=False,kill_plots=kill_plots)
     
     if noBGsub:
-        if DF.skip_photometry:
-            DQ_list=list(set(dqdata.ravel()))
+        if len(forcedSky) <= 0:
+            DQ_list = list(set(dqdata.ravel()))
             xdata = data.copy()
-            mask_x=dqdata.copy()
-            for i in [i for i in DQ_list if i not in DF.dq2mask]:  mask_x[(mask_x==i)]=0
+            mask_x = dqdata.copy()
+            for i in [i for i in DQ_list if i not in DF.dq2mask]:  mask_x[(mask_x == i)] = 0
             mx = ma.masked_array(xdata, mask=mask_x)
-            mx.data[mx.mask]=-9999
-            mx.data[mx.data<0]=0
+            mx.data[mx.mask] = -9999
+            mx.data[mx.data < 0] = 0
 
-
-            sky_clipped=sigma_clip(mx.data, sigma=sigma)
-            Sky= np.nanmedian(sky_clipped[~sky_clipped.mask])
-            eSky=np.nanstd(sky_clipped[~sky_clipped.mask])
-            nSky=len(sky_clipped[~sky_clipped.mask])
-        elif not DF.skip_photometry and len(forcedSky)>0:
-            Sky,eSky,nSky=forcedSky
-        else: Sky,eSky,nSky=[0,1,1]
+            sky_clipped = sigma_clip(mx.data, sigma=sigma)
+            Sky = np.nanmedian(sky_clipped[~sky_clipped.mask])
+            eSky = np.nanstd(sky_clipped[~sky_clipped.mask])
+            nSky = len(sky_clipped[~sky_clipped.mask])
+        else:
+            Sky, eSky, nSky = forcedSky
+        # else:
+        #     Sky, eSky, nSky = [0, 1, 1]
+        # if DF.skip_photometry:
+        #     DQ_list=list(set(dqdata.ravel()))
+        #     xdata = data.copy()
+        #     mask_x=dqdata.copy()
+        #     for i in [i for i in DQ_list if i not in DF.dq2mask]:  mask_x[(mask_x==i)]=0
+        #     mx = ma.masked_array(xdata, mask=mask_x)
+        #     mx.data[mx.mask]=-9999
+        #     mx.data[mx.data<0]=0
+        #
+        #
+        #     sky_clipped=sigma_clip(mx.data, sigma=sigma)
+        #     Sky= np.nanmedian(sky_clipped[~sky_clipped.mask])
+        #     eSky=np.nanstd(sky_clipped[~sky_clipped.mask])
+        #     nSky=len(sky_clipped[~sky_clipped.mask])
+        # elif not DF.skip_photometry and len(forcedSky)>0:
+        #     Sky,eSky,nSky=forcedSky
+        # else: Sky,eSky,nSky=[0,1,1]
     else:
         bkg=Detection(data,x,y)
         photometry_AP.aperture_mask(bkg,aptype=aptype,radius1=radius1,radius2=radius2,method='center',ap_x=delta,ap_y=delta)

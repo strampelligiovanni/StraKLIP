@@ -1,15 +1,113 @@
 import os, sys
-import numpy as np
-from stralog import getLogger
-from utils_straklip import update_mvs_targets,check4duplicants
-from tiles import Tile
-from straklip import config
-from astropy.io import fits
-from concurrent.futures import ProcessPoolExecutor
-from itertools import repeat
+from utils_tile import small_tiles
 from ancillary import parallelization_package
 from utils_tile import allign_images
-from utils_tile import small_tiles
+from tiles import Tile
+from straklip import config
+import numpy as np
+import matplotlib.pyplot as plt
+from concurrent.futures import ProcessPoolExecutor
+from astropy.io import fits
+from itertools import repeat
+from IPython.display import display
+from matplotlib.colors import PowerNorm,ListedColormap
+from collections import Counter
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+from stralog import getLogger
+
+def check4duplicants(DF,filter,mvs_ids_list,showduplicants=False):
+    '''
+    check for duplicated tiles in the tiles dataframe
+
+    filter : str
+        target firter for the update
+    mvs_ids_list : list, optional
+        list of ids from the multivisit dataframe to test.
+
+    Returns
+    -------
+    None.
+
+    '''
+    # for filter in DF.filters_list:
+    for cell in np.sort(DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list)]['%s_cell'%filter].unique()):
+        skip_flags=['rejected','known_double']
+        list_of_target4test=[]
+        ids_list=DF.mvs_targets_df.loc[(DF.mvs_targets_df['%s_cell'%filter]==cell)&~DF.mvs_targets_df['flag_'%filter].isin([skip_flags])].mvs_ids.unique()
+
+        for id in ids_list:
+            if not DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==id,'flag_'%filter].str.contains('rejected').values[0]:
+                path2tile = '%s/mvs_tiles/%s/tile_ID%i.fits' % (DF.path2out, filter, id)
+
+                target=Tile(x=(DF.tilebase-1)/2,y=(DF.tilebase-1)/2,tile_base=DF.tilebase,delta=0,inst=DF.inst,Python_origin=True)
+                data=target.load_tile(path2tile)
+                list_of_target4test.append(data)
+
+
+        var_list=np.zeros((len(list_of_target4test),len(list_of_target4test)))
+        for i in range(len(list_of_target4test)):
+            for j in range(i,len(list_of_target4test)):
+                var_list[i][j]=int(np.all(list_of_target4test[i]==list_of_target4test[j]))
+
+        ###### test for duplicates in the references
+        d =  Counter(np.where(np.array(var_list)==1)[0])
+        dup=np.array([k for k, v in d.items() if v > 1])
+        if len(dup)>0:
+            if showduplicants:
+                print('Duplicants in %s %s'%(filter,cell))
+                fig,ax=plt.subplots(figsize=(10,10))
+                cmap = ListedColormap(['k', 'w'])
+                divider = make_axes_locatable(ax)
+                cax = divider.append_axes('right', size='5%', pad=0.05)
+                im=ax.imshow(var_list,origin='lower',interpolation='none',cmap=cmap)
+                fig.colorbar(im,
+                        cax=cax,
+                        cmap=cmap,
+                        orientation='vertical')#,
+                plt.show()
+
+            for el in dup:
+                w=np.where(var_list[el]==1)[0]
+                k=w[w==el][0]
+                q=w[w!=el][0]
+                min=np.min([np.min(list_of_target4test[k]),np.min(list_of_target4test[q])])
+                max=np.max([np.max(list_of_target4test[k]),np.max(list_of_target4test[q])])
+                if showduplicants:
+                    fig,ax=plt.subplots(1,2,figsize=(10,5))
+                    ax[0].imshow(list_of_target4test[k],origin='lower',norm=PowerNorm(0.2),vmin=min,vmax=max)
+                    ax[1].imshow(list_of_target4test[q],origin='lower',norm=PowerNorm(0.2),vmin=min,vmax=max)
+                    plt.show()
+                    display(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids.isin([np.array(ids_list)[k]])|DF.crossmatch_ids_df.mvs_ids.isin([np.array(ids_list)[q]])])
+                    display(DF.avg_targets_df.loc[(DF.avg_targets_df.avg_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids.isin([np.array(ids_list)[k]])].avg_ids.unique()))|(DF.avg_targets_df.avg_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids.isin([np.array(ids_list)[q]])].avg_ids.unique()))])
+                    display(DF.mvs_targets_df.loc[(DF.mvs_targets_df.mvs_ids.isin([np.array(ids_list)[k]]))|(DF.mvs_tiles_df.mvs_ids.isin([np.array(ids_list)[q]]))])
+                ids_skip=(DF.mvs_targets_df.loc[(DF.mvs_targets_df.mvs_ids.isin([np.array(ids_list)[k]]))|(DF.mvs_tiles_df.mvs_ids.isin([np.array(ids_list)[q]]))].mvs_ids.unique())
+                # os.remove('%s/%s/%s/%s/mvs_tiles/%s/tile_ID%i.fits'%(path2data,DF.project,DF.target,DF.inst,filter,id))
+                DF.crossmatch_ids_df=DF.crossmatch_ids_df.loc[~DF.crossmatch_ids_df.mvs_ids.isin(ids_skip)]
+    DF.avg_targets_df=DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids.isin(DF.crossmatch_ids_df.avg_ids.unique())]
+    DF.mvs_targets_df=DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(DF.crossmatch_ids_df.mvs_ids.unique())]
+    print('All duplicants killed')
+
+def update_mvs_targets(DF,pipe_cfg,filter):
+    '''
+    Update the multi-visits targets dataframe with PA_V3 and exposure time infos.
+
+    Parameters
+    ----------
+    Returns
+    -------
+    None.
+
+    '''
+    # for filter in DF.filters_list:
+    for filename,row in DF.mvs_targets_df.groupby('fits_%s'%(filter)):
+        if isinstance(filename, str):
+            hdul = fits.open(pipe_cfg.paths['data']+'/'+filename+DF.fitsext+'.fits')
+            PA_V3=hdul[0].header['PA_V3']
+            EXPTIME=hdul[0].header['EXPTIME']
+            rot_angle=hdul[1].header['ORIENTAT']
+
+            DF.mvs_targets_df.loc[(DF.mvs_targets_df['fits_%s'%(filter)]==filename),['%s_PA_V3'%filter,'%s_ROTA'%filter,'exptime_%s'%filter]]=[round(float(PA_V3),3),round(rot_angle,3),round(EXPTIME,3)]
+            hdul.close()
 
 def task_mvs_tiles(DF,fitsname,ids_list,filter,use_xy_SN,use_xy_m,use_xy_cen,xy_shift_list,xy_dmax,legend,verbose,Python_origin,cr_remove,la_cr_remove,cr_radius,multiply_by_exptime,multiply_by_gain,multiply_by_PAM,overwrite):
     '''

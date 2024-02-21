@@ -394,10 +394,10 @@ def task_median_tiles(DF,id,filter,zfactor,alignment_box,legend,showplot,method,
     else:
         getLogger(__name__).info(f'Median Tile {path2tile} already exist. Skipping.')
 
-def make_median_tiles(DF,filter,avg_ids_list=[],debug=False,workers=None,
-                   zfactor=10,alignment_box=3,legend=False,showplot=False,verbose=False,
+def make_median_tiles(DF,filter,avg_ids_list=[],workers=None,
+                   zfactor=10,alignment_box=3,legend=False,showplot=False,
                    parallel_runs=True,method='median',cr_remove=False,la_cr_remove=False,
-                   chunksize = None,kill=False,kill_plots=False,suffix='',goodness_phot_label='e',
+                   chunksize = None,kill=False,kill_plots=False,
                    skip_flag='rejected',redo=False):
     '''
     Update the median targets dataframe tile.
@@ -453,7 +453,6 @@ def run(packet):
                             cr_remove=dataset.pipe_cfg.mktiles['cr_remove'],
                             la_cr_remove=dataset.pipe_cfg.mktiles['la_cr_remove'],
                             kill_plots=dataset.pipe_cfg.mktiles['kill_plots'],
-                            debug=dataset.pipe_cfg.mktiles['debug'],
                             redo=dataset.pipe_cfg.mktiles['redo'])
 
     DF.save_dataframes(__name__)

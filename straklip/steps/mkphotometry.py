@@ -24,11 +24,18 @@ def get_ee_df(dataset):
     """
     getLogger(__name__).info(f'Fetching encircled energy dataframe for filters {dataset.data_cfg.filters}')
     ee_dict={}
-    for key in list(dataset.pipe_cfg.instrument['ee_name']):
-        ee_df=pd.read_csv(dataset.pipe_cfg.paths['database']+'/'+dataset.pipe_cfg.instrument['ee_name'][key])
+    ee_cfg_dict=dataset.pipe_cfg.instrument['ee_name']
+    try:
+        pixels = ee_cfg_dict.pop('pixels')
+    except:
+        step = None
+    for key in list(ee_cfg_dict):
+        ee_df=pd.read_csv(dataset.pipe_cfg.paths['database']+'/'+ee_cfg_dict[key])
         ee_df=ee_df.rename(columns={'Filter':'FILTER'})
         ee_df['FILTER'] = ee_df['FILTER'].str.lower()
-        # dataset.pipe_cfg.instrument['ee_name'] ee_df=ee_df.rename(columns={'%s'%i:'%s'%(np.round(float(i)*dataset.pipe_cfg.instrument['pixelscale'],2)) for i in ee_df.columns[1:]})
+        # dataset.pipe_cfg.instrument['ee_name']
+        if pixels :
+            ee_df=ee_df.rename(columns={'%s'%i:'%s'%(np.round(float(i)*dataset.pipe_cfg.instrument['pixelscale'],2)) for i in ee_df.columns[1:]})
         ee_dict[key] = ee_df
     return ee_dict
 

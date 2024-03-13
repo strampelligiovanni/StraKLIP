@@ -653,7 +653,7 @@ def task_mvs_candidates_infos(DF,avg_id,d,skip_filters,aptype,verbose,noBGsub,si
     Kmode_idx_list=[]
     # filter_idx_list=[]
     for Kmode in DF.kmodes:
-        if (temporary_candidate_df.loc[(Kmode),'flag']!='rejected').astype(int).sum(axis=0)>=2:
+        if (temporary_candidate_df.loc[(Kmode)].flag!='rejected').astype(int).sum(axis=0)>=2:
             pos=temporary_candidate_df.loc[temporary_candidate_df.flag!='rejected'].loc[(Kmode),['y_rot','x_rot']].values
             pair_dist = np.round(distance_matrix(pos, pos).astype(float),3)
             num=pos.shape[0]
@@ -689,7 +689,7 @@ def task_mvs_candidates_infos(DF,avg_id,d,skip_filters,aptype,verbose,noBGsub,si
                             display(distance_matrix_df.loc[filter,columns])
 
                     temporary_candidate_df.loc[(Kmode,filter,~sel_mvs_ids)]=np.nan
-                    temporary_candidate_df.loc[(Kmode,filter,~sel_mvs_ids),'flag']='rejected'
+                    temporary_candidate_df.loc[(Kmode,filter,~sel_mvs_ids)].flag='rejected'
 
                 if np.any(temporary_candidate_df.loc[(Kmode),'flag'].values!='rejected'):
                     Nsigma_score.append(np.nanmean(temporary_candidate_df.loc[(Kmode),'Nsigma'].values))
@@ -703,12 +703,12 @@ def task_mvs_candidates_infos(DF,avg_id,d,skip_filters,aptype,verbose,noBGsub,si
 
             else:
                 temporary_candidate_df.loc[Kmode]=np.nan
-                temporary_candidate_df.loc[Kmode,'flag']='rejected'
+                temporary_candidate_df.loc[Kmode].flag='rejected'
                 Nsigma_score.append(0)
                 Kmode_idx_list.append(False)
         else:
             temporary_candidate_df.loc[Kmode]=np.nan
-            temporary_candidate_df.loc[Kmode,'flag']='rejected'
+            temporary_candidate_df.loc[Kmode].flag='rejected'
             Nsigma_score.append(0)
             Kmode_idx_list.append(False)
             # filter_idx_list.append([])

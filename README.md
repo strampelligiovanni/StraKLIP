@@ -78,12 +78,12 @@ The mandatory columns for the `mvs_table` catalog are the following:
 2. mvs_ids: ids for multivisit catalog 
 3. vis: visit column name in catalog 
 4. ext: extension column name in catalog that identify SCI in fits file (for HST if CCDCHIP = 1, EXT = 4, CCDCHIP = 2, EXT = 1)
-5. x: x column name in catalog 
-6. y: y column name in catalog
-7. fitsroot:  fitsroot column name in catalog (it's the filename without the `_flc` extension)
-8. exptime: exposure time for each source, i.e. header['EXPTIME']
-9. pav3: the HST V3 position angle, i.e. header['PA_V3']
-10. rota: HST orientation, i.e. header['ORIENTAT']
+5. x: filter wise x column name in catalog 
+6. y: filter wise y column name in catalog
+7. fitsroot:  filter wise fitsroot column name in catalog (it's the filename without the `_flc` extension)
+8. exptime: filter wise exposure time for each source, i.e. header['EXPTIME']
+9. pav3: filter wise the HST V3 position angle, i.e. header['PA_V3']
+10. rota: filter wise HST orientation, i.e. header['ORIENTAT']
 
 You can use the section `mvs_table` in the `data.yaml` to tell the pipeline how to match your columns name with the 
 pipeline default (stored in the `pipe.yaml`).
@@ -95,13 +95,13 @@ The mandatory columns for the `avg_table` catalog are the following:
 1. avg_ids: ids for average catalog 
 2. ra: ra column name in catalog 
 3. dec: dec column name in catalog 
-4. type: type column name in catalog (see below)
-5. mag: mag column name in catalog
-6. emag: error mag column name in catalog
+4. type: filter wise type column name in catalog (see below)
+5. mag: filter wise mag column name in catalog
+6. emag: filter wise error mag column name in catalog
 
 ```
 type    Explanation
-0       a target rejected (bad detection/photometry). It will be ignore by the pipeline.
+0       a target that must be rejected by the pipeline (bad detection/photometry).
 1       a good target for the pipeline
 2       unresolved double
 3       known double
@@ -109,7 +109,7 @@ n       user defined flag
 ```
 
 NOTE: the pipeline will select only type 1 sources to build the base of it's PSF subtraction library. Source of type
-1, 2 or n (with n not in [0,1,2,3]) will be processed by the pipeline in searc for companion.
+1, 2 or n (with n > 3) will be processed by the pipeline in searc for companion.
 
 An example of out to build these catalog is presented in the `join_catalogues.ipynb` notebook 
 in `/Users/gstrampelli/PycharmProjects/Giovanni/src/StraKLIP/straklip/template`.

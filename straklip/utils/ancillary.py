@@ -402,7 +402,7 @@ def frac_above_thresh(data, thresh):
 def gaussian_func(x, a, x0, sigma,c):
     return (a * np.exp(-(x-x0)**2/(2*sigma**2)) + c)
 
-def get_Av_dict(filter_label_list,date='2005-01-1',verbose=False,Av=1,Rv=3.1,band_dict={},path2saveim=None):
+def get_Av_dict(filter_label_list,inst=None,date=None,verbose=False,Av=1,Rv=3.1,band_dict={},path2saveim=None):
     # obsdate = Time(date).mjd
     vegaspec = SourceSpectrum.from_vega()  
     Dict = {}
@@ -474,16 +474,21 @@ def get_Av_dict(filter_label_list,date='2005-01-1',verbose=False,Av=1,Rv=3.1,ban
                 # else:
                 #     obs = Observation(vegaspec, band(f'acs,wfc1,%s,mjd#{obsdate}'%filter.lower()))
                 #     obs_ext = Observation(vegaspec_ext, band(f'acs,wfc1,%s,mjd#{obsdate}'%filter.lower()))
-                bad_filter = band_dict[ext] + f',{filter.lower()}'
-                obs = Observation(vegaspec, band(bad_filter))
-                obs_ext = Observation(vegaspec_ext, band(bad_filter))
+                if inst.lower() == 'acs':
+                    band_filter = band_dict[ext] + f',mjd#{date},{filter.lower()}'
+                else:
+                    band_filter = band_dict[ext] + f',{filter.lower()}'
+
+                band_filter = band_dict[ext] + f',{filter.lower()}'
+                obs = Observation(vegaspec, band(band_filter))
+                obs_ext = Observation(vegaspec_ext, band(band_filter))
                 if verbose:
                     # print('Av=0 %s'%filter,obs.effstim('vegamag',vegaspec=vegaspec))
                     # print('Av=1 %s'%filter,np.round(obs_ext.effstim('vegamag',vegaspec=vegaspec)-obs.effstim('vegamag',vegaspec=vegaspec),4))
                     obs_before=obs.effstim('vegamag',vegaspec=vegaspec)
                     obs_delta=np.round(obs_ext.effstim('vegamag',vegaspec=vegaspec)-obs.effstim('vegamag',vegaspec=vegaspec),4)
-                    getLogger(__name__).info(f'AV=0 {bad_filter} {obs_before}')
-                    getLogger(__name__).info(f'AV=1 {bad_filter} {obs_delta}')
+                    getLogger(__name__).info(f'AV=0 {band_filter} {obs_before}')
+                    getLogger(__name__).info(f'AV=1 {band_filter} {obs_delta}')
 
                 Dict_temp[f'm_{filter.lower()}']=np.round(obs_delta.value,4)
 

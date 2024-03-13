@@ -205,7 +205,7 @@ def get_zpt(dataset):
 
     # Create an instance and search for a specific filter
     q_filter = acszpt.Query(date=dataset.data_cfg.target['zpts']['date'],
-                            detector=dataset.pipe_cfg.instrument['name'],
+                            detector=dataset.pipe_cfg.instrument['detector'],
                             filt=None)
 
     filter_zpt = q_filter.fetch().to_pandas()
@@ -220,8 +220,12 @@ def configure_dataframe(dataset,load=False):
         Av_dict = dataset.data_cfg.target['AVs']
     else:
         getLogger(__name__).warning('get_Av_dict currently only supports VEGAmag system. Please provide your own set of AVs if in a differest system as AVs : {ext: {mag_filter : value}} in the data.yaml under target')
+        try:
+            date = dataset.data_cfg.target['zpts']['date']
+        except:
+            date = None
         Av_dict = get_Av_dict(dataset.data_cfg.filters, verbose=True, Rv=dataset.data_cfg.target['Rv'],
-                              path2saveim=dataset.pipe_cfg.paths['database'], band_dict=dataset.pipe_cfg.instrument['AVs'])
+                              path2saveim=dataset.pipe_cfg.paths['database'], band_dict=dataset.pipe_cfg.instrument['AVs'],inst=dataset.pipe_cfg.instrument['name'],date=date)
 
     if isinstance(dataset.data_cfg.target['zpts'],dict):
         zpt_dict = get_zpt(dataset)

@@ -30,6 +30,7 @@ def break_FOW_in_cells(DF, filter, suffix='', goodness_phot_label='e', showplot=
         getLogger(__name__).info(f'Updating flag for mvs detections.')
         avg_ids_list = DF.avg_targets_df.avg_ids.unique()
         workers, chunksize, ntarget = parallelization_package(workers, len(avg_ids_list), chunksize=chunksize)
+
         with ProcessPoolExecutor(max_workers=workers) as executor:
             for out in executor.map(update_flags, repeat(DF), repeat(filter), avg_ids_list, repeat(suffix),
                                  repeat(goodness_phot_label), repeat(sat_px),
@@ -39,6 +40,17 @@ def break_FOW_in_cells(DF, filter, suffix='', goodness_phot_label='e', showplot=
                 for elno in range(len(out)):
                     DF.mvs_targets_df.loc[
                         DF.mvs_targets_df.mvs_ids == float(out[elno][0]), ['flag_%s' % filter]] = out[elno][1]
+
+        # for avg_ids in avg_ids_list:
+        #     out = update_flags(DF, filter, avg_ids, suffix,
+        #                          goodness_phot_label, sat_px,
+        #                          psf_sat_px, bad_px, psf_bad_px,
+        #                          mag_limit, psf_goodness_limit,
+        #                          goodness_limit, sep_wide)
+        #     for elno in range(len(out)):
+        #         DF.mvs_targets_df.loc[
+        #             DF.mvs_targets_df.mvs_ids == float(out[elno][0]), ['flag_%s' % filter]] = out[elno][1]
+
     fow_stamp(DF, filter, qx, qy, n=20, no_sel=False, path2savedir=path2savedir, psf_nmin=psf_nmin,
               showplot=showplot)
     return(DF)

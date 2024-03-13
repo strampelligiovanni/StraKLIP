@@ -109,7 +109,7 @@ n       user defined flag
 ```
 
 NOTE: the pipeline will select only type 1 sources to build the base of it's PSF subtraction library. Source of type
-1, 2 or n (with n > 3) will be processed by the pipeline in searc for companion.
+1, 2 or n (with n > 3) will be processed by the pipeline instead.
 
 An example of out to build these catalog is presented in the `join_catalogues.ipynb` notebook 
 in `/Users/gstrampelli/PycharmProjects/Giovanni/src/StraKLIP/straklip/template`.

@@ -17,6 +17,10 @@ and future wide-field Roman images.
 
 Source: Strampelli, G.~M., Pueyo, L., Aguilar, J., et al.\ 2022, \aj, 164, 147. doi:10.3847/1538-3881/ac879e
 
+NOTE: This paper, while describing the same steps this last version of the StraKLIP pipeline goes though, 
+still refer to the an older version of the pipeline. While still valid in concept, the actual structure of the pipeline 
+might be slightly different from what described there.
+
 # Pipeline quick start guide
 
 Create a pipeline environment using the `straklipenv.yaml` in `src/StraKLIP`.

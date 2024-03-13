@@ -81,7 +81,6 @@ def check4duplicants(DF,filter,mvs_ids_list,showduplicants=False):
                     display(DF.avg_targets_df.loc[(DF.avg_targets_df.avg_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids.isin([np.array(ids_list)[k]])].avg_ids.unique()))|(DF.avg_targets_df.avg_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids.isin([np.array(ids_list)[q]])].avg_ids.unique()))])
                     display(DF.mvs_targets_df.loc[(DF.mvs_targets_df.mvs_ids.isin([np.array(ids_list)[k]]))|(DF.mvs_tiles_df.mvs_ids.isin([np.array(ids_list)[q]]))])
                 ids_skip=(DF.mvs_targets_df.loc[(DF.mvs_targets_df.mvs_ids.isin([np.array(ids_list)[k]]))|(DF.mvs_tiles_df.mvs_ids.isin([np.array(ids_list)[q]]))].mvs_ids.unique())
-                # os.remove('%s/%s/%s/%s/mvs_tiles/%s/tile_ID%i.fits'%(path2data,DF.project,DF.target,DF.inst,filter,id))
                 DF.crossmatch_ids_df=DF.crossmatch_ids_df.loc[~DF.crossmatch_ids_df.mvs_ids.isin(ids_skip)]
     DF.avg_targets_df=DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids.isin(DF.crossmatch_ids_df.avg_ids.unique())]
     DF.mvs_targets_df=DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(DF.crossmatch_ids_df.mvs_ids.unique())]
@@ -113,6 +112,7 @@ def task_mvs_tiles(DF,fitsname,ids_list,filter,use_xy_SN,use_xy_m,use_xy_cen,xy_
     '''
     parallelized task for the update_mvs_tiles.
     '''
+    out=[]
     delta=6
     path2fits=DF.path2data+'/'+fitsname+DF.fitsext+'.fits'
     hdul = fits.open(path2fits)
@@ -220,13 +220,18 @@ def task_mvs_tiles(DF,fitsname,ids_list,filter,use_xy_SN,use_xy_m,use_xy_cen,xy_
                         CRDATA=Tile(data=SCI,x=x,y=y,tile_base=DF.tilebase,delta=delta,dqdata=DQDATA.data,inst=DF.inst,Python_origin=Python_origin)
                         CRDATA.mk_tile(pad_data=True,legend=legend,showplot=verbose,verbose=verbose,title=f'shiftedCRcleanSCI {id}',kill_plots=not verbose,cr_remove=cr_remove, la_cr_remove=la_cr_remove,cr_radius=cr_radius,cbar=True)
                         Datacube=CRDATA.append_tile(path2tile,Datacube=Datacube,verbose=False,name='CRcelanSCI',return_Datacube=False)
-                    return([id,x,y])
+                    # return([id,x,y])
+                    out.append([id,x,y])
                 else:
                     getLogger(__name__).warning(f'x/y coordinates for MVS Tile {path2tile} are nan. Skipping.')
-                    return([id,np.nan,np.nan])
+                    # return([id,np.nan,np.nan])
+                    out.append([id,np.nan,np.nan])
             else:
                 getLogger(__name__).info(f'MVS Tile {path2tile} already exist. Skipping.')
-                return ([])
+                # return ([])
+                return None
+    out=np.array(out)
+    return(out)
 
 
 def mk_mvs_tiles(DF,filter,mvs_ids_test_list=[],xy_SN=True,xy_m=False,xy_cen=False,xy_shift_list=[],xy_dmax=3,legend=False,verbose=False,workers=None,Python_origin=True,parallel_runs=True,cr_remove=False,la_cr_remove=False,cr_radius=3,chunksize = None,multiply_by_exptime=False,multiply_by_gain=False,multiply_by_PAM=False,overwrite=False):
@@ -263,18 +268,20 @@ def mk_mvs_tiles(DF,filter,mvs_ids_test_list=[],xy_SN=True,xy_m=False,xy_cen=Fal
                                   repeat(multiply_by_exptime), repeat(multiply_by_gain),
                                   repeat(multiply_by_PAM),repeat(overwrite),
                                   chunksize=chunksize):
-                if len(out)>0:
-                    DF.mvs_targets_df.loc[(DF.mvs_targets_df.mvs_ids==out[0]),['x_%s'%filter,'y_%s'%filter]]=[out[1],out[2]]
-
+                # if len(out)>0 and out is not None:
+                if out is not None:
+                    DF.mvs_targets_df.loc[(DF.mvs_targets_df.mvs_ids == out[:,0]), ['x_%s' % filter]] = out[:,1]
+                    DF.mvs_targets_df.loc[(DF.mvs_targets_df.mvs_ids == out[:,0]), ['y_%s' % filter]] = out[:,2]
 
     else:
         for elno in range(len(fitsname_list)):
             out = task_mvs_tiles(DF, fitsname_list[elno], ids_list_of_lists[elno], filter, xy_SN, xy_m, xy_cen, xy_shift_list, xy_dmax,
                            legend, verbose, Python_origin, cr_remove, la_cr_remove, cr_radius,
                            multiply_by_exptime, multiply_by_gain, multiply_by_PAM,overwrite)
-            if len(out) > 0:
-                DF.mvs_targets_df.loc[(DF.mvs_targets_df.mvs_ids == out[0]), ['x_%s' % filter, 'y_%s' % filter]] = [
-                    out[1], out[2]]
+            # if len(out) > 0 and out is not None:
+            if out is not None:
+                DF.mvs_targets_df.loc[(DF.mvs_targets_df.mvs_ids == out[:,0]), ['x_%s' % filter]] = out[:,1]
+                DF.mvs_targets_df.loc[(DF.mvs_targets_df.mvs_ids == out[:,0]), ['y_%s' % filter]] = out[:,2]
 
 
 def make_mvs_tiles(DF,filter,pipe_cfg, avg_ids_test_list=[],redo=False, debug=False,
@@ -353,12 +360,18 @@ def task_median_tiles(DF,id,filter,zfactor,alignment_box,legend,showplot,method,
                 if not DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==mvs_ids,'flag_%s'%filter].str.contains(skip_flag).values[0]:
                     sel_ids=(DF.mvs_targets_df.mvs_ids==mvs_ids)
                     DATA=Tile(x=(DF.tilebase-1)/2,y=(DF.tilebase-1)/2,tile_base=DF.tilebase,delta=0,inst=DF.inst,Python_origin=True)
-                    DATA.load_tile('%s/mvs_tiles/%s/tile_ID%i.fits' % (DF.path2out, filter, id),ext=1,
+                    DATA.load_tile('%s/mvs_tiles/%s/tile_ID%i.fits' % (DF.path2out, filter, mvs_ids),ext=1,
                                    raise_errors=False)
                     if not np.all(np.isnan(DATA.data)):
                         target_images.append(DATA.data)
                         PAV_3s.append(DF.mvs_targets_df.loc[sel_ids,'pav3_%s'%filter].values[0])
                         ROTAs.append(DF.mvs_targets_df.loc[sel_ids,'rota_%s'%filter].values[0])
+                    else:
+                        getLogger(__name__).critical(
+                            f'Not able to make media tile {path2tile}. {skip_flag}.')
+                else:
+                    getLogger(__name__).critical(
+                        f'Not able to make media tile {path2tile}. All data is NaN.')
             except:
                 getLogger(__name__).critical(f'Not able to make media tile {path2tile}. Check your dataframe and paths!')
                 raise ValueError
@@ -380,7 +393,7 @@ def task_median_tiles(DF,id,filter,zfactor,alignment_box,legend,showplot,method,
                     for mvs_ids in mvs_ids_list:
                         if not DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==mvs_ids,'flag_%s'%filter].str.contains(skip_flag).values[0] :
                             CRDATA=Tile(x=(DF.tilebase-1)/2,y=(DF.tilebase-1)/2,tile_base=DF.tilebase,delta=0,inst=DF.inst,Python_origin=True)
-                            CRDATA.load_tile('%s/mvs_tiles/%s/tile_ID%i.fits' % (DF.path2out, filter, id),ext=4)
+                            CRDATA.load_tile('%s/mvs_tiles/%s/tile_ID%i.fits' % (DF.path2out, filter, mvs_ids),ext=4)
                             crtarget_images.append(CRDATA.data)
                     if len(crtarget_images)>0:
                         crtarget_images=np.array(crtarget_images)

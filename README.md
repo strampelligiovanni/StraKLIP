@@ -21,16 +21,100 @@ NOTE: This paper, while describing the same steps this last version of the StraK
 still refer to the an older version of the pipeline. While still valid in concept, the actual structure of the pipeline 
 might be slightly different from what described there.
 
-# Pipeline quick start guide
+# Pipeline Quick Start Guide
 
+## Pipeline Setup
 Create a pipeline environment using the `straklipenv.yaml` in `src/StraKLIP`.
 
 Move to the directory where you want to work, and create the following yaml files:
-1. `pipe.yaml` - This is the pipeline global configuration file.
-2. `data.yaml` - This is the dataset configuration file. 
+1. `data.yaml` - This is the dataset configuration file.
+2. `pipe.yaml` - This is the pipeline global configuration file.
 
 You'll need to redefine both to your actual needs, in particular the data.yaml
 Examples of both files are provided in the `src/StraKLIP/straklip/template` directory.
+
+The `data.yaml` file host three major sections:
+```
+target: this section host the information about the target that can be applied to all the soruces in the catalog as whole
+mvs_table: this section host the convection use by the provided imput catalog for each column
+avg_table: this section host the convection use by the provided imput catalog for each column
+```
+
+The `pipe.yaml` file host 13 major sections:
+```
+instrument: here we record information about the instument used to acquire the data (for example the pixelscale, the name of the PAM, the array dimension etc.)
+ncpu: number of CPU to be utilized running the pipelinme
+redo: wheter overwrit output of existing steps
+debug: wheter promt more verbose modes and plots
+flow: enable which step the pipeline will go thorugh
+    - buildhdf: build the dataframe where to store the output of the pipeline
+    - mktiles:  create small tiles, one for each source in the catalog (both for the multivisit and the average)
+    - mkphotometry: perform aperture photometry on each tiles
+    - fow2cells:  break the FOW dividing the source in groups of close spatially related targets in order to minimize distorsion when building the PSF library and performin PSF subtraction
+    - psfsubtraction: perform PSF subtraction on each tile, and create a residual tile.
+    - klipphotometry: perform photometry on each residual tile and check the presence of a candidate companion
+    - fpanalysis: asses the probability of false positive in the candidate detection and build the completness map
+paths: path mandatory for the pipeline
+  pyklip: path to pyklip
+  pam: path to Pixel Area Map for the instument
+  data: path to the fits file. I in the data folder are genrally stored all the heavy files like the fits files
+  database: path to catalogs and supplementary material
+  out: path to the output directory for the pipeline
+buildhdf: here we record all the specific option for this step of the pipeline. In particular, under default_mvs_table and default_avg_table, we record the default name the pipeline will look for twith the matched name provided by the input catalogs for that specifc column
+mktiles: here we record all the specific option for this step of the pipeline
+mkphotometry: here we record all the specific option for this step of the pipeline
+fow2cells: here we record all the specific option for this step of the pipeline
+psfsubtraction: here we record all the specific option for this step of the pipeline
+klipphotometry: here we record all the specific option for this step of the pipeline
+fpanalysis: here we record all the specific option for this step of the pipeline
+```
+
+Before running the pipeline, you will need a series of HST `_flc` images, and a catalog recording the `x`, `y`
+coordinates and a few additional information of each sources on these images. Having their photometry might help, 
+but it's not mandatory. The pipeline will perform it's own aperture photometry.
+
+The mandatory columns for the `mvs_table` catalog are the following:
+1. avg_ids: ids for average catalog 
+2. mvs_ids: ids for multivisit catalog 
+3. vis: visit column name in catalog 
+4. ext: extension column name in catalog that identify SCI in fits file (for HST if CCDCHIP = 1, EXT = 4, CCDCHIP = 2, EXT = 1)
+5. x: x column name in catalog 
+6. y: y column name in catalog
+7. fitsroot:  fitsroot column name in catalog (it's the filename without the `_flc` extension)
+8. exptime: exposure time for each source, i.e. header['EXPTIME']
+9. pav3: the HST V3 position angle, i.e. header['PA_V3']
+10. rota: HST orientation, i.e. header['ORIENTAT']
+
+You can use the section `mvs_table` in the `data.yaml` to tell the pipeline how to match your columns name with the 
+pipeline default (stored in the `pipe.yaml`).
+
+An `average` catalog recording the `ra`, `dec` and `type` of each `unique` source is also need. 
+Having their photometry might help, but it's not mandatory. The pipeline will evaluate this as well.
+
+The mandatory columns for the `avg_table` catalog are the following:
+1. avg_ids: ids for average catalog 
+2. ra: ra column name in catalog 
+3. dec: dec column name in catalog 
+4. type: type column name in catalog (see below)
+5. mag: mag column name in catalog
+6. emag: error mag column name in catalog
+
+```
+type    Explanation
+0       a target rejected (bad detection/photometry). It will be ignore by the pipeline.
+1       a good target for the pipeline
+2       unresolved double
+3       known double
+n       user defined flag
+```
+
+NOTE: the pipeline will select only type 1 sources to build the base of it's PSF subtraction library. Source of type
+1, 2 or n (with n not in [0,1,2,3]) will be processed by the pipeline in searc for companion.
+
+An example of out to build these catalog is presented in the `join_catalogues.ipynb` notebook 
+in `/Users/gstrampelli/PycharmProjects/Giovanni/src/StraKLIP/straklip/template`.
+
+## Running the Pipeline
 
 To run the pipeline, run the `skpipe.py` script in `src/StraKLIP/script`. use the `-p` option to point to the
 `pipe.yaml` and `-d` to point to the `data.yaml` if not running the pipeline from the directory where they are stored.

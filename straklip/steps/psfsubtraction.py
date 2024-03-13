@@ -19,6 +19,8 @@ def task_perform_KLIP_PSF_subtraction_on_tiles(DF,filter,cell,mvs_ids_list,label
     for id in ids_list:
         if not DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==id,'flag_%s'%filter].str.contains('rejected').values[0]:
             path2tile='%s/mvs_tiles/%s/tile_ID%i.fits'%(DF.path2out,filter,id)
+            getLogger(__name__).info(
+                f'Performing PSF subtraction on {path2tile}.')
             if not overwrite:
                 try:
                     with fits.open(path2tile) as hdul:

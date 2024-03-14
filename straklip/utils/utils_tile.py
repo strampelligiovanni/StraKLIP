@@ -551,7 +551,7 @@ def show_binary_PA(binary_df,DF=None,path2dir='',path2fits='',tag_label=None,lab
             plt.close('all')
     else: plt.show()
 
-def small_tiles(DF,path2fits, path2tiles, filters, dict={},nrows=10, ncols=10, figsize=None, crossmatch_ids_df=None,ext='_flc', fistsroot = 'fistsroot'):
+def small_tiles(DF,path2fits, path2tiles, filters, dict={},nrows=10, ncols=10, figsize=None, crossmatch_ids_df=None,ext='_flc', fitsroot = 'fitsroot'):
     if not os.path.exists(path2tiles+'/targets_tiles'):
         os.makedirs(path2tiles+'/targets_tiles')
         getLogger(__name__).info(f'Making {path2tiles}/targets_tiles directory')
@@ -570,7 +570,7 @@ def small_tiles(DF,path2fits, path2tiles, filters, dict={},nrows=10, ncols=10, f
                 id = int(row.avg_ids)
             else:
                 id = crossmatch_ids_df.loc[crossmatch_ids_df.mvs_ids==row.mvs_ids].avg_ids.unique()
-            fitsname = row[fistsroot.lower()+f'_{filter}'] + f'{ext}.fits'
+            fitsname = row[fitsroot.lower()+f'_{filter}'] + f'{ext}.fits'
             getLogger(__name__).debug(f'Loading {fitsname} for mvs_ids {row.mvs_ids}')
             hdul = fits.open(path2fits+'/'+fitsname)
             SCI = hdul[1].data

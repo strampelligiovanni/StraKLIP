@@ -30,13 +30,13 @@ def check4duplicants(DF,filter,mvs_ids_list,showduplicants=False):
 
     '''
     # for filter in DF.filters_list:
-    for cell in np.sort(DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list)]['%s_cell'%filter].unique()):
+    for cell in np.sort(DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list)][f'cell_{filter}'].unique()):
         skip_flags=['rejected','known_double']
         list_of_target4test=[]
-        ids_list=DF.mvs_targets_df.loc[(DF.mvs_targets_df['%s_cell'%filter]==cell)&~DF.mvs_targets_df['flag_'%filter].isin([skip_flags])].mvs_ids.unique()
+        ids_list=DF.mvs_targets_df.loc[(DF.mvs_targets_df[f'cell_{filter}']==cell)&~DF.mvs_targets_df[f'flag_{filter}'].isin([skip_flags])].mvs_ids.unique()
 
         for id in ids_list:
-            if not DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==id,'flag_'%filter].str.contains('rejected').values[0]:
+            if not DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==id,f'flag_{filter}'].str.contains('rejected').values[0]:
                 path2tile = '%s/mvs_tiles/%s/tile_ID%i.fits' % (DF.path2out, filter, id)
 
                 target=Tile(x=(DF.tilebase-1)/2,y=(DF.tilebase-1)/2,tile_base=DF.tilebase,delta=0,inst=DF.inst,Python_origin=True)
@@ -270,8 +270,8 @@ def mk_mvs_tiles(DF,filter,mvs_ids_test_list=[],xy_SN=True,xy_m=False,xy_cen=Fal
                                   chunksize=chunksize):
                 # if len(out)>0 and out is not None:
                 if out is not None:
-                    DF.mvs_targets_df.loc[(DF.mvs_targets_df.mvs_ids == out[:,0]), ['x_%s' % filter]] = out[:,1]
-                    DF.mvs_targets_df.loc[(DF.mvs_targets_df.mvs_ids == out[:,0]), ['y_%s' % filter]] = out[:,2]
+                    DF.mvs_targets_df.loc[(DF.mvs_targets_df.mvs_ids.isin(out[:,0])), ['x_%s' % filter]] = out[:,1]
+                    DF.mvs_targets_df.loc[(DF.mvs_targets_df.mvs_ids.isin(out[:,0])), ['y_%s' % filter]] = out[:,2]
 
     else:
         for elno in range(len(fitsname_list)):
@@ -280,8 +280,8 @@ def mk_mvs_tiles(DF,filter,mvs_ids_test_list=[],xy_SN=True,xy_m=False,xy_cen=Fal
                            multiply_by_exptime, multiply_by_gain, multiply_by_PAM,overwrite)
             # if len(out) > 0 and out is not None:
             if out is not None:
-                DF.mvs_targets_df.loc[(DF.mvs_targets_df.mvs_ids == out[:,0]), ['x_%s' % filter]] = out[:,1]
-                DF.mvs_targets_df.loc[(DF.mvs_targets_df.mvs_ids == out[:,0]), ['y_%s' % filter]] = out[:,2]
+                DF.mvs_targets_df.loc[(DF.mvs_targets_df.mvs_ids.isin(out[:,0])), ['x_%s' % filter]] = out[:,1]
+                DF.mvs_targets_df.loc[(DF.mvs_targets_df.mvs_ids.isin(out[:,0])), ['y_%s' % filter]] = out[:,2]
 
 
 def make_mvs_tiles(DF,filter,pipe_cfg, avg_ids_test_list=[],redo=False, debug=False,
@@ -368,10 +368,11 @@ def task_median_tiles(DF,id,filter,zfactor,alignment_box,legend,showplot,method,
                         ROTAs.append(DF.mvs_targets_df.loc[sel_ids,'rota_%s'%filter].values[0])
                     else:
                         getLogger(__name__).critical(
-                            f'Not able to make media tile {path2tile}. {skip_flag}.')
+                            f'Not able to make median tile {path2tile}. All data is NaN.')
                 else:
                     getLogger(__name__).critical(
-                        f'Not able to make media tile {path2tile}. All data is NaN.')
+                        f'Not able to make median tile {path2tile}. {skip_flag}.')
+
             except:
                 getLogger(__name__).critical(f'Not able to make media tile {path2tile}. Check your dataframe and paths!')
                 raise ValueError
@@ -440,7 +441,7 @@ def run(packet):
     dataset = packet['dataset']
     for filter in dataset.data_cfg.filters:
         make_mvs_tiles(DF,filter,dataset.pipe_cfg,
-                        avg_ids_test_list=[],
+                        avg_ids_test_list=dataset.pipe_cfg.mktiles['avg_ids_list'],
                         xy_m=dataset.pipe_cfg.mktiles['xy_m'],
                         workers=int(dataset.pipe_cfg.ncpu),
                         cr_remove=dataset.pipe_cfg.mktiles['cr_remove'],
@@ -458,7 +459,7 @@ def run(packet):
 
 
         make_median_tiles(DF, filter,
-                            avg_ids_list=[],
+                            avg_ids_list=dataset.pipe_cfg.mktiles['avg_ids_list'],
                             workers=int(dataset.pipe_cfg.ncpu),
                             zfactor=dataset.pipe_cfg.mktiles['zfactor'],
                             alignment_box=dataset.pipe_cfg.mktiles['alignment_box'],

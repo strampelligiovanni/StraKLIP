@@ -290,28 +290,28 @@ class Tile():
                 Datacube.flush()
 
     def load_tile(self, path2tile,hdul_max=None,ext=None,verbose=False,return_Datacube=False,mode='readonly',raise_errors=True):
-        # try: 
-            try:
-                Datacube=fits.open(path2tile,memmap=False,mode=mode)
-                if hdul_max!=None: 
-                    for n in range(hdul_max,len(Datacube)-1):Datacube.pop(hdul_max+1)
-                if verbose:
-                    # print(Datacube.info())
-                    getLogger(__name__).debug(Datacube.info())
+        try:
+            Datacube=fits.open(path2tile,memmap=False,mode=mode)
+            # print(Datacube.info())
+            if hdul_max!=None:
+                for n in range(hdul_max,len(Datacube)-1):Datacube.pop(hdul_max+1)
+            if verbose:
+                # print(Datacube.info())
+                getLogger(__name__).debug(Datacube.info())
 
+        except:
+            if raise_errors: raise ValueError('%s do not exist'%path2tile)
+            else:Datacube=None
+        if ext!= None:
+            try:
+                self.data=Datacube[ext].data.astype(float)
             except:
-                if raise_errors: raise ValueError('%s do not exist'%path2tile) 
-                else:Datacube=None
-            if ext!= None: 
-                try:
-                    self.data=Datacube[ext].data.astype(float)
-                except: 
-                    if raise_errors: raise ValueError('%s is missing extension %s'%(path2tile,ext)) 
-                    else: self.data=np.ones((self.tile_base,self.tile_base))*np.nan
-            
-            if return_Datacube: return(Datacube)
-            else: 
-                if raise_errors: Datacube.close()
+                if raise_errors: raise ValueError('%s is missing extension %s'%(path2tile,ext))
+                else: self.data=np.ones((self.tile_base,self.tile_base))*np.nan
+
+        if return_Datacube: return(Datacube)
+        else:
+            if raise_errors: Datacube.close()
     
     def plot_tile(self,fig,ax,title=None,cmap='viridis',xy_tile=True,xy_cen=True,xy_m=True,cbar=False,bad_pixel_c='r',lpad=0.5,legend=False,tight=False,mk_arrow=False,xa=None,ya=None,theta=0,PAV3=None,L=None,dtx=0.3,dty=0.15,head_width=0.5,head_length=0.5,width=0.15, fc='k', ec='k',tc='k',north=True,east=False,roll=True,showplot=True,step=2,simplenorm=None,verbose=False,close=True,kill=False,vmin=None,vmax=None,min_percent=0,max_percent=100.0,power=1,log=1000,savename=None,extent=None,kill_plots=False):
         '''

@@ -28,7 +28,7 @@ def get_ee_df(dataset):
     try:
         pixels = ee_cfg_dict.pop('pixels')
     except:
-        step = None
+        pixels = None
     for key in list(ee_cfg_dict):
         ee_df=pd.read_csv(dataset.pipe_cfg.paths['database']+'/'+ee_cfg_dict[key])
         ee_df=ee_df.rename(columns={'Filter':'FILTER'})
@@ -139,8 +139,8 @@ def make_mvs_photometry(DF,filter,mvs_ids_test_list=[],ee_dict=None,workers=None
                           'm_%s' % filter, 'e_%s' % filter, 'spx_%s' % filter,
                           'bpx_%s' % filter, 'r_%s' % filter, 'rsky1_%s' % filter, 'rsky2_%s' % filter,
                           'sky_%s' % filter, 'esky_%s' % filter, 'nsky_%s' % filter,
-                          'grow_corr_%s' % filter]] = phot[elno, 2:-1].astype(float)
-                DF.mvs_targets_df.loc[sel,['flag_%s'%filter]]=phot[elno,-1:]
+                          'grow_corr_%s' % filter]] = phot[elno, 2:].astype(float)
+                # DF.mvs_targets_df.loc[sel,['flag_%s'%filter]]=phot[elno,-1:]
 
 def make_median_photometry(DF,filter,avg_ids_list=[],workers=None,parallel_runs=True,suffix='',goodness_phot_label='e', skip_flag='rejected',chunksize=None):
     getLogger(__name__).info(f'Make photometry for average targets on filter {filter}')

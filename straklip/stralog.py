@@ -2,6 +2,7 @@ import logging, yaml, os
 import logging.config
 import logging.handlers
 from multiprocessing_logging import install_mp_handler
+import multiprocessing, logging
 
 LEVELS = [logging.DEBUG, logging.INFO, logging.WARNING,
           logging.ERROR, logging.CRITICAL]
@@ -17,7 +18,6 @@ def getLogger(args,**kwargs):
     return log
 
 def setupLogger(configfile,logfile):
-
     with open(configfile, 'r') as f:
         config = yaml.safe_load(f.read())
     if logfile:

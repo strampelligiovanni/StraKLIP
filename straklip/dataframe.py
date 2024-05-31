@@ -118,8 +118,11 @@ class DataFrame():
                         getattr(self,key).attrs[label] = vars(self)[label]
 
             # try:
-            with pd.HDFStore(filename) as store:
-                store.put(key.split('_df')[0], getattr(self,key), format='table')
+
+            getattr(self,key).to_hdf(filename, key=key, mode='w')
+
+            # with pd.HDFStore(filename) as store:
+            #     store.put(key.split('_df')[0], getattr(self,key), format='table')
                     # if key == 'crossmatch_ids_df':
                     #     store.get_storer(key.split('_df')[0]).attrs.metadata = getattr(self,key).attrs
 
@@ -138,12 +141,15 @@ class DataFrame():
         '''
         self.list_of_HDF5_keys(self.path2out)
         for key in self.keys:
-            with pd.HDFStore(self.path2out+'/'+key+'.h5') as store:
-                # if key == 'crossmatch_ids':
-                #     metadata = store.get_storer(key).attrs
-                df = store.get(key)
+            filename = self.path2out+'/'+key+'.h5'
+            setattr(self, key+'_df', pd.read_hdf(filename, mode='r'))
 
-            setattr(self, key+'_df', df)
+            # with pd.HDFStore(self.path2out+'/'+key+'.h5') as store:
+            #     # if key == 'crossmatch_ids':
+            #     #     metadata = store.get_storer(key).attrs
+            #     df = store.get(key)
+            #
+            #     setattr(self, key+'_df', df)
 
         # for key in metadata.metadata.keys():
         #     setattr(self, key, metadata.metadata[key])

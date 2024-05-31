@@ -618,5 +618,5 @@ def small_tiles(DF,path2fits, path2tiles, filters, dict={},nrows=10, ncols=10, f
         fig.savefig(path2tiles + f'/targets_tiles/targets_tiles_{filter}_{c}.png')
         getLogger(__name__).debug('Saved %s' % (path2tiles + f'/targets_tiles/targets_tiles_{filter}_{c}.png'))
         plt.close()
-    if len(dict) > 0:
-        return(DF)
+    # if len(dict) > 0:
+    return(DF)

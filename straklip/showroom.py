@@ -384,7 +384,6 @@ class ShowRoom():
                             id=0, avg_column_name='data', mvs_column_name='data', cmap='', simplenorm='',
                             percent=[0, 100], power=1, log=1000, show_mvs=False, xy_m=True, xy_cen=False,
                             legend=True, cbar=True):
-
         elnoy=0
         for filter in self.DF.filters:
             elnox=0
@@ -419,20 +418,20 @@ class ShowRoom():
                 ax_in=ax2[elnoy]
                 ax_in.grid(False)
                 try:
-                    if np.any(self.DF.mvs_targets_df.loc[self.DF.mvs_targets_df.mvs_ids.isin(self.DF.crossmatch_ids_df.loc[self.DF.crossmatch_ids_df.avg_ids==id].mvs_ids),f'flag_{filter}'].values!='rejected'):
-                        DATA=Tile()
-                        DATA.load_tile(f'{self.DF.path2out}/median_tiles/{filter}/tile_ID{id}.fits',
-                                       ext=avg_label_dict[avg_column_name], raise_errors=False)
-                        image=DATA.data
-                        load_image(image,filter,fig=fig2,ax=ax_in,cmap=cmap,title='%s'%(filter),tile_base=self.DF.tilebase,
-                                   simplenorm=simplenorm,min_percent=percent[0],max_percent=percent[1],power=power,log=log,
-                                   xy_m=xy_m,xy_cen=xy_cen,legend=legend_in,cbar=cbar,showplot=False)
-                        try:
-                            x=np.nanmedian(self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list),f'x_rot_{filter}'].values.astype(float))
-                            y=np.nanmedian(self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list),f'y_rot_{filter}'].values.astype(float))
-                            ax_in.plot(x,y,'ok',ms=3)
-                        except:
-                           pass
+                    # if np.any(self.DF.mvs_targets_df.loc[self.DF.mvs_targets_df.mvs_ids.isin(self.DF.crossmatch_ids_df.loc[self.DF.crossmatch_ids_df.avg_ids==id].mvs_ids),f'flag_{filter}'].values!='rejected'):
+                    DATA=Tile()
+                    DATA.load_tile(f'{self.DF.path2out}/median_tiles/{filter}/tile_ID{id}.fits',
+                                   ext=avg_label_dict[avg_column_name], raise_errors=False)
+                    image=DATA.data
+                    load_image(image,filter,fig=fig2,ax=ax_in,cmap=cmap,title='%s'%(filter),tile_base=self.DF.tilebase,
+                               simplenorm=simplenorm,min_percent=percent[0],max_percent=percent[1],power=power,log=log,
+                               xy_m=xy_m,xy_cen=xy_cen,legend=legend_in,cbar=cbar,showplot=False)
+                    try:
+                        x=np.nanmedian(self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list),f'x_rot_{filter}'].values.astype(float))
+                        y=np.nanmedian(self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list),f'y_rot_{filter}'].values.astype(float))
+                        ax_in.plot(x,y,'ok',ms=3)
+                    except:
+                       pass
                     else:
                         ax_in.axis('off')
                 except:
@@ -499,7 +498,6 @@ class ShowRoom():
         global mvs_ids_list_selected_global,filters_list_selected_global,out_candidate_global
         mvs_ids_list_selected_global=self.DF.crossmatch_ids_df.loc[self.DF.crossmatch_ids_df.avg_ids==id].mvs_ids.values
         filters_list_selected_global=self.DF.filters
-        # mvs_ids_list=self.DF.crossmatch_ids_df.loc[self.DF.crossmatch_ids_df.avg_ids==id].mvs_ids.values
         nrows=len(mvs_ids_list_selected_global)
         ncols=len(self.DF.filters)
         fig2,ax2=plt.subplots(1,ncols,figsize=(7*ncols+ncols,7))
@@ -518,21 +516,6 @@ class ShowRoom():
         self.load_and_plot_tiles(mvs_ids_list_selected_global,nrows,ncols,fig1,ax1,fig2,ax2,klip_mvs_label_dict_global,klip_avg_label_dict_global,id=id,avg_column_name=avg_column_name,mvs_column_name=mvs_column_name,cmap=cmap,simplenorm=simplenorm,percent=percent,power=power,log=log,show_mvs=show_mvs,xy_m=xy_m,xy_cen=xy_cen,legend=legend,cbar=cbar)
         
         if id in self.DF.avg_candidates_df.avg_ids.unique() and show_FP and not self.DF.fk_completeness_df.empty:
-            # felno=0
-            # fig3,ax3=plt.subplots(1,len(self.DF.filters),figsize=(7*len(self.DF.filters),8))
-            # for filter in self.DF.filters:
-            #     N=self.DF.avg_candidates_df.loc[self.DF.avg_candidates_df.avg_ids==id,'N%s'%filter[1:4]].values[0]
-            #     if not np.isnan(N):
-            #         # Kmode=int(np.nanmedian(self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list),['%s_Kmode'%filter]].values.ravel()))
-            #         Kmode=self.DF.avg_candidates_df.loc[self.DF.avg_candidates_df.avg_ids==id,'mKmode'].values[0].astype(int)
-            #         N=int(N)
-            #         magbin=int(self.DF.avg_targets_df.loc[self.DF.avg_targets_df.avg_ids==id,'m%s'%filter[1:4]].values[0])
-            #         tong_plot(self.DF,N,magbin,self.DF.dist,filter,ax=ax3[felno],avg_ids_list=[id],kmodes=[Kmode],title='%s N %i MagBin %i Kmode %i'%(filter,N,magbin, Kmode),save_completeness=False,ticks=np.arange(0.1,1.,0.1))
-            #         # mvs_completeness_plots(self.DF,filter=filter,path2savedir=None,Nvisit_list=[N],avg_ids_list=[id],kmodes=[Kmode],title='%s N %i MagBin %i Kmode %i'%(filter,N,magbin, Kmode),ticks=np.arange(0.1,1.,0.1),showplot=False)
-            #         felno+=1
-
-            # trim_axs(ax3,felno)
-            # plt.tight_layout()
             for filter in self.DF.filters:
                 FP_analysis(self.DF,id,filter,0.5,showplot=True,nbins=30)
 
@@ -542,17 +525,19 @@ class ShowRoom():
         mvs_label_dict_global={'data':1,'edata':2,'dqdata':3,'crclean_data':4}
         avg_label_dict_global={'data':1,'crclean_data':2}
         if CRKmode: 
-            ii=5
-            klip_avg_label_dict_global={'crclean_Kmode':3}
-            klip_mvs_label_dict_global={'crclean_Kmode%s'%self.DF.kmodes[i]:i+ii for i in range(len(self.DF.kmodes))}
-            candidates_columns_dropdown=widgets.Dropdown(options=['crclean_Kmode'])
-            model_mvs_label_dict_global={'Model %s'%self.DF.kmodes[i]:i+ii+len(self.DF.kmodes) for i in range(len(self.DF.kmodes))}
+            # ii=5
+            # klip_avg_label_dict_global={'crclean_Kmode':3}
+            klip_avg_label_dict_global={'crclean_Kmode%s' % self.DF.kmodes[i]: i + 3 for i in range(len(self.DF.kmodes))}
+            klip_mvs_label_dict_global={'crclean_Kmode%s'%self.DF.kmodes[i]:i+5 for i in range(len(self.DF.kmodes))}
+            # candidates_columns_dropdown=widgets.Dropdown(options=['crclean_Kmode'])
+            model_mvs_label_dict_global={'Model %s'%self.DF.kmodes[i]:i+5+len(self.DF.kmodes) for i in range(len(self.DF.kmodes))}
         else: 
-            ii=4
-            klip_avg_label_dict_global={'Kmode':2}
-            klip_mvs_label_dict_global={'Kmode%s'%self.DF.kmodes[i]:i+ii for i in range(len(self.DF.kmodes))}
-            candidates_columns_dropdown=widgets.Dropdown(options=['Kmode'])
-            model_mvs_label_dict_global={'Model %s'%self.DF.kmodes[i]:i+ii+len(self.DF.kmodes) for i in range(len(self.DF.kmodes))}
+            # ii=4
+            # klip_avg_label_dict_global={'Kmode':2}
+            klip_avg_label_dict_global={'Kmode%s'%self.DF.kmodes[i]:i+2 for i in range(len(self.DF.kmodes))}
+            klip_mvs_label_dict_global={'Kmode%s'%self.DF.kmodes[i]:i+4 for i in range(len(self.DF.kmodes))}
+            # candidates_columns_dropdown=widgets.Dropdown(options=['Kmode'])
+            model_mvs_label_dict_global={'Model %s'%self.DF.kmodes[i]:i+4+len(self.DF.kmodes) for i in range(len(self.DF.kmodes))}
 
         self.new_id=self.DF.crossmatch_ids_df.avg_ids.unique()[0]
         root = tk.Tk()
@@ -580,7 +565,7 @@ class ShowRoom():
         if hasattr(self.DF,'avg_candidates_df'): 
             Model = widgets.interactive_output(self.show_model_tiles_and_df,{'id':self.ids_dropdown,'avg_column_name':self.orig_column_dropdown,'mvs_column_name':self.MODEL_column_dropdown,'cmap':self.cmap_column_dropdown,'simplenorm':self.simplenorm_column_dropdown,'power':self.power_textbox,'log':self.log_textbox,'percent':self.crange_slider,'show_mvs':self.show_mvs_check,'show_FP':self.show_FP_check,'xy_m':self.xy_m_check,'xy_cen':self.xy_cen_check,'legend':self.legend_check,'cbar':self.cbar_check})
             # MFlags = widgets.interactive_output(self.build_models_flags_box,{'id':self.ids_dropdown})
-            Candidate = widgets.interactive_output(self.show_candidate_tiles_and_df,{'id':self.ids_dropdown,'avg_column_name':candidates_columns_dropdown,'mvs_column_name':self.KLIP_column_dropdown,'cmap':self.cmap_column_dropdown,'simplenorm':self.simplenorm_column_dropdown,'power':self.power_textbox,'log':self.log_textbox,'percent':self.crange_slider,'show_mvs':self.show_mvs_check,'show_FP':self.show_FP_check,'xy_m':self.xy_m_check,'xy_cen':self.xy_cen_check,'legend':self.legend_check,'cbar':self.cbar_check})
+            Candidate = widgets.interactive_output(self.show_candidate_tiles_and_df,{'id':self.ids_dropdown,'avg_column_name':self.KLIP_column_dropdown,'mvs_column_name':self.KLIP_column_dropdown,'cmap':self.cmap_column_dropdown,'simplenorm':self.simplenorm_column_dropdown,'power':self.power_textbox,'log':self.log_textbox,'percent':self.crange_slider,'show_mvs':self.show_mvs_check,'show_FP':self.show_FP_check,'xy_m':self.xy_m_check,'xy_cen':self.xy_cen_check,'legend':self.legend_check,'cbar':self.cbar_check})
             CFlags = widgets.interactive_output(self.build_candidates_flags_box,{'id':self.ids_dropdown})
         else: CFlags= widgets.Output()
 

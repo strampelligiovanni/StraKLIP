@@ -461,9 +461,9 @@ def mk_avg_candidates_df(DF):
 
     '''
 
-    df_new=create_empty_df([],['avg_ids','mass','emass','sep','mkmode']+['n%s'%i for i in DF.filters]+['nsigma_%s'%i for i in DF.filters]+['m_%s'%i for i in DF.filters]+['e_%s'%i for i in DF.filters]+['th_%s'%i for i in DF.filters]+['magbin_%s'%i for i in DF.filters]+['tp_above_th_%s'%i for i in DF.filters]+['tp_above_nsigma_%s'%i for i in DF.filters]+['fp_above_th_%s'%i for i in DF.filters]+['fp_above_nsigma_%s'%i for i in DF.filters]+['auc_%s'%i for i in DF.filters],
+    df_new=create_empty_df([],['avg_ids','mass','emass','sep','mkmode']+['n_%s'%i for i in DF.filters]+['nsigma_%s'%i for i in DF.filters]+['m_%s'%i for i in DF.filters]+['e_%s'%i for i in DF.filters]+['th_%s'%i for i in DF.filters]+['magbin_%s'%i for i in DF.filters]+['tp_above_th_%s'%i for i in DF.filters]+['tp_above_nsigma_%s'%i for i in DF.filters]+['fp_above_th_%s'%i for i in DF.filters]+['fp_above_nsigma_%s'%i for i in DF.filters]+['auc_%s'%i for i in DF.filters],
                            int_columns=['avg_ids','mkmode']+['magbin_%s'%i for i in DF.filters],
-                           flt_columns=['mass','emass','sep']+['nsigma_%s'%i for i in DF.filters]+['m_%s'%i for i in DF.filters]+['e_%s'%i for i in DF.filters]+['th_%s'%i for i in DF.filters]+['tp_above_th_%s'%i for i in DF.filters]+['tp_above_nsigma_%s'%i for i in DF.filters]+['fp_above_th_%s'%i for i in DF.filters]+['fp_above_nsigma_%s'%i for i in DF.filters]+['auc_%s'%i for i in DF.filters])
+                           flt_columns=['mass','emass','sep']+['n_%s'%i for i in DF.filters]+['nsigma_%s'%i for i in DF.filters]+['m_%s'%i for i in DF.filters]+['e_%s'%i for i in DF.filters]+['th_%s'%i for i in DF.filters]+['tp_above_th_%s'%i for i in DF.filters]+['tp_above_nsigma_%s'%i for i in DF.filters]+['fp_above_th_%s'%i for i in DF.filters]+['fp_above_nsigma_%s'%i for i in DF.filters]+['auc_%s'%i for i in DF.filters])
     df_new['avg_ids']=DF.avg_targets_df.avg_ids.unique()
     DF.avg_candidates_df=df_new
 

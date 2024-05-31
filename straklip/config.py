@@ -79,6 +79,10 @@ def configure_pipeline(config_file,pipe_cfg='',data_cfg='',dt_string=''):
                     config[key]['redo'] = True
         except: pass
         try:
+            if config['ncpu'] == 1:
+                config[key]['parallel_runs'] = False
+        except: pass
+        try:
             if 'debug' in config[key]:
                 if config['debug']:
                     config[key]['debug'] = True

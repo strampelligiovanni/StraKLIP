@@ -17,6 +17,7 @@ from ancillary import print_mean_median_and_std_sigmacut,rotate_point,paralleliz
 from utils_tile import allign_images
 from scipy.spatial import distance_matrix
 from utils_dataframe import create_empty_df
+from buildhdf import make_candidates_dataframes
 
 def task_mvs_tiles_and_photometry(DF, fitsname, ids_list, filter, use_xy_SN, use_xy_m, use_xy_cen, xy_shift_list,
                                   xy_dmax, bpx_list, spx_list, legend, showplot, overwrite, verbose, Python_origin,
@@ -87,14 +88,15 @@ def task_mvs_tiles_and_photometry(DF, fitsname, ids_list, filter, use_xy_SN, use
     if len(hdul) >= 4:
         phot = []
         for id in ids_list:
-            path2tile = '%s/%s/%s/%s/mvs_tiles/%s/tile_ID%i.fits' % (
-            path2data, DF.project, DF.target, DF.inst, filter, id)
+            # path2tile = '%s/%s/%s/%s/mvs_tiles/%s/tile_ID%i.fits' % (
+            # path2data, DF.project, DF.target, DF.inst, filter, id)
+            path2tile='%s/mvs_tiles/%s/tile_ID%i.fits' % (DF.path2out, filter, mvs_ids)
             type_flag = DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids == DF.crossmatch_ids_df.loc[
                 DF.crossmatch_ids_df.mvs_ids == id].avg_ids.unique()[0]].type.values[0]
-            x = DF.mvs_targets_df.loc[(DF.mvs_targets_df['%s_%s' % (filter, DF.fits_ext)] == fitsname) & (
-                        DF.mvs_targets_df.mvs_ids == id), 'x%s' % filter[1:4]].values[0]
-            y = DF.mvs_targets_df.loc[(DF.mvs_targets_df['%s_%s' % (filter, DF.fits_ext)] == fitsname) & (
-                        DF.mvs_targets_df.mvs_ids == id), 'y%s' % filter[1:4]].values[0]
+            x = DF.mvs_targets_df.loc[(DF.mvs_targets_df[f'fits_{filter}'] == fitsname) & (
+                        DF.mvs_targets_df.mvs_ids == id), f'x_{filter}'].values[0]
+            y = DF.mvs_targets_df.loc[(DF.mvs_targets_df[f'fits_{filter}'] == fitsname) & (
+                        DF.mvs_targets_df.mvs_ids == id), f'y_{filter}'].values[0]
             ext = int(DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids == id].ext.values[0])
             if x % 0.5 == 0: x -= 0.001
             if y % 0.5 == 0: y -= 0.001
@@ -199,13 +201,13 @@ def task_mvs_tiles_and_photometry(DF, fitsname, ids_list, filter, use_xy_SN, use
                         deltay += xy_shift_list[1]
 
                     # making the tile datacube and save it
-                    DF.mvs_targets_df.loc[(DF.mvs_targets_df['%s_%s' % (filter, DF.fits_ext)] == fitsname) & (
-                                DF.mvs_targets_df.mvs_ids == id), ['x%s' % filter[1:4], 'y%s' % filter[1:4]]] = [
+                    DF.mvs_targets_df.loc[(DF.mvs_targets_df[f'fits_{filter}'] == fitsname) & (
+                                DF.mvs_targets_df.mvs_ids == id), [f'x_{filter}' , f'y_{filter}']] = [
                         x + deltax, y + deltay]
-                    x = DF.mvs_targets_df.loc[(DF.mvs_targets_df['%s_%s' % (filter, DF.fits_ext)] == fitsname) & (
-                                DF.mvs_targets_df.mvs_ids == id), 'x%s' % filter[1:4]].values[0]  # -0.001
-                    y = DF.mvs_targets_df.loc[(DF.mvs_targets_df['%s_%s' % (filter, DF.fits_ext)] == fitsname) & (
-                                DF.mvs_targets_df.mvs_ids == id), 'y%s' % filter[1:4]].values[0]  # -0.001
+                    x = DF.mvs_targets_df.loc[(DF.mvs_targets_df[f'fits_{filter}'] == fitsname) & (
+                                DF.mvs_targets_df.mvs_ids == id),f'x_{filter}'].values[0]  # -0.001
+                    y = DF.mvs_targets_df.loc[(DF.mvs_targets_df[f'fits_{filter}'] == fitsname) & (
+                                DF.mvs_targets_df.mvs_ids == id), f'y_{filter}'].values[0]  # -0.001
 
                     DATA = Tile(data=SCI, x=x, y=y, tile_base=DF.tile_base, delta=6, inst=DF.inst,
                                 Python_origin=Python_origin)
@@ -269,161 +271,160 @@ def task_mvs_tiles_and_photometry(DF, fitsname, ids_list, filter, use_xy_SN, use
         getLogger(__name__).debug('phot: ', phot)
     return (phot)
 
-def mk_mvs_tiles_and_photometry(DF, filter, mvs_ids_test_list=[], overwrite=True, xy_SN=True, xy_m=False,
-                                xy_cen=False, xy_shift_list=[], xy_dmax=3, bpx_list=[], spx_list=[], legend=False,
-                                showplot=False, showplot_final=False, verbose=False, workers=None, Python_origin=True,
-                                parallel_runs=True, cr_remove=False, la_cr_remove=False, cr_radius=3, kill_plots=False,
-                                chunksize=None, ee_df=None, zpt=0, radius_in=10, radius1_in=10, radius2_in=15,
-                                sat_thr=np.inf, grow_curves=True, r_in=1, p=100, gstep=0.1, multiply_by_exptime=False,
-                                multiply_by_gain=False, multiply_by_PAM=False):
-    '''
-    update the multi-visits tile dataframe with the tiles for each source
-
-    Parameters
-    ----------
-    mvs_ids_test_list : list, optional
-        list of multivisits ids to test. The default is [].
-    overwrite: bool, optional
-        if False, skip IDs that already have tiles in directory. Default is True.
-    xy_SN : bool
-        choose to use image with better SN to recenter the tile.
-    xy_m : bool
-        choose to use maximum in image to recenter the tile.
-    xy_cen : bool
-        choose to use centroid in image to recenter the tile.
-    xy_dmax : int
-        maximum distance from original coordinates to look for maximum.
-    bpx_list: list
-        list of values to flag as bad pixels using the data quality image (coud be real bad pixels, hot/warm pixels, cosmic rays etc.)
-    spx_list: list
-        list of values to flag as saturated pixels using the data quality image
-    legend : bool, optional
-        choose to show legends in plots. The default is False.
-    showplot : bool, optional
-        choose to show plots. The default is False.
-    showplot_final : bool, optional
-        choose to show fianl plot after all manipolatins has been applyed.
-        The default is False.
-    verbose : bool, optional
-        choose to show prints. The default is False.
-    workers : int, optional
-        number of workers to split the work accross multiple CPUs. The default is 3.
-    Python_origin : bool, optional
-        Choose to specify the origin of the xy input coordinates. For exmaple python array star counting from 0,
-        so a position obtained on a python image will have 0 as first pixel.
-        On the other hand, normal catalogs start counting from 1 (see coordinate on ds9 for example)
-        so we need to subtract 1 to make them compatible when we use those coordinates on python
-        The default is True
-    parallel_runs: bool, optional
-        Choose to to split the workload over different CPUs. The default is True
-    la_cr_remove : bool, optional
-        choose to apply L.A. cosmic ray removal. The default is False.
-    cr_radius : int, optional
-        minimum distance from center where to not apply the cosmic ray filter. The default is 3.
-    close : bool, optional
-        choose to close plot istances. The default is True.
-    kill_plots:
-        choose to kill all plots created. The default is False.
-    num_of_chunks : int, optional
-        number of chunk to split the targets. The default is None.
-    chunksize : int, optional
-        size of each chunk for the parallelization process. The default is None.
-    multiply_by_exptime:
-        to properly evaluate the error you need the images total counts (not divided by exptime).
-        If that the case, this option will multiply the image but the corresponding exptime. The default is False.
-    multiply_by_gain:
-        to properly evaluate evaluate photometry you need to convert the counts in electrons (multiply by the gain).
-        If that not the case, this option will multiply the image but the corresponding gain. The default is False.
-    multiply_by_PAM:
-        to properly evaluate photometry accross the FLT you need a not distorted images.
-        If that the case, this option will multiply the image but the corresponding PAM. The default is False.
-
-    Returns
-    -------
-    None.
-
-    '''
-    # if __name__ == 'utils_straklip':
-    q = np.where(filter == np.array(DF.filters))[0][0]
-
-    ids_list_of_lists = []
-    fitsname_list = []
-    getLogger(__name__).info("Working on %s" % filter)
-    # mk_dir('%s/%s/%s/%s/mvs_tiles/%s' % (path2data, DF.project, DF.target, DF.inst, filter), verbose=True)
-    fits_dict = {}
-    skip_IDs_list_list = []
-
-    if len(mvs_ids_test_list) != 0:
-        fitsname_test_list = DF.mvs_targets_df.loc[
-            DF.mvs_targets_df.mvs_ids.isin(mvs_ids_test_list) & ~DF.mvs_targets_df.mvs_ids.isin(
-                skip_IDs_list_list), '%s_%s' % (filter, DF.fits_ext)].tolist()
-        for index, row in DF.mvs_targets_df.loc[DF.mvs_targets_df['%s_%s' % (filter, DF.fits_ext)].isin(
-                fitsname_test_list) & DF.mvs_targets_df.mvs_ids.isin(
-                mvs_ids_test_list) & ~DF.mvs_targets_df.mvs_ids.isin(skip_IDs_list_list)].groupby(
-                '%s_%s' % (filter, DF.fits_ext)):
-            fits_dict[index] = row.mvs_ids.tolist()
-    else:
-        fitsname_test_list = DF.mvs_targets_df.loc[
-            ~DF.mvs_targets_df.mvs_ids.isin(skip_IDs_list_list), '%s_%s' % (
-            filter, DF.fits_ext)].unique().tolist()
-        for index, row in DF.mvs_targets_df.loc[DF.mvs_targets_df['%s_%s' % (filter, DF.fits_ext)].isin(
-                fitsname_test_list) & ~DF.mvs_targets_df.mvs_ids.isin(skip_IDs_list_list)].groupby(
-                '%s_%s' % (filter, DF.fits_ext)):
-            fits_dict[index] = row.mvs_ids.tolist()
-
-    fits_dict = (dict(sorted(fits_dict.items(), key=lambda item: item[1])))
-    ids_list_of_lists = list(fits_dict.values())
-    fitsname_list = list(fits_dict.keys())
-    if parallel_runs:
-        workers, chunksize, ntarget = parallelization_package(workers, len(fitsname_list), chunksize=chunksize)
-        getLogger(__name__).info('Loading a total of %i images' % ntarget)
-        with ProcessPoolExecutor(max_workers=workers) as executor:
-            for phot in executor.map(task_mvs_tiles_and_photometry, repeat(DF), fitsname_list, ids_list_of_lists,
-                                 repeat(filter), repeat(xy_SN), repeat(xy_m), repeat(xy_cen), repeat(xy_shift_list),
-                                 repeat(xy_dmax), repeat(bpx_list), repeat(spx_list), repeat(legend),
-                                 repeat(showplot), repeat(overwrite), repeat(verbose), repeat(Python_origin),
-                                 repeat(cr_remove), repeat(la_cr_remove), repeat(cr_radius), repeat(kill_plots),
-                                 repeat(ee_df), repeat(zpt[q]), repeat(radius_in), repeat(radius1_in),
-                                 repeat(radius2_in), repeat(sat_thr), repeat(grow_curves), repeat(r_in), repeat(p),
-                                 repeat(gstep), repeat(multiply_by_exptime), repeat(multiply_by_gain),
-                                 repeat(multiply_by_PAM), chunksize=chunksize):
-                phot = np.array(phot)
-                for elno in range(len(phot)):
-                    sel = (DF.mvs_targets_df.mvs_ids == phot[elno, 0].astype(float)) & (
-                                DF.mvs_targets_df.ext == phot[elno, 1].astype(float))
-                    DF.mvs_targets_df.loc[
-                        sel, ['counts%s' % filter[1:4], 'ecounts%s' % filter[1:4], 'Nap%s' % filter[1:4],
-                              'm%s' % filter[1:4], 'e%s' % filter[1:4], 'spx%s' % filter[1:4],
-                              'bpx%s' % filter[1:4], '%s_r' % filter, '%s_rsky1' % filter, '%s_rsky2' % filter,
-                              'sky%s' % filter[1:4], 'esky%s' % filter[1:4], 'nsky%s' % filter[1:4],
-                              'grow_corr%s' % filter[1:4]]] = phot[elno, 2:-1].astype(float)
-                    DF.mvs_targets_df.loc[sel, ['flag_%s' % filter]] = phot[elno, -1:]
-
-    else:
-        for elno in range(len(fitsname_list)):
-            if len(xy_shift_list) > 0:
-                w = np.where(np.array(fitsname_list)[elno] == np.array(fitsname_test_list))[0][0]
-                use_xy_shift_list = xy_shift_list[w]
-            else:
-                use_xy_shift_list = []
-            phot = task_mvs_tiles_and_photometry(DF, fitsname_list[elno], ids_list_of_lists[elno], filter, xy_SN,
-                                                 xy_m, xy_cen, use_xy_shift_list, xy_dmax, bpx_list, spx_list,
-                                                 legend, showplot, overwrite, verbose, Python_origin, cr_remove,
-                                                 la_cr_remove, cr_radius, kill_plots, ee_df, zpt[q], radius_in,
-                                                 radius1_in, radius2_in, sat_thr, grow_curves, r_in, p, gstep,
-                                                 multiply_by_exptime, multiply_by_gain, multiply_by_PAM)
-            phot = np.array(phot)
-            for elno in range(len(phot)):
-                sel = (DF.mvs_targets_df.mvs_ids == phot[elno, 0].astype(float)) & (
-                            DF.mvs_targets_df.ext == phot[elno, 1].astype(float))
-                DF.mvs_targets_df.loc[
-                    sel, ['counts%s' % filter[1:4], 'ecounts%s' % filter[1:4], 'Nap%s' % filter[1:4],
-                          'm%s' % filter[1:4], 'e%s' % filter[1:4], 'spx%s' % filter[1:4], 'bpx%s' % filter[1:4],
-                          '%s_r' % filter, '%s_rsky1' % filter, '%s_rsky2' % filter, 'sky%s' % filter[1:4],
-                          'esky%s' % filter[1:4], 'nsky%s' % filter[1:4], 'grow_corr%s' % filter[1:4]]] = phot[elno,
-                                                                                                          2:-1].astype(
-                    float)
-                DF.mvs_targets_df.loc[sel, ['flag_%s' % filter]] = phot[elno, -1:]
+# def mk_mvs_tiles_and_photometry(DF, filter, mvs_ids_test_list=[], overwrite=True, xy_SN=True, xy_m=False,
+#                                 xy_cen=False, xy_shift_list=[], xy_dmax=3, bpx_list=[], spx_list=[], legend=False,
+#                                 showplot=False, showplot_final=False, verbose=False, workers=None, Python_origin=True,
+#                                 parallel_runs=True, cr_remove=False, la_cr_remove=False, cr_radius=3, kill_plots=False,
+#                                 chunksize=None, ee_df=None, zpt=0, radius_in=10, radius1_in=10, radius2_in=15,
+#                                 sat_thr=np.inf, grow_curves=True, r_in=1, p=100, gstep=0.1, multiply_by_exptime=False,
+#                                 multiply_by_gain=False, multiply_by_PAM=False):
+#     '''
+#     update the multi-visits tile dataframe with the tiles for each source
+#
+#     Parameters
+#     ----------
+#     mvs_ids_test_list : list, optional
+#         list of multivisits ids to test. The default is [].
+#     overwrite: bool, optional
+#         if False, skip IDs that already have tiles in directory. Default is True.
+#     xy_SN : bool
+#         choose to use image with better SN to recenter the tile.
+#     xy_m : bool
+#         choose to use maximum in image to recenter the tile.
+#     xy_cen : bool
+#         choose to use centroid in image to recenter the tile.
+#     xy_dmax : int
+#         maximum distance from original coordinates to look for maximum.
+#     bpx_list: list
+#         list of values to flag as bad pixels using the data quality image (coud be real bad pixels, hot/warm pixels, cosmic rays etc.)
+#     spx_list: list
+#         list of values to flag as saturated pixels using the data quality image
+#     legend : bool, optional
+#         choose to show legends in plots. The default is False.
+#     showplot : bool, optional
+#         choose to show plots. The default is False.
+#     showplot_final : bool, optional
+#         choose to show fianl plot after all manipolatins has been applyed.
+#         The default is False.
+#     verbose : bool, optional
+#         choose to show prints. The default is False.
+#     workers : int, optional
+#         number of workers to split the work accross multiple CPUs. The default is 3.
+#     Python_origin : bool, optional
+#         Choose to specify the origin of the xy input coordinates. For exmaple python array star counting from 0,
+#         so a position obtained on a python image will have 0 as first pixel.
+#         On the other hand, normal catalogs start counting from 1 (see coordinate on ds9 for example)
+#         so we need to subtract 1 to make them compatible when we use those coordinates on python
+#         The default is True
+#     parallel_runs: bool, optional
+#         Choose to to split the workload over different CPUs. The default is True
+#     la_cr_remove : bool, optional
+#         choose to apply L.A. cosmic ray removal. The default is False.
+#     cr_radius : int, optional
+#         minimum distance from center where to not apply the cosmic ray filter. The default is 3.
+#     close : bool, optional
+#         choose to close plot istances. The default is True.
+#     kill_plots:
+#         choose to kill all plots created. The default is False.
+#     num_of_chunks : int, optional
+#         number of chunk to split the targets. The default is None.
+#     chunksize : int, optional
+#         size of each chunk for the parallelization process. The default is None.
+#     multiply_by_exptime:
+#         to properly evaluate the error you need the images total counts (not divided by exptime).
+#         If that the case, this option will multiply the image but the corresponding exptime. The default is False.
+#     multiply_by_gain:
+#         to properly evaluate evaluate photometry you need to convert the counts in electrons (multiply by the gain).
+#         If that not the case, this option will multiply the image but the corresponding gain. The default is False.
+#     multiply_by_PAM:
+#         to properly evaluate photometry accross the FLT you need a not distorted images.
+#         If that the case, this option will multiply the image but the corresponding PAM. The default is False.
+#
+#     Returns
+#     -------
+#     None.
+#
+#     '''
+#     # if __name__ == 'utils_straklip':
+#     q = np.where(filter == np.array(DF.filters))[0][0]
+#
+#     ids_list_of_lists = []
+#     fitsname_list = []
+#     getLogger(__name__).info("Working on %s" % filter)
+#     # mk_dir('%s/%s/%s/%s/mvs_tiles/%s' % (path2data, DF.project, DF.target, DF.inst, filter), verbose=True)
+#     fits_dict = {}
+#     skip_IDs_list_list = []
+#
+#     if len(mvs_ids_test_list) != 0:
+#         fitsname_test_list = DF.mvs_targets_df.loc[
+#             DF.mvs_targets_df.mvs_ids.isin(mvs_ids_test_list) & ~DF.mvs_targets_df.mvs_ids.isin(
+#                 skip_IDs_list_list), f'fits_{filter}'].tolist()
+#         for index, row in DF.mvs_targets_df.loc[DF.mvs_targets_df[f'fits_{filter}'].isin(
+#                 fitsname_test_list) & DF.mvs_targets_df.mvs_ids.isin(
+#                 mvs_ids_test_list) & ~DF.mvs_targets_df.mvs_ids.isin(skip_IDs_list_list)].groupby(
+#                 '%s_%s' % (filter, DF.fits_ext)):
+#             fits_dict[index] = row.mvs_ids.tolist()
+#     else:
+#         fitsname_test_list = DF.mvs_targets_df.loc[
+#             ~DF.mvs_targets_df.mvs_ids.isin(skip_IDs_list_list), f'fits_{filter}'].unique().tolist()
+#         for index, row in DF.mvs_targets_df.loc[DF.mvs_targets_df[f'fits_{filter}'].isin(
+#                 fitsname_test_list) & ~DF.mvs_targets_df.mvs_ids.isin(skip_IDs_list_list)].groupby(
+#                 '%s_%s' % (filter, DF.fits_ext)):
+#             fits_dict[index] = row.mvs_ids.tolist()
+#
+#     fits_dict = (dict(sorted(fits_dict.items(), key=lambda item: item[1])))
+#     ids_list_of_lists = list(fits_dict.values())
+#     fitsname_list = list(fits_dict.keys())
+#     if parallel_runs:
+#         workers, chunksize, ntarget = parallelization_package(workers, len(fitsname_list), chunksize=chunksize)
+#         getLogger(__name__).info('Loading a total of %i images' % ntarget)
+#         with ProcessPoolExecutor(max_workers=workers) as executor:
+#             for phot in executor.map(task_mvs_tiles_and_photometry, repeat(DF), fitsname_list, ids_list_of_lists,
+#                                  repeat(filter), repeat(xy_SN), repeat(xy_m), repeat(xy_cen), repeat(xy_shift_list),
+#                                  repeat(xy_dmax), repeat(bpx_list), repeat(spx_list), repeat(legend),
+#                                  repeat(showplot), repeat(overwrite), repeat(verbose), repeat(Python_origin),
+#                                  repeat(cr_remove), repeat(la_cr_remove), repeat(cr_radius), repeat(kill_plots),
+#                                  repeat(ee_df), repeat(zpt[q]), repeat(radius_in), repeat(radius1_in),
+#                                  repeat(radius2_in), repeat(sat_thr), repeat(grow_curves), repeat(r_in), repeat(p),
+#                                  repeat(gstep), repeat(multiply_by_exptime), repeat(multiply_by_gain),
+#                                  repeat(multiply_by_PAM), chunksize=chunksize):
+#                 phot = np.array(phot)
+#                 for elno in range(len(phot)):
+#                     sel = (DF.mvs_targets_df.mvs_ids == phot[elno, 0].astype(float)) & (
+#                                 DF.mvs_targets_df.ext == phot[elno, 1].astype(float))
+#                     DF.mvs_targets_df.loc[
+#                         sel, [f'counts_{filter}', f'ecounts_{filter}', f'nap_{filter}',
+#                               f'm_{filter}', f'e_{filter}' , f'spx_{filter}',
+#                               f'bpx_{filter}', f'%s_r' % filter, f'%s_rsky1' % filter, f'%s_rsky2' % filter,
+#                               f'sky_{filter}', f'esky_{filter}', f'nsky_{filter}',
+#                               f'grow_corr_{filter}' % filter[1:4]]] = phot[elno, 2:-1].astype(float)
+#                     DF.mvs_targets_df.loc[sel, ['flag_%s' % filter]] = phot[elno, -1:]
+#
+#     else:
+#         for elno in range(len(fitsname_list)):
+#             if len(xy_shift_list) > 0:
+#                 w = np.where(np.array(fitsname_list)[elno] == np.array(fitsname_test_list))[0][0]
+#                 use_xy_shift_list = xy_shift_list[w]
+#             else:
+#                 use_xy_shift_list = []
+#             phot = task_mvs_tiles_and_photometry(DF, fitsname_list[elno], ids_list_of_lists[elno], filter, xy_SN,
+#                                                  xy_m, xy_cen, use_xy_shift_list, xy_dmax, bpx_list, spx_list,
+#                                                  legend, showplot, overwrite, verbose, Python_origin, cr_remove,
+#                                                  la_cr_remove, cr_radius, kill_plots, ee_df, zpt[q], radius_in,
+#                                                  radius1_in, radius2_in, sat_thr, grow_curves, r_in, p, gstep,
+#                                                  multiply_by_exptime, multiply_by_gain, multiply_by_PAM)
+#             phot = np.array(phot)
+#             for elno in range(len(phot)):
+#                 sel = (DF.mvs_targets_df.mvs_ids == phot[elno, 0].astype(float)) & (
+#                             DF.mvs_targets_df.ext == phot[elno, 1].astype(float))
+#                 DF.mvs_targets_df.loc[
+#                     sel, [f'counts_{filter}', f'ecounts_{filter}', f'nap_{filter}',
+#                           f'm_{filter}', f'e_{filter}', f'spx_{filter}', f'bpx_{filter}',
+#                           f'%s_r', f'rsky1_{filter}', f'rsky2_{filter}', f'sky_{filter}',
+#                           f'esky_{filter}', f'nsky_{filter}', f'grow_corr_{filter}']] = phot[elno,
+#                                                                                                           2:-1].astype(
+#                     float)
+#                 DF.mvs_targets_df.loc[sel, ['flag_%s' % filter]] = phot[elno, -1:]
 
 def task_mvs_targets_infos(DF,avg_id,skip_filters,aptype,verbose,noBGsub,sigma,kill_plots,label,delta,sat_thr):
     '''
@@ -464,7 +465,7 @@ def task_mvs_targets_infos(DF,avg_id,skip_filters,aptype,verbose,noBGsub,sigma,k
             mvs_ids=DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids==avg_id].mvs_ids.unique()
             for id in mvs_ids:
                 if not DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==id,f'flag_{filter}'].str.contains('rejected').values[0]:
-                    getLogger(__name__).info(f'Performing aperture photometry on mvs_ids {id}: ')
+                    getLogger(__name__).info(f'Performing aperture photometry on mvs_ids {id}')
                     x,y=[int((DF.tilebase-1)/2),int((DF.tilebase-1)/2)]
                     path2tile=DF.path2out+f'/mvs_tiles/{filter}/tile_ID{id}.fits'
                     DATA=Tile(x=int((DF.tilebase-1)/2),y=int((DF.tilebase-1)/2),tile_base=DF.tilebase,inst=DF.inst)
@@ -515,38 +516,52 @@ def task_median_candidate_infos(DF,id,filter,column_name,zfactor,alignment_box,l
     KLIP_label_dict={'data':'Kmode','crclean_data':'crclean_Kmode'}
     path2tile=DF.path2out+f'/median_tiles/{filter}/tile_ID{id}.fits'
 
-    mvs_ids_list=DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids==id].mvs_ids.unique())].mvs_ids.unique()
-    # DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids==id].mvs_ids.values
-    target_images=[]
-    candidate_images=[]
+    cand_mvs_ids_list=DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids==id].mvs_ids.unique())].mvs_ids.unique()
 
-    sel_ids=DF.mvs_targets_df.mvs_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids==id].mvs_ids.unique())
+    # sel_ids=DF.mvs_targets_df.mvs_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids==id].mvs_ids.unique())
     sel_flag=(DF.mvs_targets_df[f'flag_{filter}']!='rejected')
+    mvs_ids_list=DF.mvs_targets_df.loc[sel_flag&DF.mvs_targets_df.mvs_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids==id].mvs_ids.unique())].mvs_ids.unique()
+    # sel_ids=DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list)
+    sel_ids = DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list) & DF.mvs_targets_df.mvs_ids.isin(cand_mvs_ids_list)
     PAV_3s=DF.mvs_targets_df.loc[sel_ids&sel_flag,f'pav3_{filter}'].values
     ROTAs=DF.mvs_targets_df.loc[sel_ids&sel_flag,f'rota_{filter}'].values
 
     IMAGE=Tile(x=(DF.tilebase-1)/2,y=(DF.tilebase-1)/2,tile_base=DF.tilebase,delta=0,inst=DF.inst,Python_origin=True)
     Datacube=IMAGE.load_tile(path2tile,return_Datacube=True,hdul_max=hdul_dict[label],verbose=False,mode='update',raise_errors=False)
-    # if not DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids==id].mvs_ids),f'flag_{filter}'].str.contains('rejected').all():
-    for mvs_ids in mvs_ids_list:
-        if DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,f'flag_{filter}'].values[0]!='rejected':
-            if not DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids==id].mvs_ids)].empty:
-                Kmode=int(DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,'%s_Kmode'%filter].values[0])
-            else:
-                Kmode=int(max(DF.kmodes))
-            IMAGE=Tile(x=(DF.tilebase-1)/2,y=(DF.tilebase-1)/2,tile_base=DF.tilebase,delta=0,inst=DF.inst,Python_origin=True)
-            IMAGE.load_tile('%s/%s/%s/%s/mvs_tiles/%s/tile_ID%i.fits'%(path2data,DF.project,DF.target,DF.inst,filter,mvs_ids),ext=label_dict[label],raise_errors=False)
+
+    getLogger(__name__).critical(f'Making median candidate tiles for KLIPmodes: {DF.kmodes}')
+    for Kmode in DF.kmodes:
+        getLogger(__name__).critical(f'KLIPmode: {Kmode} ,avg_ids: {id}, mvs_ids: {mvs_ids_list}')
+
+        target_images = []
+        candidate_images = []
+
+        for mvs_ids in mvs_ids_list:
+            IMAGE = Tile(x=(DF.tilebase - 1) / 2, y=(DF.tilebase - 1) / 2, tile_base=DF.tilebase, delta=0, inst=DF.inst,
+                         Python_origin=True)
+            IMAGE.load_tile('%s/mvs_tiles/%s/tile_ID%i.fits'%(DF.path2out,filter,mvs_ids),ext=label_dict[label],raise_errors=False)
             image=np.array(IMAGE.data)
             if not np.all(np.isnan(image)):
                 target_images.append(image)
+
+            if len(target_images)>0:
+                target_tile,shift_list=allign_images(target_images,ROTAs,PAV_3s,filter,zfactor=zfactor,alignment_box=alignment_box,tile_base=DF.tilebase)
+
+                # if not DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids==id].mvs_ids)].empty and (DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,f'flag_{filter}'].values[0]!='rejected'):
+                #     Kmode=int(DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,f'Kmode_{filter}'].values[0])
+                # else:
+                #     Kmode=int(max(DF.kmodes))
                 CANDIDATE=Tile(x=(DF.tilebase-1)/2,y=(DF.tilebase-1)/2,tile_base=DF.tilebase,delta=0,inst=DF.inst,Python_origin=True)
-                CANDIDATE.load_tile('%s/%s/%s/%s/mvs_tiles/%s/tile_ID%i.fits'%(path2data,DF.project,DF.target,DF.inst,filter,mvs_ids),ext='%s%s'%(KLIP_label_dict[label],Kmode),raise_errors=False)
-                candidate_images.append(CANDIDATE.data)
-    if len(candidate_images)>0:
-        target_tile,shift_list=allign_images(target_images,ROTAs,PAV_3s,filter,zfactor=zfactor,alignment_box=alignment_box,tile_base=DF.tilebase)
-        candidate_tile,shift_list=allign_images(candidate_images,ROTAs,PAV_3s,filter,shift_list=shift_list,zfactor=zfactor,alignment_box=alignment_box,title=column_name,tile_base=DF.tilebase)
+                CANDIDATE.load_tile('%s/mvs_tiles/%s/tile_ID%i.fits'%(DF.path2out,filter,mvs_ids),ext='%s%s'%(KLIP_label_dict[label],Kmode),raise_errors=False)
+                image=np.array(CANDIDATE.data)
+                if not np.all(np.isnan(image)):
+                    candidate_images.append(image)
+
+        if len(candidate_images)>0:
+            candidate_tile,shift_list=allign_images(candidate_images,ROTAs,PAV_3s,filter,shift_list=shift_list,zfactor=zfactor,alignment_box=alignment_box,title=column_name+f'{Kmode}',tile_base=DF.tilebase)
+
         if Datacube!=None:
-            candidate_tile.append_tile(path2tile,Datacube=Datacube,verbose=False,name='%s'%(KLIP_label_dict[label]),return_Datacube=False,write=False)
+            candidate_tile.append_tile(path2tile,Datacube=Datacube,verbose=False,name=f'{(KLIP_label_dict[label])}{Kmode}',return_Datacube=False,write=False)
 
 def task_mvs_candidates_infos(DF,avg_id,d,skip_filters,aptype,verbose,noBGsub,sigma,DF_fk,label,kill_plots,delta,radius,sat_thr,mkd,mad):
     '''
@@ -608,7 +623,7 @@ def task_mvs_candidates_infos(DF,avg_id,d,skip_filters,aptype,verbose,noBGsub,si
                     if not DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==mvs_ids,f'flag_{filter}'].str.contains('rejected').values[0]:
                         PA_V3=DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==mvs_ids,f'pav3_{filter}'].values[0]
                         ROTA=DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==mvs_ids,f'rota_{filter}'].values[0]
-                        path2tile=DF.path2out+f'/mvs_tiles/{filter}/tile_ID{id}.fits'
+                        path2tile=DF.path2out+f'/mvs_tiles/{filter}/tile_ID{mvs_ids}.fits'
                         KDATA=Tile(x=int((DF.tilebase-1)/2),y=int((DF.tilebase-1)/2),tile_base=DF.tilebase,inst=DF.inst)
                         KDATA.load_tile(path2tile,ext='%s%s'%(KLIP_label_dict[label],Kmode),verbose=False,return_Datacube=False,raise_errors=False)
                         if np.all(ax)==None:
@@ -631,23 +646,32 @@ def task_mvs_candidates_infos(DF,avg_id,d,skip_filters,aptype,verbose,noBGsub,si
                                     if not kill_plots:getLogger(__name__).debug('Kmode %s, %s, mvs_id %s'%(Kmode, filter,mvs_ids))
                                     counts,ecounts,Nsigma,Nap,mag,emag,spx,bpx,Sky,eSky,nSky,grow_corr=KLIP_aperture_photometry_handler(DF,mvs_ids,filter,x=x,y=y,data=KDATA.data,zpt=zpt,ezpt=ezpt,aptype=aptype,noBGsub=False,sigma=sigma,kill_plots=kill_plots,Python_origin=True,delta=delta,radius_a=radius,sat_thr=sat_thr,exptime=exptime)#,multiply_by_exptime=multiply_by_exptime,multiply_by_gain=multiply_by_gain,multiply_by_PAM=multiply_by_PAM)
                                     if Nsigma>0 :#and dist>= minimum_dist:
-                                        temporary_candidate_df.loc[(Kmode,filter,mvs_ids),['counts','ecounts','Nsigma','mag','emag']]=[counts,ecounts,Nsigma,mag,emag]
+                                        temporary_candidate_df.loc[(Kmode,filter,mvs_ids),['counts','ecounts','Nsigma','mag','emag']]=[counts,ecounts,Nsigma,mag[0],emag[0]]
                                         temporary_candidate_df.loc[(Kmode,filter,mvs_ids),['sep']]=dist
                                         temporary_candidate_df.loc[(Kmode,filter,mvs_ids),['x_tile','y_tile','x_rot','y_rot','pdc','ROTA','PA_V3','flag']]=[KDATA.x_m,KDATA.y_m,Xrot,Yrot,pdc,ROTA,PA_V3,'good_candidate']
+                                        getLogger(__name__).info(f'Candidate avg_id {avg_id}, filter {filter}, kmode {Kmode}, good_candidate')
+
                                     else:
                                         temporary_candidate_df.loc[(Kmode,filter,mvs_ids),['x_tile','y_tile','x_rot','y_rot','pdc','ROTA','PA_V3','Nsigma','flag']]=[np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,'rejected']
+                                        getLogger(__name__).info(f'Candidate avg_id {avg_id}, mvs_ids {mvs_ids}, filter {filter}, kmode {Kmode}, rejected because sigma <0')
                                         plt.close()
                                 else:
                                     temporary_candidate_df.loc[(Kmode,filter,mvs_ids),['x_tile','y_tile','x_rot','y_rot','pdc','ROTA','PA_V3','Nsigma','flag']]=[np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,'rejected']
+                                    getLogger(__name__).info(f'Candidate avg_id {avg_id}, mvs_ids {mvs_ids}, filter {filter}, kmode {Kmode}, rejected because rotated coordinates puts star out of the tile')
                                     plt.close()
                             else:
                                 temporary_candidate_df.loc[(Kmode,filter,mvs_ids),['x_tile','y_tile','x_rot','y_rot','pdc','ROTA','PA_V3','Nsigma','flag']]=[np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,'rejected']
+                                getLogger(__name__).info(
+                                    f'Candidate avg_id {avg_id}, mvs_ids {mvs_ids}, filter {filter}, kmode {Kmode}, rejected because rotated coordinates puts star out of the tile')
                                 plt.close()
                         else:
                             temporary_candidate_df.loc[(Kmode,filter,mvs_ids),['x_tile','y_tile','x_rot','y_rot','pdc','ROTA','PA_V3','Nsigma','flag']]=[np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,'rejected']
+                            getLogger(__name__).info(
+                                f'Candidate avg_id {avg_id}, mvs_ids {mvs_ids}, filter {filter}, kmode {Kmode}, rejected beacuse tile is NaN')
                             plt.close()
                     else:
                         temporary_candidate_df.loc[(Kmode,filter,mvs_ids),['x_tile','y_tile','x_rot','y_rot','ROTA','pdc','PA_V3','Nsigma','flag']]=[np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,'rejected']
+                        getLogger(__name__).info(f'Candidate avg_id {avg_id}, mvs_ids {mvs_ids}, filter {filter}, kmode {Kmode}, rejected')
                         plt.close()
     Nsigma_score=[]
     Kmode_idx_list=[]
@@ -703,12 +727,12 @@ def task_mvs_candidates_infos(DF,avg_id,d,skip_filters,aptype,verbose,noBGsub,si
 
             else:
                 temporary_candidate_df.loc[Kmode]=np.nan
-                temporary_candidate_df.loc[Kmode].flag='rejected'
+                temporary_candidate_df.loc[Kmode,'flag']='rejected'
                 Nsigma_score.append(0)
                 Kmode_idx_list.append(False)
         else:
             temporary_candidate_df.loc[Kmode]=np.nan
-            temporary_candidate_df.loc[Kmode].flag='rejected'
+            temporary_candidate_df.loc[Kmode,'flag']='rejected'
             Nsigma_score.append(0)
             Kmode_idx_list.append(False)
             # filter_idx_list.append([])
@@ -722,15 +746,14 @@ def task_mvs_candidates_infos(DF,avg_id,d,skip_filters,aptype,verbose,noBGsub,si
         candidate_df=temporary_candidate_df.loc[(Kmode_final)]
         candidate_df.loc[candidate_df.flag=='rejected',['x_tile','y_tile','x_rot','y_rot','ROTA','PA_V3','Nsigma','counts','ecounts','mag','emag']]=np.nan
 
+        getLogger(__name__).debug(f'EUREKA!!!!! We have a Candidate for id {avg_id}. Kmode selected # {Kmode_final}')
         if verbose:
-            getLogger(__name__).debug('EUREKA!!!!! We have a Candidate')
-            getLogger(__name__).debug('Kmode selected # %s'%Kmode_final)
             getLogger(__name__).debug(candidate_df)
     else:
         Kmode_final=None
         candidate_df=None
-        if verbose:
-            getLogger(__name__).debug('BOOMER!!!!! No Candidate found')
+        # if verbose:
+        getLogger(__name__).debug(f'BOOMER!!!!! No Candidate found for id {avg_id}')
     # sys.exit()
     return(Kmode_final,candidate_df)
 
@@ -955,7 +978,55 @@ def update_candidates(DF, avg_ids_list=[], suffix='', d=1., skip_filters='F658N'
             except:
                 raise ValueError('Something wrong with avg_id %s, Please check' % avg_id)
 
-    getLogger(__name__).info('Pruning the mvs_candidate_df')
+    # getLogger(__name__).info('Pruning the mvs_candidate_df')
+    # mvs_bad_ids_list = []
+    # for avg_ids in DF.avg_candidates_df.avg_ids:
+    #     mvs_ids_list = DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids == avg_ids].mvs_ids.unique()
+    #
+    #     sel_mvs_ids = (DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list))
+    #     sel_flags = (('good_candidate' == DF.mvs_candidates_df[['flag_%s' % i for i in DF.filters]]).astype(
+    #         int).sum(axis=1) < 1)
+    #
+    #     mvs_bad_ids = DF.mvs_candidates_df.loc[sel_mvs_ids & sel_flags].mvs_ids.unique()
+    #     mvs_bad_ids_list.extend(mvs_bad_ids)
+    #
+    # DF.mvs_candidates_df = DF.mvs_candidates_df.loc[
+    #     ~DF.mvs_candidates_df.mvs_ids.isin(mvs_bad_ids_list)].reset_index(drop=True)
+    # getLogger(__name__).info('Finishing up the candidate dfs')
+
+    selected_avg_ids = DF.crossmatch_ids_df.loc[
+        DF.crossmatch_ids_df.mvs_ids.isin(DF.mvs_candidates_df.mvs_ids)].avg_ids.unique()
+    DF.avg_candidates_df = DF.avg_candidates_df.loc[
+        DF.avg_candidates_df.avg_ids.isin(selected_avg_ids)].reset_index(drop=True)
+    for avg_ids in DF.avg_candidates_df.avg_ids:
+        mvs_ids_list = DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids == avg_ids].mvs_ids.unique()
+        DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids == avg_ids, 'mkmode'] = np.nanmedian(
+            DF.mvs_candidates_df.loc[
+                DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list), [f'Kmode_{filter}' for filter in
+                                                                    DF.filters]].values)
+        DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids == avg_ids, 'sep'] = np.nanmean(
+            DF.mvs_candidates_df.loc[
+                DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list), [f'sep_{filter}' for filter in
+                                                                    DF.filters]].values)
+
+        for filter in DF.filters:
+            if filter not in skip_filters and not \
+            DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids == avg_ids, f'm_{filter}'].isna().values[0]:
+                DF.avg_candidates_df.loc[
+                    DF.avg_candidates_df.avg_ids == avg_ids, f'nsigma_{filter}'] = np.nanmedian(
+                    DF.mvs_candidates_df.loc[
+                        DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list), f'Nsigma_{filter}'].values)
+                try:
+                    DF.avg_candidates_df.loc[(DF.avg_candidates_df.avg_ids == avg_ids), f'magbin_{filter}'] = \
+                    DF.avg_targets_df.loc[
+                        (DF.avg_targets_df.avg_ids == avg_ids), f'm_{filter}{suffix}'].values[0].astype(int)
+                except:
+                    DF.avg_candidates_df[
+                        (DF.avg_candidates_df.avg_ids == avg_ids), f'magBin_{filter}'] = np.nan
+    return(DF)
+
+def pruning_catalogs(DF):
+    getLogger(__name__).info('Pruning the candidates df')
     mvs_bad_ids_list = []
     for avg_ids in DF.avg_candidates_df.avg_ids:
         mvs_ids_list = DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids == avg_ids].mvs_ids.unique()
@@ -969,36 +1040,7 @@ def update_candidates(DF, avg_ids_list=[], suffix='', d=1., skip_filters='F658N'
 
     DF.mvs_candidates_df = DF.mvs_candidates_df.loc[
         ~DF.mvs_candidates_df.mvs_ids.isin(mvs_bad_ids_list)].reset_index(drop=True)
-    getLogger(__name__).info('Finishing up the candidate dfs')
-    selected_avg_ids = DF.crossmatch_ids_df.loc[
-        DF.crossmatch_ids_df.mvs_ids.isin(DF.mvs_candidates_df.mvs_ids)].avg_ids.unique()
-    DF.avg_candidates_df = DF.avg_candidates_df.loc[
-        DF.avg_candidates_df.avg_ids.isin(selected_avg_ids)].reset_index(drop=True)
-    for avg_ids in DF.avg_candidates_df.avg_ids:
-        mvs_ids_list = DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids == avg_ids].mvs_ids.unique()
-        DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids == avg_ids, 'mKmode'] = np.nanmedian(
-            DF.mvs_candidates_df.loc[
-                DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list), ['%s_Kmode' % filter for filter in
-                                                                    DF.filters]].values)
-        DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids == avg_ids, 'sep'] = np.nanmean(
-            DF.mvs_candidates_df.loc[
-                DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list), ['%s_sep' % filter for filter in
-                                                                    DF.filters]].values)
-
-        for filter in DF.filters:
-            if filter not in skip_filters and not \
-            DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids == avg_ids, 'm%s' % filter[1:4]].isna().values[0]:
-                DF.avg_candidates_df.loc[
-                    DF.avg_candidates_df.avg_ids == avg_ids, 'Nsigma%s' % filter[1:4]] = np.nanmedian(
-                    DF.mvs_candidates_df.loc[
-                        DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list), '%s_Nsigma' % filter].values)
-                try:
-                    DF.avg_candidates_df.loc[(DF.avg_candidates_df.avg_ids == avg_ids), 'MagBin%s' % filter[1:4]] = \
-                    DF.avg_targets_df.loc[
-                        (DF.avg_targets_df.avg_ids == avg_ids), 'm%s%s' % (filter[1:4], suffix)].values[0].astype(int)
-                except:
-                    DF.avg_candidates_df[
-                        (DF.avg_candidates_df.avg_ids == avg_ids), 'MagBin%s' % filter[1:4]] = np.nan
+    getLogger(__name__).info('Candidates df pruned.')
     return(DF)
 
 def update_candidates_with_detection(DF,candidate_df,Kmode_final,verbose):
@@ -1008,24 +1050,24 @@ def update_candidates_with_detection(DF,candidate_df,Kmode_final,verbose):
                 # display(candidate_df.loc[candidate_df.index.get_level_values('mvs_ids')==mvs_ids])
                 try:
                     # display(candidate_df.loc[candidate_df.index.get_level_values('mvs_ids')==mvs_ids].loc[(filter)])
-                    DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,'x%s_tile'%filter]=candidate_df.loc[candidate_df.index.get_level_values('mvs_ids')==mvs_ids].loc[(filter),'x_tile'].values[0]
-                    DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,'y%s_tile'%filter]=candidate_df.loc[candidate_df.index.get_level_values('mvs_ids')==mvs_ids].loc[(filter),'y_tile'].values[0]
-                    DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,'x%s_rot'%filter]=candidate_df.loc[candidate_df.index.get_level_values('mvs_ids')==mvs_ids].loc[(filter),'x_rot'].values[0]
-                    DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,'y%s_rot'%filter]=candidate_df.loc[candidate_df.index.get_level_values('mvs_ids')==mvs_ids].loc[(filter),'y_rot'].values[0]
+                    DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,f'x_tile_{filter}']=candidate_df.loc[candidate_df.index.get_level_values('mvs_ids')==mvs_ids].loc[(filter),'x_tile'].values[0]
+                    DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,f'y_tile_{filter}']=candidate_df.loc[candidate_df.index.get_level_values('mvs_ids')==mvs_ids].loc[(filter),'y_tile'].values[0]
+                    DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,f'x_rot_{filter}']=candidate_df.loc[candidate_df.index.get_level_values('mvs_ids')==mvs_ids].loc[(filter),'x_rot'].values[0]
+                    DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,f'y_rot_{filter}']=candidate_df.loc[candidate_df.index.get_level_values('mvs_ids')==mvs_ids].loc[(filter),'y_rot'].values[0]
 
-                    DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,'counts_%s'%filter]=candidate_df.loc[candidate_df.index.get_level_values('mvs_ids')==mvs_ids].loc[(filter),'counts'].values[0]
-                    DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,'ecounts_%s'%filter]=candidate_df.loc[candidate_df.index.get_level_values('mvs_ids')==mvs_ids].loc[(filter),'ecounts'].values[0]
-                    DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,'m_%s'%filter]=candidate_df.loc[candidate_df.index.get_level_values('mvs_ids')==mvs_ids].loc[(filter),'mag'].values[0]
-                    DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,'e_%s'%filter]=candidate_df.loc[candidate_df.index.get_level_values('mvs_ids')==mvs_ids].loc[(filter),'emag'].values[0]
-                    # DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,'Nsigma%s'%filter]=candidate_df.loc[candidate_df.index.get_level_values('mvs_ids')==mvs_ids].loc[(filter),'Nsigma'].values
+                    DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,f'counts_{filter}']=candidate_df.loc[candidate_df.index.get_level_values('mvs_ids')==mvs_ids].loc[(filter),'counts'].values[0]
+                    DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,f'ecounts_{filter}']=candidate_df.loc[candidate_df.index.get_level_values('mvs_ids')==mvs_ids].loc[(filter),'ecounts'].values[0]
+                    DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,f'm_{filter}']=candidate_df.loc[candidate_df.index.get_level_values('mvs_ids')==mvs_ids].loc[(filter),'mag'].values[0]
+                    DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,f'e_{filter}']=candidate_df.loc[candidate_df.index.get_level_values('mvs_ids')==mvs_ids].loc[(filter),'emag'].values[0]
+                    # DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,'Nsigma_%s'%filter]=candidate_df.loc[candidate_df.index.get_level_values('mvs_ids')==mvs_ids].loc[(filter),'Nsigma'].values
 
                     DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,f'rota_{filter}']=candidate_df.loc[candidate_df.index.get_level_values('mvs_ids')==mvs_ids].loc[(filter),'ROTA'].values[0]
                     DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,f'pav3_{filter}']=candidate_df.loc[candidate_df.index.get_level_values('mvs_ids')==mvs_ids].loc[(filter),'PA_V3'].values[0]
                     # DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,'%s_std'%filter]=candidate_df.loc[candidate_df.index.get_level_values('mvs_ids')==mvs_ids].loc[(filter),'std'].values[0]
-                    DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,'%s_Nsigma'%filter]=candidate_df.loc[candidate_df.index.get_level_values('mvs_ids')==mvs_ids].loc[(filter),'Nsigma'].values[0]
-                    DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,'%s_Kmode'%filter]=Kmode_final
+                    DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,f'Nsigma_{filter}']=candidate_df.loc[candidate_df.index.get_level_values('mvs_ids')==mvs_ids].loc[(filter),'Nsigma'].values[0]
+                    DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,f'Kmode_{filter}']=Kmode_final
                     DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,f'flag_{filter}']=candidate_df.loc[candidate_df.index.get_level_values('mvs_ids')==mvs_ids].loc[(filter),'flag'].values[0]
-                    DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,'%s_sep'%filter]=candidate_df.loc[candidate_df.index.get_level_values('mvs_ids')==mvs_ids].loc[(filter),'sep'].values[0]
+                    DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,f'sep_{filter}']=candidate_df.loc[candidate_df.index.get_level_values('mvs_ids')==mvs_ids].loc[(filter),'sep'].values[0]
                 except:
                     display(candidate_df)
                     raise ValueError('Problematic mvs_id %i. please check'%mvs_ids)
@@ -1054,7 +1096,7 @@ def update_candidates_with_detection(DF,candidate_df,Kmode_final,verbose):
             else:m,em=[mags,emags]
             DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids.isin(candidate_df.index.get_level_values('mvs_ids').unique())].avg_ids),'m_%s'%filter]=np.round(m,3)
             DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids.isin(candidate_df.index.get_level_values('mvs_ids').unique())].avg_ids),'e_%s'%filter]=np.round(em,3)
-            DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids.isin(candidate_df.index.get_level_values('mvs_ids').unique())].avg_ids),'N%s'%filter]=len(emags)
+            DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids.isin(candidate_df.index.get_level_values('mvs_ids').unique())].avg_ids),'N_%s'%filter]=len(emags)
     if verbose:
         display(DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids.isin(candidate_df.index.get_level_values('mvs_ids').unique())].avg_ids)])
         display(DF.mvs_candidates_df.loc[(DF.mvs_candidates_df.mvs_ids.isin(candidate_df.index.get_level_values('mvs_ids').unique()))])
@@ -1063,7 +1105,7 @@ def update_candidate_dataframe(DF, avg_ids_list=[], suffix='', verbose=False, wo
                                max_mag_list=[], aptype='4pixels', no_median_tile_update=False, zfactor=10,
                                alignment_box=3, parallel_runs=True, chunksize=None, label='data',
                                kill_plots=True, delta=3, radius=3, skip_filters=[], sat_thr=np.inf, mkd=2, mad=0.2,
-                               PSF_sub_flags='good|unresolved'):
+                               PSF_sub_flags='good|unresolved',pruning=False):
     '''
     This is a wrapper for the updating of candidates dataframe and the median tile candidate dataframe
 
@@ -1133,18 +1175,20 @@ def update_candidate_dataframe(DF, avg_ids_list=[], suffix='', verbose=False, wo
                       min_mag_list=min_mag_list, max_mag_list=max_mag_list, workers=workers,
                       parallel_runs=parallel_runs, label=label, kill_plots=kill_plots,
                       delta=delta, radius=radius, skip_filters=skip_filters, sat_thr=sat_thr, mkd=mkd, mad=mad)
+
     if not no_median_tile_update:
         getLogger(__name__).info('Updating the median tiles for the candidates')
         # avg_ids_list_in=DF.avg_candidates_df.avg_ids.unique()
         update_median_candidates_tile(DF, avg_ids_list=avg_ids_list_in, workers=workers, zfactor=zfactor,
                                       alignment_box=alignment_box, parallel_runs=parallel_runs, chunksize=chunksize,
-
                                       label=label, kill_plots=kill_plots, skip_filters=skip_filters)
     return(DF)
 
 def run(packet):
     DF = packet['DF']
     dataset = packet['dataset']
+
+    if dataset.pipe_cfg.klipphotometry['redo']: make_candidates_dataframes(DF)
 
     DF=update_candidate_dataframe(DF,
                                avg_ids_list=dataset.pipe_cfg.klipphotometry['avg_ids_list'],
@@ -1166,6 +1210,7 @@ def run(packet):
                                sat_thr=dataset.pipe_cfg.klipphotometry['sat_thr'],
                                mkd=dataset.pipe_cfg.klipphotometry['mkd'],
                                mad=dataset.pipe_cfg.klipphotometry['mad'],
-                               PSF_sub_flags=dataset.pipe_cfg.klipphotometry['PSF_sub_flags'])
+                               PSF_sub_flags=dataset.pipe_cfg.klipphotometry['PSF_sub_flags'],
+                               pruning=dataset.pipe_cfg.klipphotometry['pruning'])
 
     DF.save_dataframes(__name__)

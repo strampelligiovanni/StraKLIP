@@ -22,10 +22,10 @@ def parse():
     return parser.parse_args()
 
 getLogger('straklip', setup=True, logfile=f'straklip_{datetime.now().strftime("%Y-%m-%d_%H%M")}.log',
-                   configfile=pkg.resource_filename('straklip', './config/logging.yaml'))
-
+          configfile=pkg.resource_filename('straklip', './config/logging.yaml'))
 
 if __name__ == "__main__":
+
     args = parse()
 
     pipe_cfg = config.configure_pipeline(args.pipe_cfg,pipe_cfg=args.pipe_cfg,data_cfg=args.data_cfg,dt_string=datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
@@ -54,4 +54,3 @@ if __name__ == "__main__":
                 getattr(steps, step).run({'DF': DF, 'dataset': dataset})
 
     config.closing_statement(DF,pipe_cfg,dataset)
-

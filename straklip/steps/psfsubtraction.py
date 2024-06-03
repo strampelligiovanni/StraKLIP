@@ -220,11 +220,17 @@ def run(packet):
         label='data'
         getLogger(__name__).info(f'Performing KLIP PSF subtraction on tiles.')
 
+    kmodes=dataset.pipe_cfg.psfsubtraction['kmodes']
+
+    if len(kmodes)==1 and '-' in str(kmodes[0]):
+        kmodes=np.arange(int(kmodes[0].split('-')[0]),int(kmodes[0].split('-')[1])+1)
+
+
     for filter in dataset.data_cfg.filters:
         KLIP_PSF_subtraction(DF, filter,
                              label=label,
                              mvs_ids_list=[],
-                             kmodes=dataset.pipe_cfg.psfsubtraction['kmodes'],
+                             kmodes=kmodes,
                              workers=dataset.pipe_cfg.ncpu,
                              parallel_runs=dataset.pipe_cfg.psfsubtraction['parallel_runs'],
                              skip_flags=dataset.pipe_cfg.psfsubtraction['skip_flags'],

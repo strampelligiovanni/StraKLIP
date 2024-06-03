@@ -277,32 +277,36 @@ def perform_PSF_subtraction(targ_tiles,ref_tiles,kmodes=[],no_PSF_models=False):
         if isinstance(kmodes,np.ndarray): numbasis=kmodes
         else:numbasis = np.array(kmodes)
         numbasis=numbasis[numbasis<=len(ref_stamps_flat)*5]
-    try:
-        klip_results = targ_stamps_flat.apply(lambda x: klip_math(x,
-                                                                       ref_stamps_flat,
-                                                                       numbasis = numbasis,
-                                                                       return_basis = True))
-        # subtraction results
-        residuals = klip_results.apply(lambda x: pd.Series(dict(zip(numbasis, x[0].T))))
-        residuals = residuals.applymap(make_tile_from_flat)
-        if no_PSF_models:
-            psf_models=[]
-        else:
-            # generate PSF models and store in dataframe
-            # klip basis
-            klip_basis = klip_results.apply(lambda x: pd.Series(dict(zip(numbasis, x[1]))))
-            model_gen_df = pd.merge(targ_stamps_flat, klip_basis, left_index=True, right_index=True)
-            psf_models = model_gen_df.apply(lambda x: psf_tile_from_basis(x[targ_tiles.name],
-                                                                           np.stack(x[numbasis]),
-                                                                           numbasis=numbasis),
-                                                                           axis=1)
-            psf_models = psf_models.apply(lambda x: pd.Series(dict(zip(numbasis, x))))
-            psf_models = psf_models.applymap(make_tile_from_flat)
 
-        return(residuals,psf_models)
-    except:
-        getLogger(__name__).warning(
-            f'Skipping due to a problem with the PSF subtraction. Please check')
+    if len(ref_stamps_flat) < np.nanmax(kmodes):
+        getLogger(__name__).warning(f'Limiting kmods to the maximum number of references: {len(ref_stamps_flat)}')
+        numbasis=numbasis[numbasis<=len(ref_stamps_flat)]
+    # try:
+    klip_results = targ_stamps_flat.apply(lambda x: klip_math(x,
+                                                                   ref_stamps_flat,
+                                                                   numbasis = numbasis,
+                                                                   return_basis = True))
+    # subtraction results
+    residuals = klip_results.apply(lambda x: pd.Series(dict(zip(numbasis, x[0].T))))
+    residuals = residuals.applymap(make_tile_from_flat)
+    if no_PSF_models:
+        psf_models=[]
+    else:
+        # generate PSF models and store in dataframe
+        # klip basis
+        klip_basis = klip_results.apply(lambda x: pd.Series(dict(zip(numbasis, x[1]))))
+        model_gen_df = pd.merge(targ_stamps_flat, klip_basis, left_index=True, right_index=True)
+        psf_models = model_gen_df.apply(lambda x: psf_tile_from_basis(x[targ_tiles.name],
+                                                                       np.stack(x[numbasis]),
+                                                                       numbasis=numbasis),
+                                                                       axis=1)
+        psf_models = psf_models.apply(lambda x: pd.Series(dict(zip(numbasis, x))))
+        psf_models = psf_models.applymap(make_tile_from_flat)
+
+    return(residuals,psf_models)
+    # except:
+    #     getLogger(__name__).warning(
+    #         f'Skipping due to a problem with the PSF subtraction. Please check')
 
 def psf_tile_from_basis(target, kl_basis, numbasis=None):
     """

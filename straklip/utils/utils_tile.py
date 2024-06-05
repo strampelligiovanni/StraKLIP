@@ -272,20 +272,28 @@ def perform_PSF_subtraction(targ_tiles,ref_tiles,kmodes=[],no_PSF_models=False):
     ref_stamps_flat = flatten_tile_axes(np.stack(ref_tiles))
 
     # apply KLIP
-    if len(kmodes) ==0: numbasis = np.arange(1, len(ref_stamps_flat)-1)
-    else: 
-        if isinstance(kmodes,np.ndarray): numbasis=kmodes
-        else:numbasis = np.array(kmodes)
-        numbasis=numbasis[numbasis<=len(ref_stamps_flat)*5]
+    if len(kmodes) ==0:
+        numbasis = np.arange(1, len(ref_stamps_flat)-1)
+    else:
+        if isinstance(kmodes,np.ndarray):
+            numbasis=kmodes
+        else:
+            numbasis = np.array(kmodes)
 
-    if len(ref_stamps_flat) < np.nanmax(kmodes):
-        getLogger(__name__).warning(f'Limiting kmods to the maximum number of references: {len(ref_stamps_flat)}')
+        if len(ref_stamps_flat) < np.nanmax(kmodes):
+            getLogger(__name__).warning(f'Limiting kmods to the maximum number of references: {len(ref_stamps_flat)}')
+
         numbasis=numbasis[numbasis<=len(ref_stamps_flat)]
+
+    # if len(ref_stamps_flat) < np.nanmax(kmodes):
+    #     getLogger(__name__).warning(f'Limiting kmods to the maximum number of references: {len(ref_stamps_flat)}')
+    #     numbasis=numbasis[numbasis<=len(ref_stamps_flat)]
+
     # try:
     klip_results = targ_stamps_flat.apply(lambda x: klip_math(x,
-                                                                   ref_stamps_flat,
-                                                                   numbasis = numbasis,
-                                                                   return_basis = True))
+                                                              ref_stamps_flat,
+                                                              numbasis = numbasis,
+                                                              return_basis = True))
     # subtraction results
     residuals = klip_results.apply(lambda x: pd.Series(dict(zip(numbasis, x[0].T))))
     residuals = residuals.applymap(make_tile_from_flat)

@@ -19,29 +19,42 @@ import matplotlib.pyplot as plt
 import ipywidgets as widgets
 import tkinter as tk
 import functools
-
+import warnings
+warnings.filterwarnings('ignore', message='not allowed')
 class ShowRoom():
     def __init__(self,DF,DF_fk=None):
         self.DF=DF
         self.DF_fk=DF_fk
         self.v=None
 
+    def matchingKeys(self, dic, searchString):
+        return [[key, val] for key, val in dic.items() if searchString in val]
+
+    def matchingExactKeys(self, dic, searchString):
+        return [[key, val] for key, val in dic.items() if searchString == val]
+
     def selectors(self,avg_ids_list=[],CRKmode=False):
-        orig_column_names=[('data'),('edata'),('dqdata'),('crclean_data')]
+        orig_column_names=[('SCI'),('ERR'),('DQ'),('CRCLEANSCI')]
         KLIP_column_names=[]
         MODEL_column_names=[]
-        if CRKmode: pre='crclean_'
-        else: pre=''
+        # if CRKmode: pre='crclean_'
+        # else: pre=''
 
         for Kmode in self.DF.kmodes:
-            KLIP_column_names.append(('%sKmode%i'%(pre,Kmode)))
+            KLIP_column_names.append((Kmode))
         for Kmode in self.DF.kmodes:
-            MODEL_column_names.append(('Model %i'%(Kmode)))
-        # Kmode=np.nanmin(self.DF.kmodes)
-        self.ids_dropdown=widgets.Dropdown(
+            MODEL_column_names.append((Kmode))
+
+        self.ids_dropdown=widgets.SelectionSlider(
             options=avg_ids_list,
+            value=avg_ids_list[0],
             description='AVG IDs:',
+            disabled=False,
+            continuous_update=False,
+            orientation='horizontal',
+            readout=True,
         )
+
         self.ids_progress=widgets.IntProgress(
             description='PRG IDs:',
             min=0,
@@ -52,16 +65,36 @@ class ShowRoom():
             description='TILE:',
             # value='%sdata'%pre
         )
-        self.MODEL_column_dropdown=widgets.Dropdown(
+        # self.MODEL_column_dropdown=widgets.Dropdown(
+        #     options=MODEL_column_names,
+        #     description='TILE:',
+        #     # value='Model %i'%(Kmode)
+        # )
+        self.MODEL_column_dropdown=widgets.SelectionSlider(
             options=MODEL_column_names,
-            description='TILE:',
-            # value='Model %i'%(Kmode)
-        )        
-        self.KLIP_column_dropdown=widgets.Dropdown(
+            value=MODEL_column_names[0],
+            description='Kmode:',
+            disabled=False,
+            continuous_update=False,
+            orientation='horizontal',
+            readout=True,
+        )
+        # self.KLIP_column_dropdown=widgets.Dropdown(
+        #     options=KLIP_column_names,
+        #     description='TILE:',
+        #     # value='%sKmode%i'%(pre,Kmode)
+        # )
+
+        self.KLIP_column_dropdown=widgets.SelectionSlider(
             options=KLIP_column_names,
-            description='TILE:',
-            # value='%sKmode%i'%(pre,Kmode)
-        )        
+            value=KLIP_column_names[0],
+            description='Kmode:',
+            disabled=False,
+            continuous_update=False,
+            orientation='horizontal',
+            readout=True,
+        )
+
         self.cmap_column_dropdown=widgets.Dropdown(
             options=['magma','magma_r','plasma','plasma_r','viridis','viridis_r','Greys','Greys_r'],
             value='magma',
@@ -243,7 +276,7 @@ class ShowRoom():
         id,out_target=rs_
         if wdgt.value!='':
             self.DF.avg_targets_df.loc[self.DF.avg_targets_df.avg_ids==id,'type']=int(wdgt.value)
-            self.display_avg_df(id,out_target)
+            # self.display_avg_df(id,out_target)
 
     def upon_clicked_on_target_flag_button(self,wdgt,rs_=[]):
         id,out1a,out_target=rs_
@@ -283,7 +316,7 @@ class ShowRoom():
                 display(out1a)
 
         update_type(self.DF,id)
-        self.display_avg_df(id,out_target)
+        # self.display_avg_df(id,out_target)
         self.display_mvs_flags(self.DF.crossmatch_ids_df.loc[self.DF.crossmatch_ids_df.avg_ids==id].mvs_ids.values,out1a)
 
     def upon_clicked_on_candidate_flag_button(self,wdgt,rs_=[]):
@@ -300,7 +333,7 @@ class ShowRoom():
             self.DF.avg_candidates_df=self.DF.avg_candidates_df.loc[~(self.DF.avg_candidates_df.avg_ids==id)].reset_index(drop=True)
         update_median_candidates_tile(self.DF,avg_ids_list=[id],parallel_runs=False,label=label,kill_plots=True)
 
-        self.display_avg_df(id,out_candidate,candidate=True)
+        # self.display_avg_df(id,out_candidate,candidate=True)
         self.display_mvs_flags(self.DF.crossmatch_ids_df.loc[self.DF.crossmatch_ids_df.avg_ids==id].mvs_ids.values,out1c,candidate=True)
         # with out1c:
         #     print('%s candidate inputs deleted'%id)
@@ -325,15 +358,23 @@ class ShowRoom():
 
     def display_mvs_flags(self,mvs_ids_list,out,candidate=False):
         with out:
-            print('Target flags:')
-            display(self.DF.mvs_targets_df.loc[self.DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list),['mvs_ids']+[f'flag_{filter}' for filter in self.DF.filters]])
-            if candidate: 
-                print('Candidate flags:')
-                display(self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list),['mvs_ids']+[f'flag_{filter}' for filter in self.DF.filters]])
+            if candidate:
+                display(self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list),['mvs_ids']+[f'flag_{filter}' for filter in self.DF.filters]+[f'kmode_{filter}' for filter in self.DF.filters]+[f'nsigma_{filter}' for filter in self.DF.filters]+[f'sep_{filter}' for filter in self.DF.filters]])
+            else:
+                display(self.DF.mvs_targets_df.loc[
+                            self.DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list), ['mvs_ids'] + [f'flag_{filter}' for
+                                                                                              filter in
+                                                                                              self.DF.filters]])
             out.clear_output(wait=True)
-        display(out)
-        del out
-        
+        return(out)
+
+    # def display_mvs_kmode(self,mvs_ids_list,out):
+    #     with out:
+    #         print('Candidate kmode:')
+    #         display(self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list),['mvs_ids']+[f'kmode_{filter}' for filter in self.DF.filters]])
+    #         out.clear_output(wait=True)
+    #     return(out)
+
     def display_text_boxes(self,candidate=False):
         if candidate:
             clear_output(wait=True)
@@ -344,7 +385,7 @@ class ShowRoom():
             clear_output(wait=True)
             box1=widgets.HBox([self.good_sample_button,self.psf_sample_button,self.unresolved_sample_button,self.known_sample_buttone,self.bad_sample_button])
             box2=widgets.VBox([self.change_flag_mvs_ids,self.change_flag_filters,self.change_type])
-        display(box1,box2)
+        return(box1,box2)
 
     def target_buttons_and_text_area(self,id,out_target,out1a):
         self.change_flag_mvs_ids.on_submit(functools.partial(self.upon_submitted_mvs_ids_text,rs_=[id,out1a]))
@@ -365,23 +406,29 @@ class ShowRoom():
         self.bad_candidate_sample_button.on_click(functools.partial(self.upon_clicked_on_candidate_flag_button,rs_=[id,out1c,out_candidate]))
 
 
-    def build_targets_flags_box(self,id):
+    def build_targets_box(self,id):
         out1a = widgets.Output()
         self.display_text_boxes()
         self.target_buttons_and_text_area(id,out_target_global,out1a)
-        self.display_text_boxes()
-        self.display_mvs_flags(self.DF.crossmatch_ids_df.loc[self.DF.crossmatch_ids_df.avg_ids==id].mvs_ids.values,out1a)
+        box1,box2=self.display_text_boxes()
+        box3=self.display_mvs_flags(self.DF.crossmatch_ids_df.loc[self.DF.crossmatch_ids_df.avg_ids==id].mvs_ids.values,out1a)
+        display(widgets.HBox([widgets.VBox([box1,box2]),box3]))
 
-    def build_candidates_flags_box(self,id):
+    def build_candidates_box(self,id):
         out1c = widgets.Output()
         self.display_text_boxes(candidate=True)
         self.candidate_buttons_and_text_area(id,out_candidate_global,out1c)
-        self.display_text_boxes(candidate=True)
-        self.display_mvs_flags(self.DF.crossmatch_ids_df.loc[self.DF.crossmatch_ids_df.avg_ids==id].mvs_ids.values,out1c,candidate=True)
+        box1,box2=self.display_text_boxes(candidate=True)
+        box3=self.display_mvs_flags(self.DF.crossmatch_ids_df.loc[self.DF.crossmatch_ids_df.avg_ids==id].mvs_ids.values,out1c,candidate=True)
+        # box4=self.display_mvs_kmode(self.DF.crossmatch_ids_df.loc[self.DF.crossmatch_ids_df.avg_ids==id].mvs_ids.values,out1c)
+        display(widgets.HBox([widgets.VBox([box1,box2]),box3]))
 
-    # def load_and_plot_tiles(self,mvs_ids_list,nrows,ncols,fig1,ax1,fig2,ax2,mvs_label_dict,avg_label_dict,id=0,avg_column_name='data',mvs_column_name='data',cmap='',simplenorm='',percent=[0,100],power=1,log=1000,show_mvs=False,xy_m=True,xy_cen=False,legend=True,cbar=True):
-    def load_and_plot_tiles(self, mvs_ids_list, nrows, ncols, fig1, ax1, fig2, ax2, mvs_label_dict, avg_label_dict,
-                            id=0, avg_column_name='data', mvs_column_name='data', cmap='', simplenorm='',
+    # def load_and_plot_tiles(self, mvs_ids_list, nrows, ncols, fig1, ax1, fig2, ax2, mvs_label_dict, avg_label_dict,
+    #                         id=0, avg_column_name='data', mvs_column_name='data', cmap='', simplenorm='',
+    #                         percent=[0, 100], power=1, log=1000, show_mvs=False, xy_m=True, xy_cen=False,
+    #                         legend=True, cbar=True):
+    def load_and_plot_tiles(self, mvs_ids_list, nrows, ncols, fig1, ax1, fig2, ax2,avg_column_name,mvs_column_name,
+                            id=0, cmap='', simplenorm='',
                             percent=[0, 100], power=1, log=1000, show_mvs=False, xy_m=True, xy_cen=False,
                             legend=True, cbar=True):
         elnoy=0
@@ -389,27 +436,37 @@ class ShowRoom():
             elnox=0
             if show_mvs:
                 for mvs_ids in mvs_ids_list:
-                    if elnox==nrows-1 and legend: legend_in=True
-                    else: legend_in=False
-                    ax_in=ax1[elnoy][elnox]
-                    ax_in.grid(False)
+                    try:
+                        if elnox==nrows-1 and legend: legend_in=True
+                        else: legend_in=False
+                        ax_in=ax1[elnoy][elnox]
+                        ax_in.grid(False)
 
-                    DATA=Tile()
-                    DATA.load_tile(f'{self.DF.path2out}/mvs_tiles/{filter}/tile_ID{mvs_ids}.fits',
-                                   ext=mvs_label_dict[mvs_column_name],raise_errors=False)
-                    image=DATA.data
-                    PA_V3=self.DF.mvs_targets_df.loc[self.DF.mvs_targets_df.mvs_ids==mvs_ids,f'pav3_{filter}'].values[0]
-                    ROTA=self.DF.mvs_targets_df.loc[self.DF.mvs_targets_df.mvs_ids==mvs_ids,f'rota_{filter}'].values[0]
-                    if not np.isnan(image).all():
-                        load_image(image,filter,fig=fig1,ax=ax_in,cmap=cmap,title='%s ID %i PAV3 %.2f ROTA %.2f'%(filter,mvs_ids,PA_V3,ROTA),tile_base=self.DF.tilebase,simplenorm=simplenorm,min_percent=percent[0],max_percent=percent[1],power=power,log=log,xy_m=xy_m,xy_cen=xy_cen,legend=legend_in,cbar=cbar,showplot=False)
-                        try:
-                            x=self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids==mvs_ids,f'x_tile_{filter}'].values[0]
-                            y=self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids==mvs_ids,f'y_tile_{filter}'].values[0]
-                            ax_in.plot(x,y,'ok',ms=3)
-                        except:pass
-                    else:
+                        DATA=Tile()
+                        # DATA.load_tile(f'{self.DF.path2out}/mvs_tiles/{filter}/tile_ID{mvs_ids}.fits',
+                        #                ext=mvs_label_dict[mvs_column_name],raise_errors=False)
+                        Datacube=DATA.load_tile(f'{self.DF.path2out}/mvs_tiles/{filter}/tile_ID{mvs_ids}.fits',
+                                       raise_errors=False,return_Datacube=True)
+
+                        mvs_label_dict={Datacube[i].name:i for i in range(len(Datacube))}
+                        # print(Datacube.info())
+                        # print(mvs_label_dict, mvs_column_name)
+                        # print(mvs_label_dict[mvs_column_name])
+
+                        image=Datacube[mvs_label_dict[mvs_column_name]].data
+                        PA_V3=self.DF.mvs_targets_df.loc[self.DF.mvs_targets_df.mvs_ids==mvs_ids,f'pav3_{filter}'].values[0]
+                        ROTA=self.DF.mvs_targets_df.loc[self.DF.mvs_targets_df.mvs_ids==mvs_ids,f'rota_{filter}'].values[0]
+                        if not np.isnan(image).all():
+                            load_image(image,filter,fig=fig1,ax=ax_in,cmap=cmap,title='%s ID %i PAV3 %.2f ROTA %.2f'%(filter,mvs_ids,PA_V3,ROTA),tile_base=self.DF.tilebase,simplenorm=simplenorm,min_percent=percent[0],max_percent=percent[1],power=power,log=log,xy_m=xy_m,xy_cen=xy_cen,legend=legend_in,cbar=cbar,showplot=False)
+                            try:
+                                x=self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids==mvs_ids,f'x_tile_{filter}'].values[0]
+                                y=self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids==mvs_ids,f'y_tile_{filter}'].values[0]
+                                ax_in.plot(x,y,'ok',ms=3)
+                            except:pass
+                        else:
+                            ax_in.axis('off')
+                    except:
                         ax_in.axis('off')
-
                     elnox+=1
 
             if elnoy==ncols-1 and legend: legend_in=True
@@ -418,11 +475,18 @@ class ShowRoom():
                 ax_in=ax2[elnoy]
                 ax_in.grid(False)
                 try:
-                    # if np.any(self.DF.mvs_targets_df.loc[self.DF.mvs_targets_df.mvs_ids.isin(self.DF.crossmatch_ids_df.loc[self.DF.crossmatch_ids_df.avg_ids==id].mvs_ids),f'flag_{filter}'].values!='rejected'):
                     DATA=Tile()
-                    DATA.load_tile(f'{self.DF.path2out}/median_tiles/{filter}/tile_ID{id}.fits',
-                                   ext=avg_label_dict[avg_column_name], raise_errors=False)
-                    image=DATA.data
+                    # DATA.load_tile(f'{self.DF.path2out}/median_tiles/{filter}/tile_ID{id}.fits',
+                    #                ext=avg_label_dict[avg_column_name], raise_errors=False)
+                    Datacube=DATA.load_tile(f'{self.DF.path2out}/median_tiles/{filter}/tile_ID{id}.fits',
+                                    raise_errors=False,return_Datacube=True)
+
+                    avg_label_dict={Datacube[i].name:i for i in range(len(Datacube))}
+                    # print(avg_label_dict, avg_column_name)
+                    # print(avg_label_dict[avg_column_name])
+                    # print(Datacube.info())
+
+                    image=Datacube[avg_label_dict[avg_column_name]].data
                     load_image(image,filter,fig=fig2,ax=ax_in,cmap=cmap,title='%s'%(filter),tile_base=self.DF.tilebase,
                                simplenorm=simplenorm,min_percent=percent[0],max_percent=percent[1],power=power,log=log,
                                xy_m=xy_m,xy_cen=xy_cen,legend=legend_in,cbar=cbar,showplot=False)
@@ -440,7 +504,11 @@ class ShowRoom():
         plt.show()
         plt.close('LL')
 
-    def show_target_tiles_and_df(self,id=0,avg_column_name='data',mvs_column_name='_Kmode',cmap='',simplenorm='',percent=[0,100],power=1,log=1000,show_mvs=False,xy_m=True,xy_cen=False,legend=True,cbar=True):
+    # def show_target_tiles_and_df(self,id=0,avg_column_name='data',mvs_column_name='_Kmode',cmap='',simplenorm='',percent=[0,100],power=1,log=1000,show_mvs=False,xy_m=True,xy_cen=False,legend=True,cbar=True):
+    def show_target_tiles_and_df(self, id=0, cmap='',avg_column_name='data',mvs_column_name='_Kmode',
+                                 simplenorm='', percent=[0, 100], power=1, log=1000, show_mvs=False, xy_m=True,
+                                 xy_cen=False, legend=True, cbar=True):
+
         global mvs_ids_list_selected_global,filters_list_selected_global,out_target_global
         mvs_ids_list_selected_global=self.DF.crossmatch_ids_df.loc[self.DF.crossmatch_ids_df.avg_ids==id].mvs_ids.values
         filters_list_selected_global=self.DF.filters
@@ -452,25 +520,28 @@ class ShowRoom():
         fig2,ax2=plt.subplots(1,ncols,figsize=(7*ncols+ncols,7))
         if ncols==1: ax2=[ax2]
         box_layout = widgets.Layout(display='flex',
-                                    flex_flow='row wrap',
+                                    # flex_flow='row wrap',
                                     width=width_global)
 
         out_target_global = widgets.Output(layout=box_layout)
         self.change_type.on_submit(functools.partial(self.upon_submitted_type_text,rs_=[id,out_target_global]))
-        self.display_avg_df(id,out_target_global)        
-        
+
         if show_mvs: 
-            out2 = widgets.Output(layout=box_layout)
-            self.display_mvs_df(mvs_ids_list_selected_global,out2)
             fig1,ax1=plt.subplots(ncols,nrows,figsize=(7*nrows+nrows,7*ncols),squeeze=False)
         else: fig1,ax1=[None,None]
-        self.load_and_plot_tiles(mvs_ids_list_selected_global,nrows,ncols,fig1,ax1,fig2,ax2,mvs_label_dict_global,avg_label_dict_global,id=id,avg_column_name=avg_column_name,mvs_column_name=mvs_column_name,cmap=cmap,simplenorm=simplenorm,percent=percent,power=power,log=log,show_mvs=show_mvs,xy_m=xy_m,xy_cen=xy_cen,legend=legend,cbar=cbar)
+        # self.load_and_plot_tiles(mvs_ids_list_selected_global,nrows,ncols,fig1,ax1,fig2,ax2,mvs_label_dict_global,avg_label_dict_global,id=id,avg_column_name=avg_column_name,mvs_column_name=mvs_column_name,cmap=cmap,simplenorm=simplenorm,percent=percent,power=power,log=log,show_mvs=show_mvs,xy_m=xy_m,xy_cen=xy_cen,legend=legend,cbar=cbar)
+        self.load_and_plot_tiles(mvs_ids_list_selected_global,nrows,ncols,fig1,ax1,fig2,ax2,avg_column_name,mvs_column_name,id=id,cmap=cmap,simplenorm=simplenorm,percent=percent,power=power,log=log,show_mvs=show_mvs,xy_m=xy_m,xy_cen=xy_cen,legend=legend,cbar=cbar)
 
-    def show_model_tiles_and_df(self,id=0,avg_column_name='data',mvs_column_name='_Kmode',cmap='',simplenorm='',percent=[0,100],power=1,log=1000,show_mvs=False,show_FP=False,xy_m=True,xy_cen=False,legend=True,cbar=True):
+    # def show_model_tiles_and_df(self,id=0,avg_column_name='data',mvs_column_name='_Kmode',cmap='',simplenorm='',percent=[0,100],power=1,log=1000,show_mvs=False,show_FP=False,xy_m=True,xy_cen=False,legend=True,cbar=True):
+    def show_model_tiles_and_df(self, id=0, cmap='',avg_column_name='data',mvs_column_name='_Kmode',
+                                simplenorm='', percent=[0, 100], power=1, log=1000, show_mvs=False, show_FP=False,
+                                xy_m=True, xy_cen=False, legend=True, cbar=True):
+
         global mvs_ids_list_selected_global,filters_list_selected_global,out_model_global
+        mvs_column_name=f'MODEL{mvs_column_name}'
+
         mvs_ids_list_selected_global=self.DF.crossmatch_ids_df.loc[self.DF.crossmatch_ids_df.avg_ids==id].mvs_ids.values
         filters_list_selected_global=self.DF.filters
-        # mvs_ids_list=self.DF.crossmatch_ids_df.loc[self.DF.crossmatch_ids_df.avg_ids==id].mvs_ids.values
 
         nrows=len(mvs_ids_list_selected_global)
         ncols=len(self.DF.filters)
@@ -478,24 +549,31 @@ class ShowRoom():
         if ncols==1: ax2=[ax2]
 
         box_layout = widgets.Layout(display='flex',
-                                    flex_flow='row wrap',
+                                    # flex_flow='row wrap',
                                     width=width_global)
         out_model_global = widgets.Output(layout=box_layout)
         
-        self.display_avg_df(id,out_model_global)        
-        if show_mvs: 
-            out2 = widgets.Output(layout=box_layout)
-            self.display_mvs_df(mvs_ids_list_selected_global,out2)
+        if show_mvs:
             fig1,ax1=plt.subplots(ncols,nrows,figsize=(7*nrows+nrows,7*ncols),squeeze=False)
         else: fig1,ax1=[None,None]
         plt.close(fig2)
         fig2,ax2=[None,None]
-        self.load_and_plot_tiles(mvs_ids_list_selected_global,nrows,ncols,fig1,ax1,fig2,ax2,model_mvs_label_dict_global,avg_label_dict_global,id=id,avg_column_name=avg_column_name,mvs_column_name=mvs_column_name,cmap=cmap,simplenorm=simplenorm,percent=percent,power=power,log=log,show_mvs=show_mvs,xy_m=xy_m,xy_cen=xy_cen,legend=legend,cbar=cbar)
-       
+        # self.load_and_plot_tiles(mvs_ids_list_selected_global,nrows,ncols,fig1,ax1,fig2,ax2,model_mvs_label_dict_global,avg_label_dict_global,id=id,avg_column_name=avg_column_name,mvs_column_name=mvs_column_name,cmap=cmap,simplenorm=simplenorm,percent=percent,power=power,log=log,show_mvs=show_mvs,xy_m=xy_m,xy_cen=xy_cen,legend=legend,cbar=cbar)
+        self.load_and_plot_tiles(mvs_ids_list_selected_global,nrows,ncols,fig1,ax1,fig2,ax2,avg_column_name,mvs_column_name,id=id,cmap=cmap,simplenorm=simplenorm,percent=percent,power=power,log=log,show_mvs=show_mvs,xy_m=xy_m,xy_cen=xy_cen,legend=legend,cbar=cbar)
 
-    def show_candidate_tiles_and_df(self,id=0,avg_column_name='data',mvs_column_name='_Kmode',cmap='',simplenorm='',percent=[0,100],power=1,log=1000,show_mvs=False,show_FP=False,xy_m=True,xy_cen=False,legend=True,cbar=True):
-        global out_candidate_global
-        global mvs_ids_list_selected_global,filters_list_selected_global,out_candidate_global
+
+    # def show_candidate_tiles_and_df(self,id=0,avg_column_name='data',mvs_column_name='_Kmode',cmap='',simplenorm='',percent=[0,100],power=1,log=1000,show_mvs=False,show_FP=False,xy_m=True,xy_cen=False,legend=True,cbar=True):
+    def show_candidate_tiles_and_df(self, id=0, cmap='',avg_column_name='data',mvs_column_name='_Kmode',
+                                    simplenorm='', percent=[0, 100], power=1, log=1000, show_mvs=False,
+                                    show_FP=False, xy_m=True, xy_cen=False, legend=True, cbar=True):
+
+        global out_candidate_global,mvs_ids_list_selected_global,filters_list_selected_global,out_candidate_global
+        if CRKmode_global:
+            avg_column_name=f'CRCLEAN_KMODE{avg_column_name}'
+        else:
+            avg_column_name=f'KMODE{avg_column_name}'
+
+
         mvs_ids_list_selected_global=self.DF.crossmatch_ids_df.loc[self.DF.crossmatch_ids_df.avg_ids==id].mvs_ids.values
         filters_list_selected_global=self.DF.filters
         nrows=len(mvs_ids_list_selected_global)
@@ -504,54 +582,59 @@ class ShowRoom():
         if ncols==1: ax2=[ax2]
 
         box_layout = widgets.Layout(display='flex',
-                                    flex_flow='row wrap',
+                                    # flex_flow='row wrap',
                                     width=width_global)
         out_candidate_global = widgets.Output(layout=box_layout)
-        self.display_avg_df(id,out_candidate_global,candidate=True)        
+        # self.display_avg_df(id,out_candidate_global,candidate=True)
         if show_mvs: 
-            out2 = widgets.Output(layout=box_layout)
-            self.display_mvs_df(mvs_ids_list_selected_global,out2,candidate=True)
+            # out2 = widgets.Output(layout=box_layout)
+            # self.display_mvs_df(mvs_ids_list_selected_global,out2,candidate=True)
             fig1,ax1=plt.subplots(ncols,nrows,figsize=(5*nrows+nrows,5*ncols),squeeze=False)
         else: fig1,ax1=[None,None]
-        self.load_and_plot_tiles(mvs_ids_list_selected_global,nrows,ncols,fig1,ax1,fig2,ax2,klip_mvs_label_dict_global,klip_avg_label_dict_global,id=id,avg_column_name=avg_column_name,mvs_column_name=mvs_column_name,cmap=cmap,simplenorm=simplenorm,percent=percent,power=power,log=log,show_mvs=show_mvs,xy_m=xy_m,xy_cen=xy_cen,legend=legend,cbar=cbar)
-        
+
+        if CRKmode_global:
+            mvs_column_name = f'CRCLEAN_KMODE{mvs_column_name}'
+        else:
+            mvs_column_name = f'KMODE{mvs_column_name}'
+
+        # self.load_and_plot_tiles(mvs_ids_list_selected_global,nrows,ncols,fig1,ax1,fig2,ax2,klip_mvs_label_dict_global,klip_avg_label_dict_global,id=id,avg_column_name=avg_column_name,mvs_column_name=mvs_column_name,cmap=cmap,simplenorm=simplenorm,percent=percent,power=power,log=log,show_mvs=show_mvs,xy_m=xy_m,xy_cen=xy_cen,legend=legend,cbar=cbar)
+        self.load_and_plot_tiles(mvs_ids_list_selected_global,nrows,ncols,fig1,ax1,fig2,ax2,avg_column_name,mvs_column_name,id=id,cmap=cmap,simplenorm=simplenorm,percent=percent,power=power,log=log,show_mvs=show_mvs,xy_m=xy_m,xy_cen=xy_cen,legend=legend,cbar=cbar)
+
         if id in self.DF.avg_candidates_df.avg_ids.unique() and show_FP and not self.DF.fk_completeness_df.empty:
             for filter in self.DF.filters:
                 FP_analysis(self.DF,id,filter,0.5,showplot=True,nbins=30)
 
-    def showroom(self,avg_ids_list=[],type=None,CRKmode=False,companion=False,flags=None,widht_range=0.95):
-        global CRKmode_global,width_global,avg_label_dict_global,mvs_label_dict_global,klip_avg_label_dict_global,klip_mvs_label_dict_global,model_mvs_label_dict_global
+    def showroom(self,avg_ids_list=[],type=None,CRKmode=False,companion=False,flags=None,widht_range=1,w=None,h=None):
+        global CRKmode_global,width_global#,avg_label_dict_global,mvs_label_dict_global,klip_avg_label_dict_global,klip_mvs_label_dict_global,model_mvs_label_dict_global
         CRKmode_global=CRKmode
-        mvs_label_dict_global={'data':1,'edata':2,'dqdata':3,'crclean_data':4}
-        avg_label_dict_global={'data':1,'crclean_data':2}
-        if CRKmode: 
-            # ii=5
-            # klip_avg_label_dict_global={'crclean_Kmode':3}
-            klip_avg_label_dict_global={'crclean_Kmode%s' % self.DF.kmodes[i]: i + 3 for i in range(len(self.DF.kmodes))}
-            klip_mvs_label_dict_global={'crclean_Kmode%s'%self.DF.kmodes[i]:i+5 for i in range(len(self.DF.kmodes))}
-            # candidates_columns_dropdown=widgets.Dropdown(options=['crclean_Kmode'])
-            model_mvs_label_dict_global={'Model %s'%self.DF.kmodes[i]:i+5+len(self.DF.kmodes) for i in range(len(self.DF.kmodes))}
-        else: 
-            # ii=4
-            # klip_avg_label_dict_global={'Kmode':2}
-            klip_avg_label_dict_global={'Kmode%s'%self.DF.kmodes[i]:i+2 for i in range(len(self.DF.kmodes))}
-            klip_mvs_label_dict_global={'Kmode%s'%self.DF.kmodes[i]:i+4 for i in range(len(self.DF.kmodes))}
-            # candidates_columns_dropdown=widgets.Dropdown(options=['Kmode'])
-            model_mvs_label_dict_global={'Model %s'%self.DF.kmodes[i]:i+4+len(self.DF.kmodes) for i in range(len(self.DF.kmodes))}
+        # mvs_label_dict_global={'data':1,'edata':2,'dqdata':3,'crclean_data':4}
+        # avg_label_dict_global={'data':1,'crclean_data':2}
+        # if CRKmode:
+        #     klip_avg_label_dict_global={'crclean_Kmode%s' % self.DF.kmodes[i]: i + 3 for i in range(len(self.DF.kmodes))}
+        #     klip_mvs_label_dict_global={'crclean_Kmode%s'%self.DF.kmodes[i]:i+5 for i in range(len(self.DF.kmodes))}
+        #     model_mvs_label_dict_global={'Model %s'%self.DF.kmodes[i]:i+5+len(self.DF.kmodes) for i in range(len(self.DF.kmodes))}
+        # else:
+        #     klip_avg_label_dict_global={'Kmode%s'%self.DF.kmodes[i]:i+2 for i in range(len(self.DF.kmodes))}
+        #     klip_mvs_label_dict_global={'Kmode%s'%self.DF.kmodes[i]:i+4 for i in range(len(self.DF.kmodes))}
+        #     model_mvs_label_dict_global={'Model %s'%self.DF.kmodes[i]:i+4+len(self.DF.kmodes) for i in range(len(self.DF.kmodes))}
 
         self.new_id=self.DF.crossmatch_ids_df.avg_ids.unique()[0]
         root = tk.Tk()
         current_screen = get_monitor_from_coord(root.winfo_x(), root.winfo_y())
-        w,h=[current_screen.width, current_screen.height]
-        width_global='%spx'%(float(w)*widht_range)
-        height='%spx'%(float(h)/4)
+        if w is not None and h is not None:
+            print(f'selected screen w,h: {w,h}')
+        else:
+            w,h=[current_screen.width, current_screen.height]
+            print(f'current screen w,h: {w,h}')
+        width_global='%spx'%(float(w))
+        height='%spx'%(float(h))
         if len(avg_ids_list)==0: 
             if companion:
                 avg_ids_list=self.DF.crossmatch_ids_df.loc[self.DF.crossmatch_ids_df.mvs_ids.isin(self.DF.mvs_candidates_df.mvs_ids.unique())].avg_ids.unique()
             elif type!=None:# and flag == None:
                 avg_ids_list=self.DF.avg_targets_df.loc[self.DF.avg_targets_df.type==type].avg_ids.unique()
             elif flags!=None:# and flag == None:
-                mvs_ids_list=self.DF.mvs_targets_df.loc[self.DF.mvs_targets_df[['%s_flag'%(filter) for filter in self.DF.filters]].apply(lambda x: x.str.contains(flags,case=False)).any(axis=1)].mvs_ids.unique()
+                mvs_ids_list=self.DF.mvs_targets_df.loc[self.DF.mvs_targets_df[[f'flag_{filter}' for filter in self.DF.filters]].apply(lambda x: x.str.contains(flags,case=False)).any(axis=1)].mvs_ids.unique()
                 avg_ids_list=self.DF.crossmatch_ids_df.loc[self.DF.crossmatch_ids_df.mvs_ids.isin(mvs_ids_list)].avg_ids.unique()
             else: avg_ids_list=self.DF.crossmatch_ids_df.avg_ids.unique()
         avg_ids_list=np.sort(avg_ids_list)
@@ -560,14 +643,14 @@ class ShowRoom():
 
         widgets.link((self.ids_dropdown, 'value'), (self.ids_progress, 'value'))
         Target = widgets.interactive_output(self.show_target_tiles_and_df,{'id':self.ids_dropdown,'avg_column_name':self.orig_column_dropdown,'mvs_column_name':self.orig_column_dropdown,'cmap':self.cmap_column_dropdown,'simplenorm':self.simplenorm_column_dropdown,'power':self.power_textbox,'log':self.log_textbox,'percent':self.crange_slider,'show_mvs':self.show_mvs_check,'xy_m':self.xy_m_check,'xy_cen':self.xy_cen_check,'legend':self.legend_check,'cbar':self.cbar_check})
-        TFlags = widgets.interactive_output(self.build_targets_flags_box,{'id':self.ids_dropdown})
+        TFlags = widgets.interactive_output(self.build_targets_box,{'id':self.ids_dropdown})
 
-        if hasattr(self.DF,'avg_candidates_df'): 
+        if hasattr(self.DF,'avg_candidates_df'):
             Model = widgets.interactive_output(self.show_model_tiles_and_df,{'id':self.ids_dropdown,'avg_column_name':self.orig_column_dropdown,'mvs_column_name':self.MODEL_column_dropdown,'cmap':self.cmap_column_dropdown,'simplenorm':self.simplenorm_column_dropdown,'power':self.power_textbox,'log':self.log_textbox,'percent':self.crange_slider,'show_mvs':self.show_mvs_check,'show_FP':self.show_FP_check,'xy_m':self.xy_m_check,'xy_cen':self.xy_cen_check,'legend':self.legend_check,'cbar':self.cbar_check})
-            # MFlags = widgets.interactive_output(self.build_models_flags_box,{'id':self.ids_dropdown})
             Candidate = widgets.interactive_output(self.show_candidate_tiles_and_df,{'id':self.ids_dropdown,'avg_column_name':self.KLIP_column_dropdown,'mvs_column_name':self.KLIP_column_dropdown,'cmap':self.cmap_column_dropdown,'simplenorm':self.simplenorm_column_dropdown,'power':self.power_textbox,'log':self.log_textbox,'percent':self.crange_slider,'show_mvs':self.show_mvs_check,'show_FP':self.show_FP_check,'xy_m':self.xy_m_check,'xy_cen':self.xy_cen_check,'legend':self.legend_check,'cbar':self.cbar_check})
-            CFlags = widgets.interactive_output(self.build_candidates_flags_box,{'id':self.ids_dropdown})
-        else: CFlags= widgets.Output()
+            CFlags = widgets.interactive_output(self.build_candidates_box,{'id':self.ids_dropdown})
+        else:
+            CFlags= widgets.Output()
 
         box_layout = widgets.Layout(display='flex',
                                     # flex_flow='row wrap',
@@ -584,7 +667,7 @@ class ShowRoom():
         box2=widgets.VBox([self.cmap_column_dropdown,self.simplenorm_column_dropdown,self.power_textbox,self.log_textbox,self.crange_slider])
         
         target_hbox=widgets.HBox([target_box,box2,TFlags],layout=box_layout2)
-        model_hbox=widgets.HBox([model_box,box2],layout=box_layout2)
+        model_hbox=widgets.HBox([model_box,box2,CFlags],layout=box_layout2)
         companion_hbox=widgets.HBox([companion_box,box2,CFlags],layout=box_layout2)
 
         #create tabs
@@ -594,10 +677,11 @@ class ShowRoom():
         tab_nest.set_title(2, 'Candidate')
         
         VBox1=widgets.VBox([box1,target_hbox,Target],layout=box_layout)
-        if hasattr(self.DF,'avg_candidates_df'): 
+        if hasattr(self.DF,'avg_candidates_df'):
             VBox2=widgets.VBox([box1,model_hbox,Model],layout=box_layout)
             VBox3=widgets.VBox([box1,companion_hbox,Candidate],layout=box_layout)
             tab_nest.children=[VBox1,VBox2,VBox3]
-        else:tab_nest.children=[VBox1]
+        else:
+            tab_nest.children=[VBox1]
         display(tab_nest)
 

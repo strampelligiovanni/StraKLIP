@@ -195,16 +195,32 @@ def perform_KLIP_PSF_subtraction_on_tiles(DF,filter,label,workers=None,parallel_
             task_perform_KLIP_PSF_subtraction_on_tiles(DF,filter,cell,mvs_ids_list,label_dict,hdul_dict,KLIP_label_dict,skip_flags,label,kmodes,overwrite)
 
 
-def KLIP_PSF_subtraction(DF, filter, label, mvs_ids_list=[], kmodes=[], workers=None, parallel_runs=True,
-                         skip_flags=['rejected', 'known_double'],overwrite=False, chunksize=None):
+def KLIP_PSF_subtraction(DF, filter, label, avg_ids_list=[], kmodes=[], workers=None, parallel_runs=True,
+                         skip_flags=['rejected', 'known_double'],PSF_sub_flags='good|unresolved',overwrite=False, chunksize=None):
     '''
     This is a wrapper for KLIP PSF subtraction step
 
     '''
+
+    if len(kmodes)==1 and '-' in str(kmodes[0]):
+        kmodes=np.arange(int(kmodes[0].split('-')[0]),int(kmodes[0].split('-')[1])+1)
+
+    if len(avg_ids_list) == 0:
+        mvs_ids_list = DF.mvs_targets_df.loc[(
+            DF.mvs_targets_df[['flag_%s' % (filter) for filter in DF.filters]].apply(
+                lambda x: x.str.contains(PSF_sub_flags, case=False)).any(axis=1))].mvs_ids.unique()
+        avg_ids_list_in = DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids.isin(mvs_ids_list)].avg_ids.unique()
+    else:
+        avg_ids_list_in = []
+        for avg_id in avg_ids_list:
+            if avg_id in DF.avg_candidates_df.avg_ids.unique():
+                avg_ids_list_in.append(avg_id)
+
+
     perform_KLIP_PSF_subtraction_on_tiles(DF, filter, label,
                                           workers=workers,
                                           parallel_runs=parallel_runs,
-                                          mvs_ids_list=mvs_ids_list,
+                                          mvs_ids_list=DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids.isin(avg_ids_list_in)].mvs_ids.unique(),
                                           kmodes=kmodes,
                                           skip_flags=skip_flags,
                                           chunksize=chunksize,
@@ -220,19 +236,14 @@ def run(packet):
         label='data'
         getLogger(__name__).info(f'Performing KLIP PSF subtraction on tiles.')
 
-    kmodes=dataset.pipe_cfg.psfsubtraction['kmodes']
-
-    if len(kmodes)==1 and '-' in str(kmodes[0]):
-        kmodes=np.arange(int(kmodes[0].split('-')[0]),int(kmodes[0].split('-')[1])+1)
-
-
     for filter in dataset.data_cfg.filters:
         KLIP_PSF_subtraction(DF, filter,
                              label=label,
-                             mvs_ids_list=[],
-                             kmodes=kmodes,
+                             avg_ids_list=dataset.pipe_cfg.psfsubtraction['avg_ids_list'],
+                             kmodes=dataset.pipe_cfg.psfsubtraction['kmodes'],
                              workers=dataset.pipe_cfg.ncpu,
                              parallel_runs=dataset.pipe_cfg.psfsubtraction['parallel_runs'],
+                             PSF_sub_flags=dataset.pipe_cfg.psfsubtraction['PSF_sub_flags'],
                              skip_flags=dataset.pipe_cfg.psfsubtraction['skip_flags'],
-                             overwrite=dataset.pipe_cfg.psfsubtraction['overwrite'])
+                             overwrite=dataset.pipe_cfg.psfsubtraction['redo'])
     DF.save_dataframes(__name__)

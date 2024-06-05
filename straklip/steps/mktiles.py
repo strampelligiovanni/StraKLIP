@@ -219,7 +219,7 @@ def task_mvs_tiles(DF,fitsname,ids_list,filter,use_xy_SN,use_xy_m,use_xy_cen,xy_
                     if cr_remove or la_cr_remove:
                         CRDATA=Tile(data=SCI,x=x,y=y,tile_base=DF.tilebase,delta=delta,dqdata=DQDATA.data,inst=DF.inst,Python_origin=Python_origin)
                         CRDATA.mk_tile(pad_data=True,legend=legend,showplot=verbose,verbose=verbose,title=f'shiftedCRcleanSCI {id}',kill_plots=not verbose,cr_remove=cr_remove, la_cr_remove=la_cr_remove,cr_radius=cr_radius,cbar=True)
-                        Datacube=CRDATA.append_tile(path2tile,Datacube=Datacube,verbose=False,name='CRcelanSCI',return_Datacube=False)
+                        Datacube=CRDATA.append_tile(path2tile,Datacube=Datacube,verbose=False,name='CRcleanSCI',return_Datacube=False)
                     # return([id,x,y])
                     out.append([id,x,y])
                 else:

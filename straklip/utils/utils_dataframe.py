@@ -226,6 +226,7 @@ def fk_writing(DF,filter,out,df_label,labels):
     sel4=(getattr(DF,df_label).index.get_level_values('fk_ids').isin(out[:,3]))
     for elno in range(len(labels)):
         getattr(DF,df_label).loc[(sel0&sel1&sel2&sel3&sel4),[labels[elno]]]=out[:,elno+4]
+    return(DF)
 
 
 

@@ -528,13 +528,19 @@ def mk_fakes_df(DF,MagBin_list,Dmag_list,Sep_range,Nstar,filters=None,skip_filte
     if len(Sep_range)==1: seps_levels=[i for i in range(Sep_range[0],Sep_range[0]+1)]
     else:seps_levels=[i for i in range(Sep_range[0],Sep_range[1]+1)]
     nstar_levels=[i for i in range(Nstar)]
-    for Kmode in  ['_Kmode%i'%i for i in DF.Kmodes_list]:
+    for Kmode in [f'_kmode{i}' for i in DF.kmodes]:
         counts_KLIP_list.extend(['counts%s'%(Kmode)])
         noise_KLIP_list.extend(['noise%s'%Kmode])
-        Nsigma_KLIP_list.extend(['Nsigma%s'%Kmode])
+        Nsigma_KLIP_list.extend(['nsigma%s'%Kmode])
         mag_KLIP_list.extend(['m%s'%(Kmode)])
 
-    if filters==None:filters=DF.filters
+    # if filters==None:filters=DF.filters
+
+    if len(MagBin_list)==1 and len(filters)>1:
+        MagBin_list*=len(filters)
+    if len(Dmag_list)==1 and len(filters)>1:
+        Dmag_list*=len(filters)
+
     for filter in filters:
         if filter not in skip_filters:
             if len(MagBin_list[elno])==1: magbins_levels=[i for i in range(MagBin_list[elno][0],MagBin_list[elno][0]+1)]
@@ -567,12 +573,12 @@ def mk_fk_tiles_df(DF):
     Nstar_list=DF.fk_targets_df.index.get_level_values('fk_ids').unique()
     counts_KLIP_list=[]
     for filter in DF.filters:
-        for Kmode in DF.Kmodes_list:
-            counts_KLIP_list.append('%s_Kmode%s'%(filter,Kmode))
-            counts_KLIP_list.append('%s_Kmode%s_no_injection'%(filter,Kmode))
+        for Kmode in DF.kmodes:
+            counts_KLIP_list.append(f'kmode{Kmode}_{filter}')
+            counts_KLIP_list.append(f'Kmode{Kmode}_no_injection_{filter}')
 
 
-    columns=['%s_data'%i for i in DF.filters]+['%s_data_no_injection'%i for i in DF.filters]+counts_KLIP_list
+    columns=['%s_data'%i for i in DF.filters]+[f'data_no_injection_{i}' for i in DF.filters]+counts_KLIP_list
     df_new=create_empty_df(['magbin','dmag','sep','fk_ids'],[columns],multy_index=True,levels=[MagBin_list,Dmag_list,Sep_list,Nstar_list])
     DF.fk_tiles_df=df_new
 

@@ -279,7 +279,6 @@ class Tile():
         data=self.data[int(self.delta/2):self.tile_base-int(self.delta/2),int(self.delta/2):self.tile_base-int(self.delta/2)].copy()
         Datacube.append(fits.ImageHDU(data=data,name=name))
         if verbose:
-            # print(Datacube.info())
             getLogger(__name__).debug(Datacube.info())
 
         if return_Datacube: 
@@ -292,11 +291,9 @@ class Tile():
     def load_tile(self, path2tile,hdul_max=None,ext=None,verbose=False,return_Datacube=False,mode='readonly',raise_errors=True):
         try:
             Datacube=fits.open(path2tile,memmap=False,mode=mode)
-            # print(Datacube.info())
             if hdul_max!=None:
                 for n in range(hdul_max,len(Datacube)-1):Datacube.pop(hdul_max+1)
             if verbose:
-                # print(Datacube.info())
                 getLogger(__name__).debug(Datacube.info())
 
         except:

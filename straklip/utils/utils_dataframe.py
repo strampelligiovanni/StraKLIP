@@ -631,3 +631,4 @@ def mk_fk_completeness_df(DF,nvisit_list,skip_filters=[]):
             df_list.append(df)
 
     DF.fk_completeness_df=pd.concat(df_list)
+    return(DF)

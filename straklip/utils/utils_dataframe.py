@@ -526,8 +526,13 @@ def mk_fakes_df(DF,MagBin_list,Dmag_list,Sep_range,Nstar,filters=None,skip_filte
     elno=0
     df_targets_list=[]
     df_candidates_list=[]
-    if len(Sep_range)==1: seps_levels=[i for i in range(Sep_range[0],Sep_range[0]+1)]
-    else:seps_levels=[i for i in range(Sep_range[0],Sep_range[1]+1)]
+    if isinstance(Sep_range, str):
+        seps_levels = np.arange(int(Sep_range.split('-')[0]),int(Sep_range.split('-')[1])+1,1)
+    elif isinstance(Sep_range, (list, np.ndarray)):
+        seps_levels = Sep_range
+    else:
+        seps_levels=[i for i in range(Sep_range[0],Sep_range[1]+1)]
+
     nstar_levels=[i for i in range(Nstar)]
     for Kmode in [f'_kmode{i}' for i in DF.kmodes]:
         counts_KLIP_list.extend(['counts%s'%(Kmode)])

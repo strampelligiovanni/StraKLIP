@@ -47,6 +47,10 @@ loggers:
     handlers: [ default, file ]
     level: DEBUG
     propagate: False
+  steps.fpanalysis:
+    handlers: [ default, file ]
+    level: DEBUG
+    propagate: False
   utils_dataframe:
     handlers: [ default, file ]
     level: DEBUG

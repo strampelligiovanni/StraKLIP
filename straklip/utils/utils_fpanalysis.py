@@ -1,11 +1,25 @@
-from utils_photometry import aperture_photometry_handler,KLIP_aperture_photometry_handler,photometry_AP
+from utils_photometry import aperture_photometry_handler,KLIP_aperture_photometry_handler,photometry_AP,KLIP_throughput
+from utils_plot import mvs_completeness_plots
 from photometry import Detection,flux_converter
 import pandas as pd
 from tiles import Tile
 from fake_star import Fake_Star
 from utils_tile import perform_PSF_subtraction
-from random import sample,randint,uniform
+from random import sample,randint,uniform,choice
 from ancillary import PointsInCircum,round2closerint
+from stralog import getLogger
+from itertools import repeat
+from ancillary import parallelization_package
+from utils_false_positives import FP_analysis,get_roc_curve
+import numpy as np
+from sklearn import metrics
+from astropy.io import fits
+
+def psf_scale(psfdata):
+    psfdata[psfdata<0]=0
+    # psfdata+=(1-np.sum(psfdata))/(psfdata.shape[1]*psfdata.shape[0])
+    psfdata/=np.sum(psfdata)
+    return(psfdata)
 
 def task_fake_reference_infos(DF, elno, psf, magmin, magmax, zpt, exptime, bkg_list, ebkg_list, inner_shift):
     '''
@@ -97,12 +111,15 @@ def task_fake_infos(DF, magbin, dmag, sep, filter, zpt, psf_list, psf_ids_list, 
     out_no_injection_list = []
 
     for elno in DF.fk_targets_df.index.get_level_values('fk_ids').unique():
-        idx = randint(0, len(bkg_list) - 1)
-        ID = psf_ids_list[idx]
-        bkg = bkg_list[idx]
-        ebkg = ebkg_list[idx]
-
+        # idx = randint(0, len(bkg_list) - 1)
+        ID = choice(psf_ids_list)
+        # bkg = bkg_list[idx]
+        # ebkg = ebkg_list[idx]
         exptime = DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids == ID, f'exptime_{filter}'].values[0]
+        bkg = DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids == ID,f'sky_{filter}'].values.astype(float) / exptime
+        ebkg = DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids == ID,f'esky_{filter}'].values.astype(float) / exptime
+        # nbkg_list = DF.mvs_targets_df[f'nsky_{filter}'].values.astype(float)
+
         # if len(psf) == 0:
         with fits.open(str(path2psfdir) + '/tile_ID%s.fits' % ID, memmap=False) as hdul:
             if multiply_by_exptime:
@@ -320,9 +337,8 @@ def mk_completeness_from_fakes(DF, filter, Nvisit_range=None, magbin_list=None, 
     None.
 
     '''
-    print('> ', filter)
-    if magbin_list == None: magbin_list = DF.fk_candidates_df.loc[filter].index.get_level_values(
-        'magbin').unique()
+    # if magbin_list == None:
+    magbin_list = DF.fk_candidates_df.loc[filter].index.get_level_values('magbin').unique()
     dmag_list = DF.fk_candidates_df.loc[filter].index.get_level_values('dmag').unique()
     sep_list = DF.fk_candidates_df.loc[filter].index.get_level_values('sep').unique()
     values_list = []
@@ -330,31 +346,33 @@ def mk_completeness_from_fakes(DF, filter, Nvisit_range=None, magbin_list=None, 
     if parallel_runs:
         for Nvisit in Nvisit_range:
             workers, chunksize, ntarget = parallelization_package(workers, len(magbin_list), chunksize=chunksize)
-            print('Testing nvisit %i. Working on magbin:' % Nvisit)
-            FP_sel = FP_lim ** (1 / (Nvisit * len(DF.filters_list)))
+            getLogger(__name__).info(f'Testing nvisit {Nvisit}.')
+
+            FP_sel = FP_lim ** (1 / (Nvisit * len(DF.filters)))
             if DF_fk == None: DF_fk = DF
             with ProcessPoolExecutor(max_workers=workers) as executor:
-                for out_list in tqdm(executor.map(task_completeness_from_fakes_infos, repeat(DF), repeat(filter),
+                for out_list in executor.map(task_completeness_from_fakes_infos, repeat(DF), repeat(filter),
                                                   repeat(Nvisit), magbin_list, repeat(dmag_list), repeat(sep_list),
                                                   repeat(FP_sel), repeat(AUC_lim), repeat(skip_filters),
-                                                  chunksize=chunksize)):
+                                                  chunksize=chunksize):
                     values_list.extend(out_list)
 
     else:
         for Nvisit in Nvisit_range:
-            print('Testing nvisit %i. Working on magbin:' % Nvisit)
-            FP_sel = FP_lim ** (1 / (Nvisit * len(DF.filters_list)))
+            getLogger(__name__).info(f'Testing nvisit {Nvisit}.')
+            FP_sel = FP_lim ** (1 / (Nvisit * len(DF.filters)))
             if DF_fk == None: DF_fk = DF
-            for magbin in tqdm(magbin_list):
+            for magbin in magbin_list:
                 out_list = task_completeness_from_fakes_infos(DF, filter, Nvisit, magbin, dmag_list, sep_list,
                                                               FP_sel, AUC_lim, skip_filters)
                 values_list.extend(out_list)
 
-    print('Writing entry in dataframe:')
-    for elno in tqdm(range(len(values_list))):
+    getLogger(__name__).info(f'Writing entry in dataframe')
+
+    for elno in range(len(values_list)):
         DF.fk_completeness_df.loc[
             (filter, values_list[elno][0], values_list[elno][1], values_list[elno][2], values_list[elno][3]), [
-                'ratio_Kmode%s' % values_list[elno][-1]]] = values_list[elno][4]
+                'ratio_kmode%s' % values_list[elno][-1]]] = values_list[elno][4]
     return(DF)
 
 def task_completeness_from_fakes_infos(DF, filter, Nvisit, magbin, dmag_list, sep_list, FP_sel, AUC_lim,
@@ -385,12 +403,12 @@ def task_completeness_from_fakes_infos(DF, filter, Nvisit, magbin, dmag_list, se
     out_list = []
     for dmag in dmag_list:
         for sep in sep_list:
-            for Kmode in DF.Kmodes_list:
+            for Kmode in DF.kmodes:
                 if filter not in skip_filters:
                     TPnsigma_inj_list = DF.fk_candidates_df.loc[
-                        (filter, magbin, dmag, sep), ['Nsigma_Kmode%i' % (Kmode)]].values.ravel()
+                        (filter, magbin, dmag, sep), ['nsigma_kmode%i' % (Kmode)]].values.ravel()
                     FPnsigma_list = DF.fk_targets_df.loc[
-                        (filter, magbin, dmag, sep), ['Nsigma_Kmode%i' % (Kmode)]].values.ravel()
+                        (filter, magbin, dmag, sep), ['nsigma_kmode%i' % (Kmode)]].values.ravel()
 
                     X, Y, th = get_roc_curve(FPnsigma_list, TPnsigma_inj_list, nbins=10000)
                     X = np.insert(X, 0, 0)
@@ -406,9 +424,215 @@ def task_completeness_from_fakes_infos(DF, filter, Nvisit, magbin, dmag_list, se
                     Ratio_median = 0
                 out_list.append([Nvisit, magbin, dmag, sep, Ratio_median, Kmode])
                 if np.any(np.isnan([Nvisit, magbin, dmag, sep, Ratio_median, Kmode])):
-                    print(AUC, AUC_lim)
-                    print([Nvisit, magbin, dmag, sep, Ratio_median, Kmode])
-                    sys.exit()
+                    raise ValueError([AUC, AUC_lim, visit, magbin, dmag, sep, Ratio_median, Kmode])
 
-    # sys.exit()
     return (out_list)
+
+def mvs_plot_completness(DF, filters_list=None, path2savedir=None, MagBin_list=[], Nvisit_list=[], avg_ids_list=[],
+                         Kmodes_list=[], title=None, fx=7, fy=7, fz=20, ncolumns=4, xnew=None, ynew=None,
+                         ticks=np.arange(0.3, 1., 0.1), show_IDs=False, save_completeness=False, save_figure=False,
+                         skip_filters=[], showplot=False, parallel_runs=True, suffix=''):
+    '''
+    This is a wrapper for the mvs_completeness_plots
+
+    Parameters
+    ----------
+    Nvisit_range : list, or int
+        If a list, make a completness map for each of these numbers of visitis.
+        If None, take it from catalogue. The default is None.
+    path2savedir : str, optional
+        path where to save the cell selection pdf. The default is './Plots/'.
+    Kmodes_list : list, optional
+        list of KLIPmode to use to evaluate the median completness for the tong plot. The default is [].
+    title : str, optional
+        title of the tong plot. The default is ''.
+    fx : int, optional
+        x dimension of each subplots. The default is 7.
+    fy : int, optional
+        y dimension of each subplots. The default is 7.
+    fz : int, optional
+        font size for the title. The default is 20.
+    ncolumns : int, optional
+        number of colum for the subplots. The default is 4.
+    xnew : list or None, optional
+        list of values for interpolate on the X axis. If None use the default X axixs of the dataframe. The default is None.
+    ynew : list or None, optional
+        list of values for interpolate on the Y axis. If None use the default X axixs of the dataframe. The default is None.
+    ticks : list, optional
+        mark a contourn line corresponding to these values on the tong plot. The default is np.arange(0.3,1.,0.1).
+    show_IDs : bool, optional
+        choose to show IDs for each candidate on the tong plot. The default is False.
+    save_completeness : bool, optional
+        chose to save the completeness of each candidate in the dataframe. The default is True.
+    save_figure : bool, optional
+        chose to save tong plots on HD. The default is True.
+    num_of_chunks : int, optional
+        number of chunk to split the targets. The default is None.
+
+    Returns
+    -------
+    None.
+    '''
+    if MagBin_list is None: MagBin_list = DF.fk_completeness_df.index.get_level_values('magbin').unique()
+    if filters_list is None: filters_list = DF.fk_completeness_df.index.get_level_values('filter').unique()
+    if Nvisit_list is None: Nvisit_list = DF.fk_completeness_df.index.get_level_values('nvisit').unique()
+    if Kmodes_list is None: Kmodes_list = DF.kmodes
+    if path2savedir == None: path2savedir = './plots/'
+
+
+    for filter in filters_list:
+        if filter not in skip_filters:
+            getLogger(__name__).info(f'Drawing filter {filter} mvs completeness plots')
+            if len(MagBin_list) == 0: MagBin_list = DF.fk_completeness_df.index.get_level_values(
+                'magbin').unique()
+            mvs_completeness_plots(DF, filter=filter, path2savedir=path2savedir, MagBin_list=MagBin_list,
+                                   Nvisit_list=Nvisit_list, avg_ids_list=avg_ids_list, Kmodes_list=Kmodes_list,
+                                   title=title, fx=fx, fy=fy, fz=fz, ncolumns=ncolumns, xnew=xnew, ynew=ynew,
+                                   ticks=ticks, show_IDs=show_IDs, save_completeness=save_completeness,
+                                   save_figure=save_figure, showplot=showplot, suffix=suffix)
+
+
+def update_candidates_photometry(DF, path2tile='./', avg_ids_list=[], label='data', aptype='4pixels', verbose=False, noBGsub=False,
+                                 sigma=2.5, DF_fk=None, kill_plots=True, delta=3, skip_filters=[], sat_thr=np.inf,
+                                 suffix=''):
+    KLIP_label_dict = {'data': 'Kmode', 'crclean_data': 'crclean_Kmode'}
+    if DF_fk == None: DF_fk = DF
+    if len(avg_ids_list) == 0:
+        avg_ids_list = DF.avg_candidates_df.avg_ids.unique()
+
+    getLogger(__name__).info(f'Updating the candidates photometry. Loading a total of {len(avg_ids_list)} targets')
+
+    for avg_ids in avg_ids_list:
+        mvs_ids_list = DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(
+            DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids == avg_ids].mvs_ids.values)].mvs_ids.unique()
+        if verbose:
+            print('> Before:')
+            display(DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids == avg_ids])
+            display(DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list)])
+        zelno = 0
+        for filter in DF.filters:
+            if filter not in skip_filters:
+                zpt = DF.mvs_targets_df[f'delta_{filter}'].unique()[0]
+                ezpt = DF.mvs_targets_df[f'edelta_{filter}'].unique()[0]
+                zelno += 1
+                for mvs_ids in mvs_ids_list:
+                    if DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids == mvs_ids, f'flag_{filter}'].values[
+                        0] != 'rejected':
+                        # print(DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,'%s_flag'%filter].values[0])
+                        magbin = DF.mvs_targets_df.loc[
+                            DF.mvs_targets_df.mvs_ids == mvs_ids, f'm_{filter}{suffix}'].values[0].astype(
+                            int)
+                        sep = \
+                        DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids == mvs_ids, f'sep_{filter}'].values[
+                            0]
+                        mag = DF.mvs_candidates_df.loc[
+                            DF.mvs_candidates_df.mvs_ids == mvs_ids, f'm_{filter}'].values[0]
+                        x, y = DF.mvs_candidates_df.loc[
+                            DF.mvs_candidates_df.mvs_ids == mvs_ids, [f'x_tile_{filter}',
+                                                                        f'y_tile_{filter}']].values[0]
+                        Kmode = DF.mvs_candidates_df.loc[
+                            DF.mvs_candidates_df.mvs_ids == mvs_ids, f'kmode_{filter}'].astype(int).values[0]
+                        exptime = \
+                        DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids == mvs_ids, f'exptime_{filter}'].values[0]
+                        if (not np.isnan(mag) and mag - magbin >= 0
+                                and mag - magbin <= DF_fk.fk_candidates_df.index.get_level_values('dmag').astype(int).max()
+                                and int(magbin) >= DF_fk.fk_candidates_df.index.get_level_values('magbin').astype(int).min()
+                                and int(magbin) <= DF_fk.fk_candidates_df.index.get_level_values('magbin').astype(int).max()
+                                and int(sep) >= DF_fk.fk_candidates_df.index.get_level_values('sep').astype(int).min()
+                                and int(sep) <= DF_fk.fk_candidates_df.index.get_level_values('sep').astype(int).max()):
+                            thrpt, ethrpt = KLIP_throughput(DF_fk, sep, filter, int(magbin), int(mag - magbin), Kmode,
+                                                            verbose=False)
+                            path2tile += f'/mvs_tiles/{filter}/tile_ID{ID}.fits'
+                            KDATA = Tile(x=x, y=y, tile_base=DF.tilebase, inst=DF.inst)
+                            KDATA.load_tile(path2tile, ext='%s%s' % (KLIP_label_dict[label], Kmode), verbose=False,
+                                            return_Datacube=False)
+
+                            if not np.all(np.isnan(KDATA.data)):
+                                counts, ecounts, Nsigma, Nap, mag, emag, spx, bpx, Sky, eSky, nSky, grow_corr = KLIP_aperture_photometry_handler(
+                                    DF, mvs_ids, filter, x=x, y=y, data=KDATA.data, zpt=zpt, ezpt=ezpt, aptype=aptype,
+                                    noBGsub=False, sigma=sigma, kill_plots=True, Python_origin=True, delta=delta,
+                                    sat_thr=sat_thr, exptime=exptime, thrpt=thrpt[0], ethrpt=ethrpt[
+                                        0])  # (DF,mvs_ids,filter,x=x,y=y,data=KDATA.data,zpt=zpt,ezpt=ezpt,aptype=aptype,noBGsub=False,sigma=sigma,kill_plots=True,Python_origin=True,delta=delta,sat_thr=sat_thr,exptime=exptime,thrpt=thrpt[0],ethrpt=ethrpt[0],candidate=True)
+                            else:
+                                counts, ecounts, mag, emag = [np.nan, np.nan, np.nan, np.nan, np.nan]
+                            DF.mvs_candidates_df.loc[
+                                DF.mvs_candidates_df.mvs_ids == mvs_ids, [f'count_{filter}',
+                                                                          f'ecounts_{filter}',
+                                                                          f'nsigma_{filter}',
+                                                                          f'm_{filter}',
+                                                                          f'e_{filter}']] = [counts, ecounts,
+                                                                                                     Nsigma, mag, emag]
+                        else:
+                            columns = DF.mvs_candidates_df.columns[
+                                DF.mvs_candidates_df.columns.str.contains(filter[1:4])]
+                            DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids == mvs_ids, columns] = np.nan
+                            DF.mvs_candidates_df.loc[
+                                DF.mvs_candidates_df.mvs_ids == mvs_ids, f'flag_{filter}'] = 'rejected'
+                    else:
+                        columns = DF.mvs_candidates_df.columns[
+                            DF.mvs_candidates_df.columns.str.contains(filter[1:4])]
+                        DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids == mvs_ids, columns] = np.nan
+                        DF.mvs_candidates_df.loc[
+                            DF.mvs_candidates_df.mvs_ids == mvs_ids, f'flag_{filter}'] = 'rejected'
+
+                counts = DF.mvs_candidates_df.loc[
+                    DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list), f'counts_{filter}'].values
+                counts = counts.astype(float)
+                ecounts = DF.mvs_candidates_df.loc[
+                    DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list), f'ecounts_{filter}'].values
+                ecounts = ecounts.astype(float)
+                Mask = ~(np.isnan(counts))
+
+                if len(counts[Mask]) > 0:
+                    _, _, _, Mask = print_mean_median_and_std_sigmacut(counts, verbose=False, sigma=sigma)
+                    counts = counts[Mask]
+                    ecounts = ecounts[Mask]
+                    c, ec = np.average(counts, weights=1 / ecounts ** 2, axis=0, returned=True)
+
+                    mags = DF.mvs_candidates_df.loc[
+                        DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list), f'm_{filter}'].values
+                    emags = DF.mvs_candidates_df.loc[
+                        DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list), f'e_{filter}'].values
+                    mags = mags.astype(float)
+                    emags = emags.astype(float)
+
+                    mags = mags[Mask]
+                    emags = emags[Mask]
+                    m, w = np.average(mags, weights=1 / emags ** 2, axis=0, returned=True)
+                    em = 1 / np.sqrt(w)
+                else:
+                    m, em = [np.nan, np.nan]
+                sep = np.nanmean(DF.mvs_candidates_df.loc[
+                                     DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list), [f'sep_{filter}' for filter in
+                                                                                         DF.filters]].values)
+                DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids == avg_ids, f'm_{filter}'] = np.round(m,
+                                                                                                                      3)
+                DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids == avg_ids, f'e_{filter}'] = np.round(
+                    em, 3)
+                DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids == avg_ids, 'sep'] = np.round(sep, 3)
+                dmag = \
+                DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids == avg_ids, f'm_{filter}'].values[0] - \
+                DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids == avg_ids, f'm_{filter}'].values[0]
+                if dmag < 0:
+                    columns = DF.avg_candidates_df.columns[DF.avg_candidates_df.columns.str.contains(filter[1:4])]
+                    DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids == avg_ids, columns] = np.nan
+        if verbose:
+            print('> After:')
+            display(DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids == avg_ids])
+            display(DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list)])
+
+    bad_mvs_ids = []
+    bad_avg_ids = []
+    for avg_ids in DF.avg_candidates_df.avg_ids.unique():
+        mvs_ids_list = DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids.isin([avg_ids])].mvs_ids.unique()
+        if DF.mvs_candidates_df.loc[
+            DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list), [f'flag_{filter}' for filter in
+                                                                DF.filters]].apply(
+                lambda x: x.str.contains('rejected', case=False)).all(axis=1).all(axis=0):
+            bad_mvs_ids.extend(mvs_ids_list)
+            bad_avg_ids.append(avg_ids)
+    DF.mvs_candidates_df = DF.mvs_candidates_df.loc[~DF.mvs_candidates_df.mvs_ids.isin(bad_mvs_ids)].reset_index(
+        drop=True)
+    DF.avg_candidates_df = DF.avg_candidates_df.loc[~DF.avg_candidates_df.avg_ids.isin(bad_avg_ids)].reset_index(
+        drop=True)
+    return(DF)

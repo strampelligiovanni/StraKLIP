@@ -47,6 +47,14 @@ loggers:
     handlers: [ default, file ]
     level: DEBUG
     propagate: False
+  steps.buildfphdf:
+    handlers: [ default, file ]
+    level: DEBUG
+    propagate: False
+  steps.mkcompleteness:
+    handlers: [ default, file ]
+    level: DEBUG
+    propagate: False
   steps.fpanalysis:
     handlers: [ default, file ]
     level: DEBUG
@@ -68,6 +76,10 @@ loggers:
     level: DEBUG
     propagate: False
   utils_tile:
+    handlers: [ default, file ]
+    level: DEBUG
+    propagate: False
+  utils_fpanalysis:
     handlers: [ default, file ]
     level: DEBUG
     propagate: False

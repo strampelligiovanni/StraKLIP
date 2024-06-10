@@ -6,7 +6,7 @@ import pkg_resources as pkg
 import argparse
 from datetime import datetime
 import steps
-from steps import buildhdf, mktiles, mkphotometry,fow2cells,psfsubtraction,klipphotometry,fpanalysis
+from steps import buildhdf, mktiles, mkphotometry,fow2cells,psfsubtraction,klipphotometry,buildfphdf,mkcompleteness,fpanalysis
 
 def parse():
     # read in command line arguments

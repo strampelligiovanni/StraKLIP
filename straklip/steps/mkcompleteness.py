@@ -72,7 +72,7 @@ def evaluate_completeness_from_fk_inj(DF, filters_list=None, Nvisit_range=None,
 
 
 
-def run_false_positive_analysis(DF,path2savedir=None, filters_list=[], Nvisit_range=None, AUC_lim=0.5,
+def make_completeness_maps(DF,path2savedir=None, filters_list=[], Nvisit_range=None, AUC_lim=0.5,
                                 FP_lim = 0.001, parallel_runs=True, Kmodes_list = [], skip_filters = [], workers=1,
                                 save_figure=False, ticks=np.arange(0.3, 1., 0.1),
                                 ):
@@ -107,7 +107,7 @@ def run(packet):
     DF = packet['DF']
     dataset = packet['dataset']
 
-    DF=run_false_positive_analysis(DF,
+    DF=make_completeness_maps(DF,
                                    path2savedir=dataset.pipe_cfg.paths['out'],
                                    filters_list=DF.filters,
                                    Nvisit_range=dataset.pipe_cfg.mkcompleteness['nvisits'],

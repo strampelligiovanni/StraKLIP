@@ -225,7 +225,9 @@ def fk_writing(DF,filter,out,df_label,labels):
     sel3=(getattr(DF,df_label).index.get_level_values('sep').isin(out[:,2]))
     sel4=(getattr(DF,df_label).index.get_level_values('fk_ids').isin(out[:,3]))
     for elno in range(len(labels)):
-        getattr(DF,df_label).loc[(sel0&sel1&sel2&sel3&sel4),[labels[elno]]]=out[:,elno+4]
+        try: getattr(DF,df_label).loc[(sel0&sel1&sel2&sel3&sel4),[labels[elno]]]=out[:,elno+4]
+        except:
+            raise ValueError
     return(DF)
 
 
@@ -507,6 +509,18 @@ def mk_fk_references_df(DF,Nstar):
     df_new['fk_ids']=[i for i in range(Nstar)]
     DF.fk_references_df=df_new
 
+def get_levels(values_range,elno=0):
+    if isinstance(values_range, str):
+        levels = np.arange(int(values_range.split('-')[0]), int(values_range.split('-')[1]) + 1, 1)
+    elif isinstance(values_range, (list, np.ndarray)):
+        levels = np.arange(int(values_range[elno].split('-')[0]), int(values_range[elno].split('-')[1]) + 1, 1)
+    elif isinstance(values_range,int):
+        levels=[i for i in range(int(values_range),int(values_range)+1)]
+    else:
+        getLogger(__name__).critical(f'The range provided must be an int, a str ("X"-"Y") or a list of str ([["X"-"Y"],["XX"-"YY"],...])')
+        raise ValueError()
+    return(levels)
+
 def mk_fakes_df(DF,MagBin_list,Dmag_list,Sep_range,Nstar,filters=None,skip_filters=[]):
     '''
     Create the empty tile data frame for average visits targets
@@ -523,15 +537,9 @@ def mk_fakes_df(DF,MagBin_list,Dmag_list,Sep_range,Nstar,filters=None,skip_filte
     noise_KLIP_list=[]
     Nsigma_KLIP_list=[]
     mag_KLIP_list=[]
-    elno=0
     df_targets_list=[]
     df_candidates_list=[]
-    if isinstance(Sep_range, str):
-        seps_levels = np.arange(int(Sep_range.split('-')[0]),int(Sep_range.split('-')[1])+1,1)
-    elif isinstance(Sep_range, (list, np.ndarray)):
-        seps_levels = Sep_range
-    else:
-        seps_levels=[i for i in range(Sep_range[0],Sep_range[1]+1)]
+
 
     nstar_levels=[i for i in range(Nstar)]
     for Kmode in [f'_kmode{i}' for i in DF.kmodes]:
@@ -540,19 +548,14 @@ def mk_fakes_df(DF,MagBin_list,Dmag_list,Sep_range,Nstar,filters=None,skip_filte
         Nsigma_KLIP_list.extend(['nsigma%s'%Kmode])
         mag_KLIP_list.extend(['m%s'%(Kmode)])
 
-    # if filters==None:filters=DF.filters
-
-    if len(MagBin_list)==1 and len(filters)>1:
-        MagBin_list*=len(filters)
-    if len(Dmag_list)==1 and len(filters)>1:
-        Dmag_list*=len(filters)
+    elno=0
 
     for filter in filters:
         if filter not in skip_filters:
-            if len(MagBin_list[elno])==1: magbins_levels=[i for i in range(MagBin_list[elno][0],MagBin_list[elno][0]+1)]
-            else: magbins_levels=[i for i in range(MagBin_list[elno][0],MagBin_list[elno][1]+1)]
-            if len(Dmag_list[elno])==1: dmags_levels=[i for i in range(Dmag_list[elno][0],Dmag_list[elno][0]+1)]
-            else: dmags_levels=[i for i in range(Dmag_list[elno][0],Dmag_list[elno][1]+1)]
+            magbins_levels=get_levels(MagBin_list,elno)
+            dmags_levels=get_levels(Dmag_list,elno)
+            seps_levels = get_levels(Sep_range,elno)
+
             elno+=1
             df_targets_new=create_empty_df(['filter','magbin','dmag','sep','fk_ids'],[],multy_index=True,levels=[[filter],magbins_levels,dmags_levels,seps_levels,nstar_levels])
             df_candidates_new=create_empty_df(['filter','magbin','dmag','sep','fk_ids'],[],multy_index=True,levels=[[filter],magbins_levels,dmags_levels,seps_levels,nstar_levels])

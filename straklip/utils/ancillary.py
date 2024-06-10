@@ -397,7 +397,7 @@ def frac_above_thresh(data, thresh):
     """
     if np.size(thresh) == 1:
         thresh = np.array([thresh])
-    return np.squeeze(np.sum( (data > thresh[:,None]), axis=-1))/np.float(data.size)
+    return np.squeeze(np.sum( (data > thresh[:,None]), axis=-1))/np.float64(data.size)
 
 def gaussian_func(x, a, x0, sigma,c):
     return (a * np.exp(-(x-x0)**2/(2*sigma**2)) + c)

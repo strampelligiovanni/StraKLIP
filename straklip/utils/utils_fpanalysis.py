@@ -1,5 +1,5 @@
 from utils_photometry import aperture_photometry_handler,KLIP_aperture_photometry_handler,photometry_AP,KLIP_throughput
-from utils_plot import mvs_completeness_plots
+from utils_plot import mvs_completeness_plots,avg_completeness_plots
 from photometry import Detection,flux_converter
 import pandas as pd
 from tiles import Tile
@@ -14,6 +14,8 @@ from utils_false_positives import FP_analysis,get_roc_curve
 import numpy as np
 from sklearn import metrics
 from astropy.io import fits
+from IPython.display import display
+from concurrent.futures import ProcessPoolExecutor
 
 def psf_scale(psfdata):
     psfdata[psfdata<0]=0
@@ -428,7 +430,74 @@ def task_completeness_from_fakes_infos(DF, filter, Nvisit, magbin, dmag_list, se
 
     return (out_list)
 
-def mvs_plot_completness(DF, filters_list=None, path2savedir=None, MagBin_list=[], Nvisit_list=[], avg_ids_list=[],
+def avg_plot_completness(DF,fig=None,axes=None,w_pad=0,fx=7,fy=7,dfx=2,show_plot=False,dist=None,filters_list=None,Nvisits_list=None,binary_df=None,df_ylabel='q',df_xlabel='SMA',cmap='Oranges_r',xlabel='SMA [arcsec]',ylabel='q [Mass$_{c}$/Mass$_{p}$]',ylim=[0.01,1],xlim=[0,1],title=False,log_y=False,log_x=False,invert_y=False,c_sel=None,c_lim=0.1,cbar_step=0.1,r=2,collapsed=False,path2savedir=None,show_candidates=False,scv=False,save_completeness=False):
+        '''
+        This is a wrapper for the avg_plot_completness        
+
+        Parameters
+        ----------
+        fig : TYPE, optional
+            DESCRIPTION. The default is None.
+        axes : TYPE, optional
+            DESCRIPTION. The default is None.
+        w_pad : TYPE, optional
+            DESCRIPTION. The default is 0.
+        fx : TYPE, optional
+            DESCRIPTION. The default is 7.
+        fy : TYPE, optional
+            DESCRIPTION. The default is 7.
+        dfx : TYPE, optional
+            DESCRIPTION. The default is 2.
+        show_plot : TYPE, optional
+            DESCRIPTION. The default is False.
+        dist : TYPE, optional
+            DESCRIPTION. The default is None.
+        filters_list : TYPE, optional
+            DESCRIPTION. The default is [].
+        bin_df : TYPE, optional
+            DESCRIPTION. The default is None.
+        df_ylabel : TYPE, optional
+            DESCRIPTION. The default is 'q'.
+        df_xlabel : TYPE, optional
+            DESCRIPTION. The default is 'SMA'.
+        cmap : TYPE, optional
+            DESCRIPTION. The default is 'Oranges_r'.
+        xlabel : TYPE, optional
+            DESCRIPTION. The default is 'SMA [arcsec]'.
+        ylabel : TYPE, optional
+            DESCRIPTION. The default is 'q [Mass$_{c}$/Mass$_{p}$]'.
+        ylim : TYPE, optional
+            DESCRIPTION. The default is [0.01,1].
+        xlim : TYPE, optional
+            DESCRIPTION. The default is [0,1].
+        title : TYPE, optional
+            DESCRIPTION. The default is False.
+        log_y : TYPE, optional
+            DESCRIPTION. The default is False.
+        invert_y : TYPE, optional
+            DESCRIPTION. The default is False.
+        c_sel : TYPE, optional
+            DESCRIPTION. The default is None.
+        c_lim : TYPE, optional
+            DESCRIPTION. The default is 0.3.
+        cbar_step : TYPE, optional
+            DESCRIPTION. The default is 0.1.
+        r : TYPE, optional
+            DESCRIPTION. The default is 2.
+        collapsed : TYPE, optional
+            DESCRIPTION. The default is False.
+        path2savedir : TYPE, optional
+            DESCRIPTION. The default is None.
+
+        Returns
+        -------
+        None.
+
+        '''
+        avg_completeness_plots(DF,fig=fig,axes=axes,w_pad=w_pad,fx=fx,fy=fy,dfx=dfx,show_plot=show_plot,dist=dist,filters_list=filters_list,Nvisits_list=Nvisits_list,binary_df=binary_df,df_ylabel=df_ylabel,df_xlabel=df_xlabel,cmap=cmap,xlabel=xlabel,ylabel=ylabel,ylim=ylim,xlim=xlim,title=title,log_y=log_y,log_x=log_x,invert_y=invert_y,c_sel=c_sel,c_lim=c_lim,cbar_step=cbar_step,r=r,collapsed=collapsed,path2savedir=path2savedir,show_candidates=show_candidates,select_candidate_by_visit=scv,save_completeness=save_completeness)
+        if isinstance(binary_df, pd.DataFrame):return(binary_df)
+
+def mvs_plot_completness(DF, filters_list=None, path2savedir=None, MagBin_list=[], Nvisit_list=[], avg_ids_list=None,
                          Kmodes_list=[], title=None, fx=7, fy=7, fz=20, ncolumns=4, xnew=None, ynew=None,
                          ticks=np.arange(0.3, 1., 0.1), show_IDs=False, save_completeness=False, save_figure=False,
                          skip_filters=[], showplot=False, parallel_runs=True, suffix=''):

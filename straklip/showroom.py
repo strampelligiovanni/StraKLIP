@@ -672,9 +672,9 @@ class ShowRoom():
 
         #create tabs
         tab_nest = widgets.Tab(titles=['Target','Model','Candidate'])
-        tab_nest.set_title(0, 'Target')
-        tab_nest.set_title(1, 'Model')
-        tab_nest.set_title(2, 'Candidate')
+        # tab_nest.set_title(0, 'Target')
+        # tab_nest.set_title(1, 'Model')
+        # tab_nest.set_title(2, 'Candidate')
         
         VBox1=widgets.VBox([box1,target_hbox,Target],layout=box_layout)
         if hasattr(self.DF,'avg_candidates_df'):

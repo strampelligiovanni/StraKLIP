@@ -79,6 +79,10 @@ loggers:
     handlers: [ default, file ]
     level: DEBUG
     propagate: False
+  utils_completeness:
+    handlers: [ default, file ]
+    level: DEBUG
+    propagate: False
   utils_fpanalysis:
     handlers: [ default, file ]
     level: DEBUG

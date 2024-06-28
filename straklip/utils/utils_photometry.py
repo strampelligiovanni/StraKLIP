@@ -83,8 +83,8 @@ def KLIP_throughput(DF_fk,candidate_sep,filter,magbin,dmag,Kmode,verbose=False):
     sep_list=DF_fk.fk_candidates_df.index.get_level_values('sep').unique()
     for sep in sep_list:
         injected_counts=DF_fk.fk_candidates_df.loc[(filter,magbin,dmag,sep),['counts']].values.ravel().astype(float)
-        retrived_counts=DF_fk.fk_candidates_df.loc[(filter,magbin,dmag,sep),['counts_Kmode%s'%(Kmode)]].values.ravel().astype(float)
-        retrived_nsigma=DF_fk.fk_candidates_df.loc[(filter,magbin,dmag,sep),['Nsigma_Kmode%s'%(Kmode)]].values.ravel().astype(float)
+        retrived_counts=DF_fk.fk_candidates_df.loc[(filter,magbin,dmag,sep),['counts_kmode%s'%(Kmode)]].values.ravel().astype(float)
+        retrived_nsigma=DF_fk.fk_candidates_df.loc[(filter,magbin,dmag,sep),['nsigma_kmode%s'%(Kmode)]].values.ravel().astype(float)
         filtered_dcounts = sigma_clip(retrived_counts[retrived_nsigma>0]/injected_counts[retrived_nsigma>0], sigma=3, maxiters=10)
         median_masked=np.nanmedian(filtered_dcounts.data[~filtered_dcounts.mask])
         std_masked=np.nanstd(filtered_dcounts.data[~filtered_dcounts.mask])
@@ -325,8 +325,8 @@ def aperture_photometry_handler(DF,id,filter,data_label='',dq_label='',hdul=None
         AP.mk_tile(fig=fig,ax=ax[1],showplot=False,keep_size=True,cbar=True,title='Aperture Area',simplenorm='sqrt',return_tile=False,kill_plots=kill_plots)
      
     flux_converter.counts_and_errors(detection_AP)
-    if gain==None: gain=DF.gain
-    flux_converter.flux2mag(detection_AP,exptime=exptime,zpt=zpt,ezpt=ezpt,gain=gain)
+    # if gain==None: gain=DF.gain
+    flux_converter.flux2mag(detection_AP,exptime=exptime,zpt=zpt,ezpt=ezpt)#,gain=gain)
     if not kill_plots:
         plt.tight_layout()
         if path2savefile is None:
@@ -484,8 +484,8 @@ def KLIP_aperture_photometry_handler(DF,id,filter,data_label='',dq_label='',hdul
         AP.mk_tile(fig=fig,ax=ax[1],showplot=False,keep_size=True,cbar=True,title='Aperture Area',simplenorm='sqrt',return_tile=False,kill_plots=kill_plots)
      
     flux_converter.counts_and_errors(detection_AP)
-    if gain==None: gain=DF.gain
-    flux_converter.flux2mag(detection_AP,exptime=exptime,zpt=zpt,ezpt=ezpt,gain=gain)
+    # if gain==None: gain=DF.gain
+    flux_converter.flux2mag(detection_AP,exptime=exptime,zpt=zpt,ezpt=ezpt)#,gain=gain)
     if not kill_plots:
         plt.show()
         if not noBGsub or len(forcedSky)>0:print('bkg median %.3f, std %.3f, nSky %.1f'%(Sky,eSky,nSky))

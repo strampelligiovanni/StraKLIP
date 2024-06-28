@@ -46,11 +46,11 @@ def add_subplot_axes(ax,rect,axisbg='w'):
     subax.yaxis.set_tick_params(labelsize=y_labelsize)
     return(subax)
 
-def avg_completeness_plots(self,inst=None,fig=None,axes=None,completeness_curves_df=None,binary_df=None,w_pad=0,fx=7,fy=7,dfx=2,show_plot=False,dist=None,pixelscale=None,filters_list=None,df_ylabel='q',df_xlabel='SMA',cmap='Oranges_r',xlabel='SMA [arcsec]',ylabel='q [Mass$_{c}$/Mass$_{p}$]',ylim=[0.01,1],xlim=[0,1],title=False,log_y=False,invert_y=False,c_sel=None,c_lim=0.3,cbar_step=0.1,r=2,collapsed=False,path2savedir=None,show_candidates=False,Nvisits_list=None,select_candidate_by_visit=False,save_completeness=False):
-    if inst==None: inst=self.inst
+def avg_completeness_plots(DF,inst=None,fig=None,axes=None,completeness_curves_df=None,binary_df=None,w_pad=0,fx=7,fy=7,dfx=2,show_plot=False,dist=None,pixelscale=None,filters_list=None,df_ylabel='q',df_xlabel='SMA',cmap='Oranges_r',xlabel='SMA [arcsec]',ylabel='q [Mass$_{c}$/Mass$_{p}$]',ylim=[0.01,1],xlim=[0,1],title=False,log_y=False,log_x=False,invert_y=False,c_sel=None,c_lim=0.3,cbar_step=0.1,r=2,collapsed=False,path2savedir=None,show_candidates=False,Nvisits_list=None,select_candidate_by_visit=False,save_completeness=False):
+    if inst==None: inst=DF.inst
     if not isinstance(completeness_curves_df, pd.DataFrame):   
-        if df_ylabel == 'Dmag':completeness_curves_df=self.flatten_matrix_dmag_completeness_curves_df
-        elif df_ylabel == 'q':completeness_curves_df=self.flatten_matrix_q_completeness_curves_df
+        if df_ylabel == 'Dmag':completeness_curves_df=DF.flatten_matrix_dmag_completeness_curves_df
+        elif df_ylabel == 'q':completeness_curves_df=DF.flatten_matrix_q_completeness_curves_df
         else:raise ValueError('df_ylabel MUST be eiter Dmag or q')
     if filters_list==None or len(filters_list)==0: filters_list=completeness_curves_df.index.get_level_values('Filter').unique()
     if Nvisits_list==None or len(Nvisits_list)==0:Nvisits_list=completeness_curves_df.index.get_level_values('Nvisit').unique()
@@ -61,7 +61,8 @@ def avg_completeness_plots(self,inst=None,fig=None,axes=None,completeness_curves
         # for Nvisit in Nvisits_list:
             df_list=[]
             # for filter in filters_list:df_list.append(completeness_curves_df.loc[filter,Nvisit])
-            for Nvisit in Nvisits_list:df_list.append(completeness_curves_df.loc[filter,Nvisit])
+            for Nvisit in Nvisits_list:
+                df_list.append(completeness_curves_df.loc[filter,Nvisit])
 
             df_list_collapsedd.append(pd.concat(df_list).groupby(level=0).mean())
         completeness_curves_df=pd.concat(df_list_collapsedd,keys=filters_list)
@@ -69,9 +70,9 @@ def avg_completeness_plots(self,inst=None,fig=None,axes=None,completeness_curves
     else:
         nv=len(Nvisits_list)
     n=len(filters_list)
-    if pixelscale==None: pixelscale=self.pixelscale    
+    if pixelscale==None: pixelscale=DF.pixscale
     if show_candidates and not isinstance(binary_df, pd.DataFrame): 
-        binary_df=self.avg_candidates_df.copy()
+        binary_df=DF.avg_candidates_df.copy()
         use_pipeline_df=True
     else:
         use_pipeline_df=False
@@ -91,7 +92,8 @@ def avg_completeness_plots(self,inst=None,fig=None,axes=None,completeness_curves
             sma_list=np.sort(CFMCC_df.columns.get_level_values(df_xlabel).unique())
             MComp_list=np.sort(CFMCC_df.index.get_level_values(df_ylabel).unique())
             p_m_list=CFMCC_df.values
-            completeness_plot(fig,axes[0][elno],sma_list,MComp_list,p_m_list,show_cbar=show_cbar,set_ylabel=set_ylabel,cmap=cmap,log_y=log_y,xlabel=xlabel,ylabel=ylabel,xlim=xlim,ylim=ylim,c_lim=c_lim,cbar_step=cbar_step,title=title,d=dist,invert_y=invert_y,c_sel=c_sel)
+
+            completeness_plot(fig,axes[0][elno],sma_list,MComp_list,p_m_list,show_cbar=show_cbar,set_ylabel=set_ylabel,cmap=cmap,log_y=log_y,log_x=log_x,xlabel=xlabel,ylabel=ylabel,xlim=xlim,ylim=ylim,c_lim=c_lim,cbar_step=cbar_step,title=title,d=dist,invert_y=invert_y,c_sel=c_sel)
             if show_candidates:
                 if select_candidate_by_visit:
                     sel_visits=(binary_df['N%s'%filter[1:4]]==Nvisit)
@@ -139,7 +141,6 @@ def avg_completeness_plots(self,inst=None,fig=None,axes=None,completeness_curves
 
             else:
                 chek4NaN.append(False)
-            
             elno+=1
         if not collapsed: save_name='%s_N%s_average_completeness_plot.pdf'%(inst,Nvisit)
         else: save_name='%s_collapsed_average_completeness_plot.pdf'%(inst)
@@ -153,40 +154,48 @@ def avg_completeness_plots(self,inst=None,fig=None,axes=None,completeness_curves
         else:plt.close('all')
     if isinstance(binary_df, pd.DataFrame):return(binary_df)
 
-def completeness_plot(fig,axes,X, Y, Z, cmap='Greys_r',manual_locations=[],set_xlabel=True,set_ylabel=True,invert_y=False,log_y=False,xlim=[],ylim=[],xlabel='',ylabel='',cx_list=[],cy_list=[],peculiar_cx=[],peculiar_cy=[],title_label='',c_lim=0.3,c_sel=None,cbar_step=0.1,title=True,d=None,fontsize=15,show_cbar=True):
-    ticks=np.append(np.arange(c_lim,1.0,cbar_step),[1])
-
-    caxx=axes.contourf(X, Y, Z, ticks, cmap=cmap,linewidths=2,extend='min')
+def completeness_plot(fig,axes,X, Y, Z, cmap='Greys_r',manual_locations=[],set_xlabel=True,set_ylabel=True,invert_y=False,log_y=False,log_x=False,xlim=[],ylim=[],xlabel='',ylabel='',cx_list=[],cy_list=[],peculiar_cx=[],peculiar_cy=[],title_label='',c_lim=0.3,c_sel=None,cbar_step=0.1,title=True,d=None,fontsize=15,show_cbar=True):
+    if isinstance(cbar_step,list):
+        ticks=cbar_step
+    else:
+        ticks=np.append(np.arange(c_lim,1.0,cbar_step),[1])
+    caxx=axes.contourf(X, Y, Z, ticks, cmap=cmap,linewidths=2,extend='both')
     if c_sel!=None:
         caxx1 = axes.contour(caxx,levels=ticks[ticks!=c_sel], colors='k')
         caxx1 = axes.contour(caxx,levels=[c_sel], colors='#FF00FF',linewidths = 2)
     else:
         caxx1 = axes.contour(caxx,levels=ticks, colors='k')
     
-    if title==True:axes.set_title(title_label)#,fontsize=fontsize)
+    if title==True:axes.set_title(title_label)
 
-    if set_xlabel:axes.set_xlabel(xlabel)#,fontsize=fontsize)
-    if set_ylabel:axes.set_ylabel(ylabel)#,fontsize=fontsize)
+    if set_xlabel:axes.set_xlabel(xlabel)
+    if set_ylabel:axes.set_ylabel(ylabel)
 
     if len(xlim)>0: axes.set_xlim(xlim)
     if len(ylim)>0: axes.set_ylim(ylim)
 
-    if log_y==True: axes.set_yscale('log')
-    if invert_y==True: axes.set_ylim(axes.get_ylim()[::-1])
+    if log_y==True:
+        axes.set_yscale('log')
+    if log_x==True:
+        axes.set_xscale('log')
+    if invert_y==True:
+        axes.set_ylim(axes.get_ylim()[::-1])
     if d!=None:
         axticks = axes.get_xticks()
         axes2 = axes.twiny()
         axes2.xaxis.set_major_locator(ticker.FixedLocator(axticks*d))
-
         axes2.set_xlim([axes.get_xlim()[0]*d,axes.get_xlim()[1]*d])
         axes2.set_xlabel('Separation [AU]',labelpad=20)#,fontsize=fontsize)
     if show_cbar:
-        cbar = fig.colorbar(caxx, orientation='vertical')
-        cbar.ax.tick_params(color='k')
-        cbar.add_lines(caxx1)
-        cbar.set_ticks(ticks)
-        # caxx.cmap.set_under('gray')
-        caxx.cmap.set_under('w')
+        divider = make_axes_locatable(axes)
+        cax = divider.append_axes('right', size='5%', pad=0.5)
+        cbar = plt.colorbar(caxx, cax=cax, orientation='vertical')
+        cbar.set_label('Completeness', fontsize=20)
+        tick_locator = ticker.MaxNLocator(nbins=len(ticks))
+        cbar.locator = tick_locator
+        cbar.ax.tick_params(labelsize=12)
+        cbar.update_ticks()
+
     
 def cumulative(x,bins):
     hist, bin_edges = np.histogram(x, bins=bins)
@@ -494,6 +503,7 @@ def mvs_completeness_plots(DF,filter,path2savedir='./Plots/',MagBin_list=[],Nvis
     -------
     None.
     '''
+
     if avg_ids_list==None:
         save_completeness=False
         for index in Nvisit_list:
@@ -532,11 +542,12 @@ def mvs_completeness_plots(DF,filter,path2savedir='./Plots/',MagBin_list=[],Nvis
             else: plt.close('all')        
     
     else:
+
         if len(avg_ids_list)==0:avg_ids_list=DF.avg_candidates_df.avg_ids.unique()
         if len(Nvisit_list)==0:
             Nvisit_list=DF.avg_candidates_df.loc[~DF.avg_candidates_df[f'n_{filter}'].isna(),f'n_{filter}'].unique()
         if len(Kmodes_list)==0:
-            Kmodes_list=DF.avg_candidates_df.loc[~DF.avg_candidates_df['mkmode'].isna(),'mKmode'].unique()
+            Kmodes_list=DF.avg_candidates_df.loc[~DF.avg_candidates_df['mkmode'].isna(),'mkmode'].unique()
         for index,row in DF.avg_candidates_df.loc[~DF.avg_candidates_df[f'n_{filter}'].isna()&(DF.avg_candidates_df.avg_ids.isin(avg_ids_list))].groupby(f'n_{filter}'):
             if index in Nvisit_list:
                 Tot=0
@@ -558,7 +569,7 @@ def mvs_completeness_plots(DF,filter,path2savedir='./Plots/',MagBin_list=[],Nvis
                             if index2 not in DF.fk_completeness_df.loc[(filter)].index.get_level_values('magbin').unique():
                                 index2,_=find_closer(DF.fk_completeness_df.loc[(filter)].index.get_level_values('magbin').unique(),index2)
                             sel_avg_ids_list=row3.avg_ids.unique()
-                            if np.any(~np.isnan(row3['m%s'%filter[1:4]].values)):
+                            if np.any(~np.isnan(row3[f'm_{filter}'].values)):
                                 check4NaN.append(False)
                                 tong_plot(DF,index,index2,DF.dist,filter,ax=ax[elno1][elno2],avg_ids_list=sel_avg_ids_list,Kmodes_list=[int(index3)],title=title_in,fz=fz,xnew=xnew,ynew=ynew,ticks=ticks,show_IDs=show_IDs,save_completeness=save_completeness,suffix=suffix)
                                 elno2+=1
@@ -1117,6 +1128,7 @@ def tong_plot(DF,N,magbin,d,filter,ax=None,avg_ids_list=[],Kmodes_list=[],title=
         Z_list.append(Z)
     
     Z=np.median(Z_list,axis=0)
+    print(ticks)
     if ax ==None: fig,ax=plt.subplots(1,1,figsize=(10,7))
     caxx=ax.contourf(Yi, Xi, Z, ticks, cmap='Oranges_r',linewidths=4,extend='both')
     caxx1 = ax.contour(caxx,levels=ticks, colors='k')
@@ -1146,28 +1158,28 @@ def tong_plot(DF,N,magbin,d,filter,ax=None,avg_ids_list=[],Kmodes_list=[],title=
     # avg_ids_list2check=DF.avg_candidates_df.loc[(DF.avg_candidates_df['MagBin%s'%filter[1:4]]==magbin)&(DF.avg_candidates_df['N%s'%filter[1:4]]==N)].avg_ids.unique()
     # if len(avg_ids_list)==0: avg_ids_list=avg_ids_list2check
     for avg_ids in avg_ids_list:
-        dmag=DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids==avg_ids,'m%s'%filter[1:4]].values[0]-DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_ids,'m%s%s'%(filter[1:4],suffix)].values[0]
+        dmag=DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids==avg_ids,f'm_{filter}'].values[0]-DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_ids,f'm_{filter}{suffix}'].values[0]
         # print(DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids==avg_ids,'m%s'%filter[1:4]].values[0],DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_ids,'m%s%s'%(filter[1:4],suffix)].values[0])
         sep=DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids==avg_ids].sep.values[0]
         if not np.isnan(dmag):
             if save_completeness:
                 completeness=dataframe_2D_finer_interpolator(DF.fk_completeness_df.loc[(filter,N,magbin,slice(None),slice(None)),[f'ratio_kmode{kmode}']],xnew=sep,ynew=dmag,Z_columns_label=f'ratio_kmode{kmode}')[2][0]
                 DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids==avg_ids,'Completeness%s'%filter[1:4]]=completeness
-                print(avg_ids,completeness)
+                # print(avg_ids,completeness)
                     
             if show_IDs:
                 ax.text(sep-0.03,dmag-0.1,'ID %i'%avg_ids,fontsize=10)
             ax.scatter(sep,dmag,c='k')
 
     divider = make_axes_locatable(ax)
-    cax = divider.append_axes('right', size='5%', pad=0.5)
 
-    cbar = plt.colorbar(caxx, cax=cax, orientation='vertical')
+    cax = divider.append_axes('right', size='5%', pad=0.5)
+    cbar = plt.colorbar(caxx, cax=cax, orientation='vertical',spacing = 'proportional')
 
     # cbar = plt.colorbar(cax)
     cbar.set_label('Completeness',fontsize=20)
-    tick_locator = ticker.MaxNLocator(nbins=len(ticks))
-    cbar.locator = tick_locator
+    # tick_locator = ticker.MaxNLocator(nbins=len(ticks))
+    # cbar.locator = tick_locator
     cbar.ax.tick_params(labelsize=12) 
     cbar.update_ticks()
 

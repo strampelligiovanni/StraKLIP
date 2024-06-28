@@ -1072,7 +1072,7 @@ def update_candidates_with_detection(DF,candidate_df,Kmode_final,verbose):
             else:m,em=[mags,emags]
             DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids.isin(candidate_df.index.get_level_values('mvs_ids').unique())].avg_ids),'m_%s'%filter]=np.round(m,3)
             DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids.isin(candidate_df.index.get_level_values('mvs_ids').unique())].avg_ids),'e_%s'%filter]=np.round(em,3)
-            DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids.isin(candidate_df.index.get_level_values('mvs_ids').unique())].avg_ids),'N_%s'%filter]=len(emags)
+            DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids.isin(candidate_df.index.get_level_values('mvs_ids').unique())].avg_ids),'n_%s'%filter]=len(emags)
     if verbose:
         display(DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids.isin(candidate_df.index.get_level_values('mvs_ids').unique())].avg_ids)])
         display(DF.mvs_candidates_df.loc[(DF.mvs_candidates_df.mvs_ids.isin(candidate_df.index.get_level_values('mvs_ids').unique()))])

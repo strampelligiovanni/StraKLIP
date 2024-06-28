@@ -17,7 +17,7 @@ from IPython.display import display
 from dynesty import NestedSampler,plotting,utils
 from scipy.interpolate import interp2d
 from scipy.integrate import quad
-from tqdm import tqdm
+from stralog import getLogger
 
 
 def P_s(s):
@@ -55,25 +55,22 @@ def mk_smaorsep_interpolations(X,Y,Z,ystep,sep_step=0.01,log=False,sma_interp=Fa
     # ############# New completeness obtained from the interpolation over the finer grid ################           
    
     if sma_interp:
-        if __name__ == 'utils_completeness':
-
-            DP_D_list=[]
-            if parallel_runs:
-                ######## Split the workload over different CPUs ##########
-                workers,chunksize,ntarget=parallelization_package(workers,len(ynew),verbose=False)
-                with ProcessPoolExecutor(max_workers=workers) as executor:
-                    for DP_D in executor.map(smaorsep_interpolations_task,ynew,repeat(f),repeat(xnew),repeat(amin),repeat(amax),chunksize=chunksize): #the task routine is where everithing is done!
-                        DP_D_list.append(DP_D)
-                DP_D_list=np.array(DP_D_list)
-              
-            else:
-                
-                for y in ynew: 
-                    DP_D=smaorsep_interpolations_task(y,f,xnew,amin,amax)
+        DP_D_list=[]
+        if parallel_runs:
+            ######## Split the workload over different CPUs ##########
+            workers,chunksize,ntarget=parallelization_package(workers,len(ynew),verbose=False)
+            with ProcessPoolExecutor(max_workers=workers) as executor:
+                for DP_D in executor.map(smaorsep_interpolations_task,ynew,repeat(f),repeat(xnew),repeat(amin),repeat(amax),chunksize=chunksize): #the task routine is where everithing is done!
                     DP_D_list.append(DP_D)
-                DP_D_list=np.array(DP_D_list)
- 
-            return(xnew,ynew,DP_D_list)
+            DP_D_list=np.array(DP_D_list)
+
+        else:
+            for y in ynew:
+                DP_D=smaorsep_interpolations_task(y,f,xnew,amin,amax)
+                DP_D_list.append(DP_D)
+            DP_D_list=np.array(DP_D_list)
+
+        return(xnew,ynew,DP_D_list)
     
     else:     
 
@@ -88,49 +85,52 @@ def mk_pivot_df(hdf,hdfpivot_columns=[],pindex='',pcolumn='',level=1):
     Xi,Yi = np.meshgrid(X, Y)
     return(X,Y,Z,Xi,Yi)
 
-def mk_completeness_curves_task(self,Nvisit,pmass_range_list,q_range_list,splines,MagBin_label,filter,Kmode):
-    DM=5*np.log10(self.dist/10)
-    mag_label1='m%s'%filter[1:4]
-    str_s=splines[0]
-    inv_s=splines[1]
-    pmass_d=pmass_range_list[0]
-    pmass_u=pmass_range_list[1]
-    magp_u=round2closerint([inv_s[mag_label1](np.log10(pmass_u))],base=1,integer=True)[0]+DM
-    magp_d=round2closerint([inv_s[mag_label1](np.log10(pmass_d))],base=1,integer=True)[0]+DM
+def mk_completeness_curves_task(DF,Nvisit,filter,Kmode):#,pmass_range_list,q_range_list,splines):
+    # DM=5*np.log10(DF.dist/10)
+    # mag_label1='m%s'%filter[1:4]
+    # str_s=splines[0]
+    # inv_s=splines[1]
+    # pmass_d=pmass_range_list[0]
+    # pmass_u=pmass_range_list[1]
+    # magp_u=round2closerint([inv_s[mag_label1](np.log10(pmass_u))],base=1,integer=True)[0]+DM
+    # magp_d=round2closerint([inv_s[mag_label1](np.log10(pmass_d))],base=1,integer=True)[0]+DM
+    # magp_u=DF.fk_completeness_df.loc[filter].index.get_level_values('magbin').unique()[0]
+    # magp_d=DF.fk_completeness_df.loc[filter].index.get_level_values('magbin').unique()[-1]
     list_of_dmag_ordered_df=[]
-    list_of_q_ordered_df=[]
+    # list_of_q_ordered_df=[]
     
-    for magp_bin in np.arange(int(round(magp_u)),int(round(magp_d))+1,1):
+    # for magp_bin in np.arange(int(round(magp_u)),int(round(magp_d))+1,1):
+    for magp_bin in DF.fk_completeness_df.loc[filter].index.get_level_values('magbin').unique():
         list_of_mass_ref_df=[]
         ref_dmag_column_list=[]
         
-        list_of_q_ref_df=[]
-        ref_q_column_list=[]
+        # list_of_q_ref_df=[]
+        # ref_q_column_list=[]
 
-        if magp_bin in self.fk_completeness_df.loc[filter].index.get_level_values('magbin').unique() and magp_bin >= magp_u:
-            pmass=10**str_s['mass%s'%filter[1:4]](magp_bin-DM)
-            if pmass<= pmass_u:
-                for dmag in self.fk_completeness_df.loc[filter].index.get_level_values('dmag').unique():
-                    df=self.fk_completeness_df.loc[(filter,Nvisit,magp_bin,dmag),'ratio_Kmode%s'%Kmode]
-                    df.rename('Ratio%i'%magp_bin,inplace=True)
-                    list_of_mass_ref_df.append(pd.concat([df],axis=1))
-                    ref_dmag_column_list.append(dmag)
+        # if magp_bin in DF.fk_completeness_df.loc[filter].index.get_level_values('magbin').unique() and magp_bin >= magp_u:
+        for dmag in DF.fk_completeness_df.loc[filter].index.get_level_values('dmag').unique():
+            df=DF.fk_completeness_df.loc[(filter,Nvisit,magp_bin,dmag),'ratio_kmode%s'%Kmode]
+            df.rename('Ratio%i'%magp_bin,inplace=True)
+            list_of_mass_ref_df.append(pd.concat([df],axis=1))
+            ref_dmag_column_list.append(dmag)
 
-                for q in q_range_list:
-                    massc_conv=pmass*q
-                    magc_bin=round2closerint([inv_s[mag_label1](np.log10(massc_conv))]+DM,base=1,integer=True)[0]
-                    dmag=magc_bin-magp_bin
-                    sep_list=self.fk_completeness_df.loc[filter].index.get_level_values('sep').unique()
-                    if dmag in self.fk_completeness_df.loc[filter].index.get_level_values('dmag').unique():
-                        df=self.fk_completeness_df.loc[(filter,Nvisit,magp_bin,dmag),'ratio_Kmode%s'%Kmode]
-                        df.rename('Ratio%i'%magp_bin,inplace=True)
-                        list_of_q_ref_df.append(pd.concat([df],axis=1))
-                        ref_q_column_list.append(q)
-                    else:
-                        df=create_empty_df(sep_list,['Ratio%i'%magp_bin])
-                        df['Ratio%i'%magp_bin].fillna(value=0, inplace=True)
-                        list_of_q_ref_df.append(pd.concat([df],axis=1))
-                        ref_q_column_list.append(q)
+            # pmass=10**str_s['mass%s'%filter[1:4]](magp_bin-DM)
+            # if pmass <= pmass_u:
+                # for q in q_range_list:
+                #     massc_conv=pmass*q
+                #     magc_bin=round2closerint([inv_s[mag_label1](np.log10(massc_conv))]+DM,base=1,integer=True)[0]
+                #     dmag=magc_bin-magp_bin
+                #     sep_list=DF.fk_completeness_df.loc[filter].index.get_level_values('sep').unique()
+                #     if dmag in DF.fk_completeness_df.loc[filter].index.get_level_values('dmag').unique():
+                #         df=DF.fk_completeness_df.loc[(filter,Nvisit,magp_bin,dmag),'ratio_Kmode%s'%Kmode]
+                #         df.rename('Ratio%i'%magp_bin,inplace=True)
+                #         list_of_q_ref_df.append(pd.concat([df],axis=1))
+                #         ref_q_column_list.append(q)
+                #     else:
+                #         df=create_empty_df(sep_list,['Ratio%i'%magp_bin])
+                #         df['Ratio%i'%magp_bin].fillna(value=0, inplace=True)
+                #         list_of_q_ref_df.append(pd.concat([df],axis=1))
+                #         ref_q_column_list.append(q)
                         
 
         if len(list_of_mass_ref_df)>0:
@@ -138,10 +138,10 @@ def mk_completeness_curves_task(self,Nvisit,pmass_range_list,q_range_list,spline
             df.index.names=['Dmag','Sep']
             list_of_dmag_ordered_df.append(df)
 
-        if len(list_of_q_ref_df)>0:
-            df_q=pd.concat(list_of_q_ref_df,keys=ref_q_column_list)
-            df_q.index.names=['qBin','Sep']
-            list_of_q_ordered_df.append(df_q)
+        # if len(list_of_q_ref_df)>0:
+        #     df_q=pd.concat(list_of_q_ref_df,keys=ref_q_column_list)
+        #     df_q.index.names=['qBin','Sep']
+        #     list_of_q_ordered_df.append(df_q)
 
     ###################################################################################
     df=pd.concat(list_of_dmag_ordered_df,axis=1)
@@ -160,77 +160,84 @@ def mk_completeness_curves_task(self,Nvisit,pmass_range_list,q_range_list,spline
 
     df=df[['wRatio']].round(3)
     df=df.reset_index()
-    df['Sep']=df['Sep']*self.pixelscale
+    df['Sep']=df['Sep']*DF.pixscale
     df=df.set_index(['Dmag','Sep'])
+    return(df)
     ###################################################################################
 
-    df_q=pd.concat(list_of_q_ordered_df,axis=1)
-    df_q['wRatio']=np.nan
-    for index in list(df_q.index.get_level_values('qBin').unique()):
-        indices = np.where(~np.isnan(df_q.loc[index].values.astype('float64')))
-        if len(list(set(indices[1])))>1:
-            colnames=df_q.columns[list(set(indices[1]))]     
-            median=np.median(df_q.loc[index,colnames].values.astype('float64'),axis=1)
-            median[np.isnan(median)]=0
-            median[median>1]=1
-            df_q.loc[index,'wRatio']=median
-        else:
-            colname=df_q.columns[list(set(indices[1]))][0]
-            df_q.loc[index,['wRatio']]=df_q.loc[index,[colname]].values.astype('float64').ravel()
+    # df_q=pd.concat(list_of_q_ordered_df,axis=1)
+    # df_q['wRatio']=np.nan
+    # for index in list(df_q.index.get_level_values('qBin').unique()):
+    #     indices = np.where(~np.isnan(df_q.loc[index].values.astype('float64')))
+    #     if len(list(set(indices[1])))>1:
+    #         colnames=df_q.columns[list(set(indices[1]))]
+    #         median=np.median(df_q.loc[index,colnames].values.astype('float64'),axis=1)
+    #         median[np.isnan(median)]=0
+    #         median[median>1]=1
+    #         df_q.loc[index,'wRatio']=median
+    #     else:
+    #         colname=df_q.columns[list(set(indices[1]))][0]
+    #         df_q.loc[index,['wRatio']]=df_q.loc[index,[colname]].values.astype('float64').ravel()
+    #
+    # df_q=df_q[['wRatio']].round(3)
+    #
+    # df_q=df_q.reset_index()
+    # df_q['Sep']=df_q['Sep']*DF.pixscale
+    # df_q=df_q.set_index(['qBin','Sep'])
 
-    df_q=df_q[['wRatio']].round(3)
-    
-    df_q=df_q.reset_index()
-    df_q['Sep']=df_q['Sep']*self.pixelscale
-    df_q=df_q.set_index(['qBin','Sep'])
+    # return(df,df_q)
 
-    return(df,df_q)
-
-
-def mk_completeness_curves_df(self,MagBin_label,filter,splines,pmass_range_list=[0.01,2],save=True,workers=None):
+# def mk_completeness_curves_df(self,MagBin_label,filter,splines,pmass_range_list=[0.01,2],save=True,workers=None):
+def mk_completeness_curves_df(DF, filter):
     """
     For each visit, Kmode, mass converted photometry of primary and companion pull a contrast curve and evaluate the completeness as a function of separation for this specific configuration. 
     """
-    pmass_range_list=np.array(pmass_range_list)
-    q_range_list=np.arange(0.010,1+0.005,0.005).round(3)
-    df=[]
-    Nvisit_list=np.sort(self.fk_completeness_df.index.get_level_values('nvisit').unique())
-    Kmodes_list=self.Kmodes_list
+    # pmass_range_list=np.array(pmass_range_list)
+    # q_range_list=np.arange(0.010,1+0.005,0.005).round(3)
+    # df=[]
+    getLogger(__name__).info(f'Generating average completeness dataframes for filter {filter}')
+    Nvisit_list=np.sort(DF.fk_completeness_df.index.get_level_values('nvisit').unique())
+    Kmodes_list=DF.kmodes
     Nvisit_mass_df_list=[]
-    Nvisit_q_df_list=[]
-    for Nvisit in tqdm(Nvisit_list):
+    # Nvisit_q_df_list=[]
+    for Nvisit in Nvisit_list:
         Kmode_mass_df_list=[]
-        Kmode_q_df_list=[]
+        # Kmode_q_df_list=[]
 
         for Kmode in Kmodes_list:
-            df,df_q=mk_completeness_curves_task(self,Nvisit,pmass_range_list,q_range_list,splines,MagBin_label,filter,Kmode) #the task routine is where everithing is done! 
+            # df,df_q=mk_completeness_curves_task(DF,Nvisit,pmass_range_list,q_range_list,splines,MagBin_label,filter,Kmode) #the task routine is where everithing is done!
+            # Kmode_mass_df_list.append(df)
+            # Kmode_q_df_list.append(df_q)
+            df = mk_completeness_curves_task(DF, Nvisit, filter, Kmode)  # the task routine is where everithing is done!
             Kmode_mass_df_list.append(df)
-            Kmode_q_df_list.append(df_q)
-         
+
         if len(Kmode_mass_df_list)>0:
-             df=pd.concat(Kmode_mass_df_list,keys=self.Kmodes_list)
+             df=pd.concat(Kmode_mass_df_list,keys=DF.kmodes)
              # df.index.names=['Kmode','MprimBin','Dmag','Sep']
              df.index.names=['Kmode','Dmag','Sep']
              Nvisit_mass_df_list.append(df)
-        if len(Kmode_q_df_list)>0:
-             df=pd.concat(Kmode_q_df_list,keys=self.Kmodes_list)
-             # df.index.names=['Kmode','MprimBin','qBin','Sep']
-             df.index.names=['Kmode','q','Sep']
-             Nvisit_q_df_list.append(df)
+        # if len(Kmode_q_df_list)>0:
+        #      df=pd.concat(Kmode_q_df_list,keys=DF.Kmodes_list)
+        #      # df.index.names=['Kmode','MprimBin','qBin','Sep']
+        #      df.index.names=['Kmode','q','Sep']
+        #      Nvisit_q_df_list.append(df)
     if len(Nvisit_mass_df_list)>0:
          DC_df=pd.concat(Nvisit_mass_df_list,keys=Nvisit_list)
          # DC_df.index.names=['Nvisit','Kmode','MprimBin','Dmag','Sep']
          DC_df.index.names=['Nvisit','Kmode','Dmag','Sep']
-    if len(Nvisit_q_df_list)>0:
-         QC_df=pd.concat(Nvisit_q_df_list,keys=Nvisit_list)
-         # QC_df.index.names=['Nvisit','Kmode','MprimBin','qBin','Sep']
-         QC_df.index.names=['Nvisit','Kmode','q','Sep']
+    # if len(Nvisit_q_df_list)>0:
+    #      QC_df=pd.concat(Nvisit_q_df_list,keys=Nvisit_list)
+    #      # QC_df.index.names=['Nvisit','Kmode','MprimBin','qBin','Sep']
+    #      QC_df.index.names=['Nvisit','Kmode','q','Sep']
     DC_df.columns=['Ratio']
-    QC_df.columns=['Ratio']
-    return(DC_df,QC_df)
+    # QC_df.columns=['Ratio']
+    # return(DC_df,QC_df)
+    return(DC_df)
 
-def mk_matrix_completeness_curves_task(DCC_sel_df,QCC_sel_df,sep_step,KLIPmode,sma_interp,parallel_runs,workers):
-    X1,Y1,Z1,Xi1,Yi1=mk_pivot_df(DCC_sel_df.loc[KLIPmode,'Ratio'],hdfpivot_columns=['Sep','Dmag','Ratio'],pindex='Dmag',pcolumn='Sep')    
+# def mk_matrix_completeness_curves_task(DCC_sel_df,QCC_sel_df,sep_step,KLIPmode,sma_interp,parallel_runs,workers):
+def mk_matrix_completeness_curves_task(DCC_sel_df, sep_step, KLIPmode, sma_interp, parallel_runs):
+
+    X1,Y1,Z1,Xi1,Yi1=mk_pivot_df(DCC_sel_df.loc[KLIPmode,'Ratio'],hdfpivot_columns=['Sep','Dmag','Ratio'],pindex='Dmag',pcolumn='Sep')
     xnew,ynew,znew=mk_smaorsep_interpolations(X1,Y1,Z1,0.05,sep_step=sep_step,sma_interp=sma_interp,parallel_runs=parallel_runs)
     try:
         if len(znew)>1: znew[znew>1]=1
@@ -240,67 +247,79 @@ def mk_matrix_completeness_curves_task(DCC_sel_df,QCC_sel_df,sep_step,KLIPmode,s
         sys.exit()
     df=pd.DataFrame(znew,columns=np.round(xnew,3),index=np.round(ynew,3))
 
-    X1,Y1,Z1,Xi1,Yi1=mk_pivot_df(QCC_sel_df.loc[KLIPmode,'Ratio'],hdfpivot_columns=['Sep','q','Ratio'],pindex='q',pcolumn='Sep')
-    xnew,ynew,znew=mk_smaorsep_interpolations(X1,Y1,Z1,0.1,sep_step=sep_step,sma_interp=sma_interp,parallel_runs=parallel_runs)
-    try:
-        if len(znew)>1: znew[znew>1]=1
-    except: 
-        display(QCC_sel_df.loc[KLIPmode,'Ratio'])
-        print(znew)
-        sys.exit()
-    df_q=pd.DataFrame(znew,columns=np.round(xnew,3),index=np.round(ynew,3))
-    return(df,df_q)
-     
+    # X1,Y1,Z1,Xi1,Yi1=mk_pivot_df(QCC_sel_df.loc[KLIPmode,'Ratio'],hdfpivot_columns=['Sep','q','Ratio'],pindex='q',pcolumn='Sep')
+    # xnew,ynew,znew=mk_smaorsep_interpolations(X1,Y1,Z1,0.1,sep_step=sep_step,sma_interp=sma_interp,parallel_runs=parallel_runs)
+    # try:
+    #     if len(znew)>1: znew[znew>1]=1
+    # except:
+    #     display(QCC_sel_df.loc[KLIPmode,'Ratio'])
+    #     print(znew)
+    #     sys.exit()
+    # df_q=pd.DataFrame(znew,columns=np.round(xnew,3),index=np.round(ynew,3))
+    # return(df,df_q)
+    return(df)
+
  
-def make_matrix_completeness_curves_df(DCC_df,QCC_df,Nvisit_list=[],KLIPmodes_list=[],sep_step=0.01,cmap='Oranges_r',workers=None,save=True,sma_interp=True,parallel_runs=True):
+# def make_matrix_completeness_curves_df(DCC_df,QCC_df,Nvisit_list=[],KLIPmodes_list=[],sep_step=0.01,cmap='Oranges_r',workers=None,save=True,sma_interp=True,parallel_runs=True):
+def make_matrix_completeness_curves_df(DCC_df, Nvisit_list=[], KLIPmodes_list=[], sep_step=0.01,
+                                       workers=None, sma_interp=True, parallel_runs=True):
+
     """
     For each bin of mass of the primary and visits, convert the mass completeness curves in matrix MassCompanionXSep and then convert the separation in projected Semi-major axis.
     """
     if len(Nvisit_list)==0:Nvisit_list=DCC_df.index.get_level_values('Nvisit').unique().values
     if len(KLIPmodes_list)==0:KLIPmodes_list=DCC_df.index.get_level_values('Kmode').unique().values
     Nvisit_mass_df_list=[]
-    Nvisit_q_df_list=[]
-    print('Making matrix completeness curves for %i Nvisits'%len(Nvisit_list))
-    for Nvisit in tqdm(Nvisit_list):
+    # Nvisit_q_df_list=[]
+    for Nvisit in Nvisit_list:
+        getLogger(__name__).info(f'Making matrix completeness curves for Nvisits:  {Nvisit}')
         klipmode_dmag_df_list=[]
-        klipmode_q_df_list=[]
+        # klipmode_q_df_list=[]
 
         for KLIPmode in KLIPmodes_list: #the task routine is where everithing is done!
-            df,df_q=mk_matrix_completeness_curves_task(DCC_df.loc[(Nvisit)],QCC_df.loc[(Nvisit)],sep_step,KLIPmode,sma_interp,parallel_runs,workers)        
+            # df,df_q=mk_matrix_completeness_curves_task(DCC_df.loc[(Nvisit)],QCC_df.loc[(Nvisit)],sep_step,KLIPmode,sma_interp,parallel_runs,workers)
+            df=mk_matrix_completeness_curves_task(DCC_df.loc[int(Nvisit)],sep_step,KLIPmode,sma_interp,parallel_runs)
             klipmode_dmag_df_list.append(df)
-            klipmode_q_df_list.append(df_q)
+            # klipmode_q_df_list.append(df_q)
 
         df=pd.concat(klipmode_dmag_df_list,keys=KLIPmodes_list)#.sort_index()
         Nvisit_mass_df_list.append(df)
-        dfq=pd.concat(klipmode_q_df_list,keys=KLIPmodes_list)#.sort_index()
-        Nvisit_q_df_list.append(dfq)
+        # dfq=pd.concat(klipmode_q_df_list,keys=KLIPmodes_list)#.sort_index()
+        # Nvisit_q_df_list.append(dfq)
     MDCC_df=pd.concat(Nvisit_mass_df_list,keys=Nvisit_list)#.sort_index()
-    MQCC_df=pd.concat(Nvisit_q_df_list,keys=Nvisit_list)#.sort_index()
+    # MQCC_df=pd.concat(Nvisit_q_df_list,keys=Nvisit_list)#.sort_index()
     if sma_interp: xlabel='SMA'
     else:  xlabel='Sep'
     
     MDCC_df.index.set_names(['Nvisit','KLIPmode','Dmag'],inplace=True)  
     MDCC_df.columns.set_names([xlabel],inplace=True)  
-    MQCC_df.index.set_names(['Nvisit','KLIPmode','q'],inplace=True)  
-    MQCC_df.columns.set_names([xlabel],inplace=True)  
+    # MQCC_df.index.set_names(['Nvisit','KLIPmode','q'],inplace=True)
+    # MQCC_df.columns.set_names([xlabel],inplace=True)
        
-    return(MDCC_df,MQCC_df)
- 
-def flatten_matrix_completeness_curves_df(self,filter,sma_interp=True,Nvisit_list=None,KLIPmodes_list=None):
-    MDCC_df=self.matrix_dmag_completeness_curves_df.loc[filter]
-    MQCC_df=self.matrix_q_completeness_curves_df.loc[filter]
+    # return(MDCC_df,MQCC_df)
+    return(MDCC_df)
+
+def flatten_matrix_completeness_curves_df(DF,filter,sma_interp=True,Nvisit_list=None,KLIPmodes_list=None):
+    MDCC_df=DF.matrix_dmag_completeness_curves_df.loc[filter]
+    # MQCC_df=DF.matrix_q_completeness_curves_df.loc[filter]
     
     if sma_interp: xlabel='SMA'
     else:  xlabel='Sep'
-    if Nvisit_list==None or len(Nvisit_list)==0: Nvisit_list=MDCC_df.index.get_level_values('Nvisit').unique()
-    if KLIPmodes_list==None or len(KLIPmodes_list)==0: KLIPmodes_list=MDCC_df.index.get_level_values('KLIPmode').unique()
+    if Nvisit_list is None or len(Nvisit_list)==0: Nvisit_list=MDCC_df.index.get_level_values('Nvisit').unique()
+    if KLIPmodes_list is None or len(KLIPmodes_list)==0: KLIPmodes_list=MDCC_df.index.get_level_values('KLIPmode').unique()
     
     nvisit_mass_list_df=[]
     nvisit_q_list_df=[]
     for nvisit in Nvisit_list:
+        getLogger(__name__).info(f'Flattening the matrix for completeness curves for Nvisits:  {nvisit}')
         KLIPmode_dmag_list_df=[]
-        KLIPmode_q_list_df=[]
+        # KLIPmode_q_list_df=[]
         for idx,row in MDCC_df.loc[nvisit,slice(None)].groupby(['Dmag']):
+            if isinstance(idx,tuple):
+                idx=int(idx[0])
+            else:
+                idx=int(idx)
+
             kmode_idx=MDCC_df.index.isin(KLIPmodes_list,level='KLIPmode')
             median=np.median(MDCC_df.loc[nvisit,kmode_idx,idx].values.astype('float64'),axis=0)
             median[np.isnan(median)]=0
@@ -310,18 +329,18 @@ def flatten_matrix_completeness_curves_df(self,filter,sma_interp=True,Nvisit_lis
             df=df.T
             KLIPmode_dmag_list_df.append(df)
         
-        for idx,row in MQCC_df.loc[nvisit,slice(None)].groupby(['q']):            
-            kmode_idx=MQCC_df.index.isin(KLIPmodes_list,level='KLIPmode')
-            median=np.median(MQCC_df.loc[nvisit,kmode_idx,idx].values.astype('float64'),axis=0)
-            median[np.isnan(median)]=0
-            median[median>1]=1
-            df=create_empty_df([MQCC_df.columns.get_level_values(xlabel).unique()],[idx])
-            df[idx]=median
-            df=df.T
-            KLIPmode_q_list_df.append(df)
+        # for idx,row in MQCC_df.loc[nvisit,slice(None)].groupby(['q']):
+        #     kmode_idx=MQCC_df.index.isin(KLIPmodes_list,level='KLIPmode')
+        #     median=np.median(MQCC_df.loc[nvisit,kmode_idx,idx].values.astype('float64'),axis=0)
+        #     median[np.isnan(median)]=0
+        #     median[median>1]=1
+        #     df=create_empty_df([MQCC_df.columns.get_level_values(xlabel).unique()],[idx])
+        #     df[idx]=median
+        #     df=df.T
+        #     KLIPmode_q_list_df.append(df)
         
         nvisit_mass_list_df.append(pd.concat(KLIPmode_dmag_list_df))
-        nvisit_q_list_df.append(pd.concat(KLIPmode_q_list_df))
+        # nvisit_q_list_df.append(pd.concat(KLIPmode_q_list_df))
     
     # df_mass=pd.concat(nvisit_mass_list_df,keys=Nvisit_list)
     # df_mass.index.set_names(['Nvisit','Dmag'],inplace=True)  
@@ -362,17 +381,18 @@ def flatten_matrix_completeness_curves_df(self,filter,sma_interp=True,Nvisit_lis
     FMDCC_df=pd.concat(nvisit_mass_list_df,keys=Nvisit_list)
     FMDCC_df.index.set_names(['Nvisit','Dmag'],inplace=True)  
     
-    FMQCC_df=pd.concat(nvisit_q_list_df,keys=Nvisit_list)
-    FMQCC_df.index.set_names(['Nvisit','q'],inplace=True)
+    # FMQCC_df=pd.concat(nvisit_q_list_df,keys=Nvisit_list)
+    # FMQCC_df.index.set_names(['Nvisit','q'],inplace=True)
     
     # FMDCC_df=pd.concat(mean_mass_def_list,keys=pmass_range_list)
-    FMDCC_df.columns=list(FMDCC_df.columns.get_level_values(xlabel).unique())
-    FMDCC_df.rename_axis(xlabel,axis=1,inplace=True)
+    # FMDCC_df.columns=list(FMDCC_df.columns.get_level_values(xlabel).unique())
+    # FMDCC_df.rename_axis(xlabel,axis=1,inplace=True)
 
     # FMQCC_df=pd.concat(mean_q_def_list,keys=pmass_range_list)
-    FMQCC_df.columns=list(FMQCC_df.columns.get_level_values(xlabel).unique())
-    FMQCC_df.rename_axis(xlabel,axis=1,inplace=True)
-    return(FMDCC_df,FMQCC_df)
+    # FMQCC_df.columns=list(FMQCC_df.columns.get_level_values(xlabel).unique())
+    # FMQCC_df.rename_axis(xlabel,axis=1,inplace=True)
+    # return(FMDCC_df,FMQCC_df)
+    return(FMDCC_df)
 
 # def filter_median_flatten_matrix_completeness_curves_df(FMDCC_df,FMQCC_df,mass_list,sma_interp=True):
 #     if sma_interp: xlabel='SMA'

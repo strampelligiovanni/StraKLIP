@@ -248,7 +248,9 @@ def configure_dataframe(dataset,load=False):
                    inst=dataset.pipe_cfg.instrument['name'],
                    pixscale=dataset.pipe_cfg.instrument['pixelscale'],
                    gain=dataset.pipe_cfg.instrument['gain'],
-                   PAMdict={key: dataset.pipe_cfg.instrument['pam'][key] for key in list(dataset.pipe_cfg.instrument['pam'].keys())},
+                   PAMdict={key: dataset.pipe_cfg.instrument['pam'][key] for key in
+                            list(dataset.pipe_cfg.instrument['pam'].keys())} if
+                            isinstance(dataset.pipe_cfg.instrument['pam'], dict) else None,
                    tilebase=dataset.pipe_cfg.mktiles['tile_base'],
                    radec=[dataset.pipe_cfg.buildhdf['default_avg_table']['ra'],dataset.pipe_cfg.buildhdf['default_avg_table']['dec']],
                    filters=[i for i in dataset.data_cfg.filters],

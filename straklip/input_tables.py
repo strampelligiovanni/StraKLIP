@@ -86,11 +86,8 @@ class Tables:
         self.canonize()
         for label in ['rota','pav3','exptime']:
             for filter in self.data_cfg.filters:
-                if label =='fits':
-                    d = ''
-                else:
-                    d = np.nan
-                self.mvs_table['%s_%s' % (label,filter.lower())] = np.nan
+                if not np.any(self.mvs_table.columns.str.contains('%s_%s' % (label,filter.lower()))):
+                    self.mvs_table['%s_%s' % (label,filter.lower())] = np.nan
         fits_list=self.check_fits_file_existence()
         for file in fits_list:
             hdul = fits.open(file)

@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 from utils_plot import mk_arrows
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from astropy.visualization import simple_norm
+from stralog import getLogger
 
 class Tile():
     def __init__(self,data=[],delta=0,x=np.nan,y=np.nan,tile_base=1,inst=None,dqdata=[],Python_origin=True,raise_errors=False):
@@ -67,7 +68,7 @@ class Tile():
         self.x0=int(tile_base/2)
         self.y0=int(tile_base/2)
 
-    def mk_tile(self,fig=None,ax=None,step=2,title='',cmap='viridis',xy_tile=False,xy_m=False,xy_cen=False,xy_dmax=3,box_size=3,fwhm=2.5,sigma=4,background=0,std=0,showplot=True,cbar=False,lpad=0.5,fx=5,fy=5,legend=False,mk_arrow=False,xa=None,ya=None,theta=0,PAV3=None,L=None,dtx=0.3,dty=0.15,head_width=0.5, head_length=0.5,width=0.15, fc='k', ec='k',tc='k',north=True,east=False,roll=True,simplenorm=None,min_percent=0,max_percent=100,power=1,log=1000,cr_remove=False, la_cr_remove=False,cr_radius=3,verbose=False,kill=False,close=True,vmin=None,vmax=None,pad_data=False,pad=None,keep_size=False,return_tile=False,kill_plots=False):
+    def mk_tile(self,fig=None,ax=None,step=2,title='',cmap='viridis',xy_tile=False,xy_m=False,xy_cen=False,xy_dmax=3,box_size=3,fwhm=2.5,sigma=4,background=0,std=0,showplot=True,cbar=False,lpad=0.5,fx=5,fy=5,legend=False,mk_arrow=False,xa=None,ya=None,theta=0,PAV3=None,L=None,dtx=0.3,dty=0.15,head_width=0.5, head_length=0.5,width=0.15, fc='k', ec='k',tc='k',north=True,east=False,roll=True,simplenorm=None,min_percent=0,max_percent=100,power=1,log=1000,cr_remove=False, la_cr_remove=False,cr_radius=3,verbose=False,kill=False,close=True,vmin=None,vmax=None,pad_data=False,pad=None,keep_size=False,return_tile=False,kill_plots=False,path2savefig=None):
         '''
         Select a smaller portion of an imput image and create a new tile from it.
 
@@ -199,8 +200,10 @@ class Tile():
         self.ypad_offset=round(self.ypad-self.ypad_floor,3)
 
         if verbose == True:
-            print('inp xy: ',self.xpad,self.ypad)
-            print('floor padded xy: ',self.xpad_floor,self.ypad_floor)
+            # print('inp xy: ',self.xpad,self.ypad)
+            # print('floor padded xy: ',self.xpad_floor,self.ypad_floor)
+            getLogger(__name__).debug('inp xy: ',self.xpad,self.ypad)
+            getLogger(__name__).debug('floor padded xy: ',self.xpad_floor,self.ypad_floor)
 
         if keep_size:
             self.xmin0 = 0
@@ -223,12 +226,18 @@ class Tile():
         self.y_tile=(self.tile_base-1)/2#int(self.ypad-self.ymin0)
         if cr_remove==True and la_cr_remove==False:
             title+=' CR free'
-            if verbose==True:print('\nApplying cosmic ray rejection')
+            if verbose==True:
+                # print('\nApplying cosmic ray rejection')
+                getLogger(__name__).debug('\nApplying cosmic ray rejection')
+
             self.data=cosmic_ray_filter(self,cr_radius,delta=3,verbose=False,kill=kill)
 
         elif la_cr_remove==True and  cr_remove==False:
             title+=' CR free'
-            if verbose==True:print('\nApplying LA cosmic ray rejection')
+            if verbose==True:
+                # print('\nApplying LA cosmic ray rejection')
+                getLogger(__name__).debug('\nApplying LA cosmic ray rejection')
+
             self.data=self.data # Must be counts or electrons, NOT e-/s or c/s
             cosmic_ray_filter_la(self,sigclip=4.5,niter=5,verbose=False)
             self.data=self.cr_clean_im
@@ -260,7 +269,7 @@ class Tile():
             self.y_m=None
         if fig == None and ax==None: 
             fig,ax=plt.subplots(1,1,figsize=(fx,fy))
-        im=self.plot_tile(fig,ax,title=title,cmap=cmap,xy_tile=xy_tile,xy_cen=xy_cen,xy_m=xy_m,cbar=cbar,lpad=lpad,legend=legend,mk_arrow=mk_arrow,xa=xa,ya=ya,theta=theta,PAV3=PAV3,L=L,dtx=dtx,dty=dty,head_width=head_width, head_length=head_length,width=width, fc=fc, ec=ec,tc=tc,north=north,east=east,roll=roll,showplot=showplot,step=step,simplenorm=simplenorm,min_percent=min_percent,max_percent=max_percent,power=power,log=log,verbose=verbose,kill=kill,close=close,vmin=vmin,vmax=vmax,extent=None,kill_plots=kill_plots)
+        im=self.plot_tile(fig,ax,title=title,cmap=cmap,xy_tile=xy_tile,xy_cen=xy_cen,xy_m=xy_m,cbar=cbar,lpad=lpad,legend=legend,mk_arrow=mk_arrow,xa=xa,ya=ya,theta=theta,PAV3=PAV3,L=L,dtx=dtx,dty=dty,head_width=head_width, head_length=head_length,width=width, fc=fc, ec=ec,tc=tc,north=north,east=east,roll=roll,showplot=showplot,step=step,simplenorm=simplenorm,min_percent=min_percent,max_percent=max_percent,power=power,log=log,verbose=verbose,kill=kill,close=close,vmin=vmin,vmax=vmax,extent=None,kill_plots=kill_plots,savename=path2savefig)
         if return_tile: return(im)
 
     def append_tile(self, path2tile,Datacube=None,verbose=False,name='SCI',return_Datacube=False,write=True):
@@ -269,7 +278,9 @@ class Tile():
             Datacube.append(fits.PrimaryHDU())
         data=self.data[int(self.delta/2):self.tile_base-int(self.delta/2),int(self.delta/2):self.tile_base-int(self.delta/2)].copy()
         Datacube.append(fits.ImageHDU(data=data,name=name))
-        if verbose: print(Datacube.info())
+        if verbose:
+            getLogger(__name__).debug(Datacube.info())
+
         if return_Datacube: 
             return(Datacube)
         else: 
@@ -278,25 +289,26 @@ class Tile():
                 Datacube.flush()
 
     def load_tile(self, path2tile,hdul_max=None,ext=None,verbose=False,return_Datacube=False,mode='readonly',raise_errors=True):
-        # try: 
+        try:
+            Datacube=fits.open(path2tile,memmap=False,mode=mode)
+            if hdul_max!=None:
+                for n in range(hdul_max,len(Datacube)-1):Datacube.pop(hdul_max+1)
+            if verbose:
+                getLogger(__name__).debug(Datacube.info())
+
+        except:
+            if raise_errors: raise ValueError('%s do not exist'%path2tile)
+            else:Datacube=None
+        if ext!= None:
             try:
-                Datacube=fits.open(path2tile,memmap=False,mode=mode)
-                if hdul_max!=None: 
-                    for n in range(hdul_max,len(Datacube)-1):Datacube.pop(hdul_max+1)
-                if verbose: print(Datacube.info())
+                self.data=Datacube[ext].data.astype(float)
             except:
-                if raise_errors: raise ValueError('%s do not exist'%path2tile) 
-                else:Datacube=None
-            if ext!= None: 
-                try:
-                    self.data=Datacube[ext].data.astype(float)
-                except: 
-                    if raise_errors: raise ValueError('%s is missing extension %s'%(path2tile,ext)) 
-                    else: self.data=np.ones((self.tile_base,self.tile_base))*np.nan
-            
-            if return_Datacube: return(Datacube)
-            else: 
-                if raise_errors: Datacube.close()
+                if raise_errors: raise ValueError('%s is missing extension %s'%(path2tile,ext))
+                else: self.data=np.ones((self.tile_base,self.tile_base))*np.nan
+
+        if return_Datacube: return(Datacube)
+        else:
+            if raise_errors: Datacube.close()
     
     def plot_tile(self,fig,ax,title=None,cmap='viridis',xy_tile=True,xy_cen=True,xy_m=True,cbar=False,bad_pixel_c='r',lpad=0.5,legend=False,tight=False,mk_arrow=False,xa=None,ya=None,theta=0,PAV3=None,L=None,dtx=0.3,dty=0.15,head_width=0.5,head_length=0.5,width=0.15, fc='k', ec='k',tc='k',north=True,east=False,roll=True,showplot=True,step=2,simplenorm=None,verbose=False,close=True,kill=False,vmin=None,vmax=None,min_percent=0,max_percent=100.0,power=1,log=1000,savename=None,extent=None,kill_plots=False):
         '''
@@ -432,15 +444,22 @@ class Tile():
             cax = divider.append_axes('right', size='5%', pad=0.05)
             fig.colorbar(im, cax=cax, orientation='vertical')
 
-        if verbose==True:print('tile xy: ',self.x_tile,self.y_tile)
+        if verbose==True:
+            # print('tile xy: ',self.x_tile,self.y_tile)
+            getLogger(__name__).debug('tile xy: ',self.x_tile,self.y_tile)
+
 
         if xy_cen:
             my_circle_scatter(ax, [self.x_cen], [self.y_cen], radius=0.2, alpha=1, color='g')
-            if verbose==True:print('centroids xy: ',self.x_cen,self.y_cen)
+            if verbose==True:
+                # print('centroids xy: ',self.x_cen,self.y_cen)
+                getLogger(__name__).debug('centroids xy: ',self.x_cen,self.y_cen)
 
         if xy_m:
             my_circle_scatter(ax, [self.x_m], [self.y_m], radius=0.2, alpha=1, color='r')
-            if verbose==True:print('max xy: ',self.x_m,self.y_m)
+            if verbose==True:
+                # print('max xy: ',self.x_m,self.y_m)
+                getLogger(__name__).debug('max xy: ',self.x_m,self.y_m)
 
         my_circle_scatter(ax, [self.x_tile], [self.y_tile], radius=0.2, alpha=1, color='b')
         if legend==True:
@@ -449,7 +468,10 @@ class Tile():
         if tight==True:plt.tight_layout()
         if savename!=None:
             plt.savefig(savename)
-            print('Saving ',savename)
+            if verbose:
+                # print('Saving ',savename)
+                getLogger(__name__).debug('Saving ',savename)
+
         if showplot: 
             plt.show()
         if kill_plots: 

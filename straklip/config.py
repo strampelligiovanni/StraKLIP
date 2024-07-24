@@ -4,7 +4,7 @@ import ruamel.yaml
 import datetime
 import sys
 from dataframe import DataFrame
-from ancillary import get_Av_list
+from ancillary import get_Av_dict
 from stralog import getLogger
 from acstools import acszpt
 import numpy as np
@@ -72,11 +72,26 @@ def configure_pipeline(config_file,pipe_cfg='',data_cfg='',dt_string=''):
     getLogger(__name__).info(opening)
     config = load(config_file)
     config['name']=config_file
+    for key in config.keys():
+        try:
+            if 'redo' in config[key]:
+                if config['redo']:
+                    config[key]['redo'] = True
+        except: pass
+        try:
+            if config['ncpu'] == 1:
+                config[key]['parallel_runs'] = False
+        except: pass
+        try:
+            if 'debug' in config[key]:
+                if config['debug']:
+                    config[key]['debug'] = True
+        except: pass
     return objectify(config)
 
 def get_paths(config=None):
     """Returns a set of all the required paths from the pipeline config"""
-    return list([config.paths['data'],config.paths['database'],config.paths['out'],config.paths['pam'],config.paths['pyklip'], config.paths['tmp']])
+    return list([config.paths['data'],config.paths['database'],config.paths['out'],config.paths['pam'],config.paths['pyklip']])#, config.paths['tmp']])
 
 def verify_paths(config=None, return_missing=False):
     """
@@ -162,23 +177,25 @@ def validate(labels,pipe_cfg):
             errors.append(name)
     return errors
 
-def closing_statement(pipe_cfg,dataset,DF):
-    getLogger(__name__).info(f'=========================================================')
-    getLogger(__name__).info(f'=============== Pipeline closing summary ================')
+def closing_statement(DF,pipe_cfg,dataset):
+    getLogger(__name__).info(f'===============================================================================================')
+    getLogger(__name__).info(f'=============== Pipeline closing summary ======================================================')
     getLogger(__name__).info(f'Closing the pipeline after the following steps:')
     for step in pipe_cfg.flow:
-        if not f'steps.{step}' in DF.steps or getattr(dataset.pipe_cfg,'redo') or getattr(dataset.pipe_cfg,step)['redo']:
-            getLogger(__name__).info(f' - {step}: new.')
-        else:
-            getLogger(__name__).info(f' - {step}: retrieved.')
-    getLogger(__name__).info(f'==========================================================')
+        getLogger(__name__).info(f' - {step}')
+    getLogger(__name__).info(f'==============================================================================================')
 
-def get_Av_dict(dataset):
-    getLogger(__name__).info(f'Fetching extinction dictionary for filters {dataset.data_cfg.filters}.')
-
-    Av1_extinction=list(get_Av_list(dataset.data_cfg.filters,verbose=dataset.pipe_cfg.verbose,Rv=dataset.data_cfg.target['Rv']).values())
-
-    return {dataset.data_cfg.filters[i]: Av1_extinction[i] for i in range(len(dataset.data_cfg.filters))}
+# def get_Av_dict(dataset):
+#     getLogger(__name__).info(f'Fetching extinction dictionary for filters {dataset.data_cfg.filters}.')
+#     if isinstance(dataset.data_cfg.target['AVs'],dict):
+#         Av1_extinction=list(get_Av_list(dataset.data_cfg.filters,verbose=True,Rv=dataset.data_cfg.target['Rv'],path2saveim=dataset.pipe_cfg.paths['database']).values())
+#     elif isinstance(dataset.data_cfg.target['AVs'],list):
+#         getLogger(__name__).info(f'Loading Av extinctions at 1 magnitudes from data.yaml')
+#         Av1_extinction=dataset.data_cfg.target['AVs']
+#     else:
+#         getLogger(__name__).critical(f'AVs needs to be either a dictionary for the get_Av_list to work, or a list of values. Please check.')
+#         raise ValueError(f'AVs needs to be either a dictionary for the get_Av_list to work, or a list of values. Please check.')
+#     return {dataset.data_cfg.filters[i]: Av1_extinction[i] for i in range(len(dataset.data_cfg.filters))}
 
 def get_zpt(dataset):
     getLogger(__name__).info(f'Zero points not provided, fetch them from acstool')
@@ -191,53 +208,67 @@ def get_zpt(dataset):
     # zpt_table = q.fetch()
 
     # Create an instance and search for a specific filter
-    q_filter = acszpt.Query(date=dataset.data_cfg.target['zpts'],
+    q_filter = acszpt.Query(date=dataset.data_cfg.target['zpts']['date'],
                             detector=dataset.pipe_cfg.instrument['detector'],
                             filt=None)
 
-    # Fetch the results for the F435W filter
     filter_zpt = q_filter.fetch().to_pandas()
     filter_zpt['Filter'] = filter_zpt['Filter'].astype(str).apply(str.lower)
 
-    zpt_list = filter_zpt.loc[filter_zpt.Filter.astype(str).isin(dataset.data_cfg.filters)].VEGAmag.tolist()
+    zpt_list = filter_zpt.loc[filter_zpt.Filter.astype(str).isin(dataset.data_cfg.filters)][dataset.data_cfg.target['zpts']['system']].tolist()
     return {dataset.data_cfg.filters[i]: zpt_list[i] for i in range(len(dataset.data_cfg.filters))}
 
-def configure_dataframe(dataset):
-    files_check_list = ['avg_targets','crossmatch_ids','mvs_targets']
-    if 'buildhdf' not in dataset.pipe_cfg.flow or ((not dataset.pipe_cfg.buildhdf['redo'] and not dataset.pipe_cfg.redo) and np.all([os.path.exists(dataset.pipe_cfg.paths['out']+'/'+file+'.h5') for file in files_check_list])):
-        getLogger(__name__).info(f'Fetching dataframes from %s'%dataset.pipe_cfg.paths['out'])
-        DF = DataFrame(path2out=dataset.pipe_cfg.paths['out'])
-        DF.load_dataframe()
+def configure_dataframe(dataset,load=False):
+    files_check_list = ['crossmatch_ids','avg_targets','mvs_targets','avg_candidates','mvs_candidates']
+    if 'AVs' in dataset.data_cfg.target and isinstance(dataset.data_cfg.target['AVs'],dict):
+        Av_dict = dataset.data_cfg.target['AVs']
     else:
-        Av_dict = get_Av_dict(dataset)
-        getLogger(__name__).info(f'Fetching zero points for filters {dataset.data_cfg.filters}')
-        if isinstance(dataset.data_cfg.target['zpts'],datetime.date):
-            zpt_dict = get_zpt(dataset)
-        elif isinstance(dataset.data_cfg.target['zpts'],list):
-            zpt_dict = dataset.data_cfg.target['zpts']
-        else:
-            getLogger(__name__).critical(f'Zero points option from data.yaml as to be either a "datetime.date" obj or a list')
-            raise ValueError
+        getLogger(__name__).warning('get_Av_dict currently only supports VEGAmag system. Please provide your own set of AVs if in a differest system as AVs : {ext: {mag_filter : value}} in the data.yaml under target')
+        try:
+            date = dataset.data_cfg.target['zpts']['date']
+        except:
+            date = None
+        Av_dict = get_Av_dict(dataset.data_cfg.filters, verbose=True, Rv=dataset.data_cfg.target['Rv'],
+                              path2saveim=dataset.pipe_cfg.paths['database'], band_dict=dataset.pipe_cfg.instrument['AVs'],inst=dataset.pipe_cfg.instrument['name'],date=date)
 
-        DF = DataFrame(kind=dataset.data_cfg.target['kind'],
-                       redo=dataset.pipe_cfg.redo,
-                       path2out=dataset.pipe_cfg.paths['out'],
-                       path2data=dataset.pipe_cfg.paths['data'],
-                       target=dataset.data_cfg.target['name'],
-                       inst=dataset.pipe_cfg.instrument['name'],
-                       pixscale=dataset.pipe_cfg.instrument['pixelscale'],
-                       gain=dataset.pipe_cfg.instrument['gain'],
-                       PAMdict={key: dataset.pipe_cfg.instrument['pam'][key] for key in list(dataset.pipe_cfg.instrument['pam'].keys())},
-                       tilebase=dataset.data_cfg.tiles['tile_base'],
-                       radec=[dataset.pipe_cfg.buildhdf['default_avg_table']['ra'],dataset.pipe_cfg.buildhdf['default_avg_table']['dec']],
-                       filters=[i for i in dataset.data_cfg.filters],
-                       xyaxis={key: dataset.pipe_cfg.instrument['ccd_pix'][key] for key in list(dataset.pipe_cfg.instrument['ccd_pix'].keys())},
-                       zpt=zpt_dict,
-                       Av=Av_dict,
-                       dist=dataset.data_cfg.target['distance'],
-                       type=dataset.pipe_cfg.buildhdf['default_avg_table']['type'],
-                       maxsep=dataset.data_cfg.tiles['max_separation'],
-                       minsep=dataset.data_cfg.tiles['min_separation'],
-                       steps=[],
-                       fitsext=str(dataset.data_cfg.target['fitsext']))
+    if isinstance(dataset.data_cfg.target['zpts'],dict):
+        zpt_dict = get_zpt(dataset)
+    elif isinstance(dataset.data_cfg.target['zpts'],list):
+        zpt_dict = {dataset.data_cfg.filters[i]: dataset.data_cfg.target['zpts'][i] for i in range(len(dataset.data_cfg.filters))}
+    else:
+        getLogger(__name__).critical(f'Zero points option from data.yaml as to be either a dictionary with "datetime.date" and "filters" obj or a filterwise list of values')
+        raise ValueError
+
+    DF = DataFrame(kind=dataset.data_cfg.target['kind'],
+                   path2out=dataset.pipe_cfg.paths['out'],
+                   path2data=dataset.pipe_cfg.paths['data'],
+                   path2database=dataset.pipe_cfg.paths['database'],
+                   path2pam=dataset.pipe_cfg.paths['pam'],
+                   target=dataset.data_cfg.target['name'],
+                   inst=dataset.pipe_cfg.instrument['name'],
+                   pixscale=dataset.pipe_cfg.instrument['pixelscale'],
+                   gain=dataset.pipe_cfg.instrument['gain'],
+                   PAMdict={key: dataset.pipe_cfg.instrument['pam'][key] for key in
+                            list(dataset.pipe_cfg.instrument['pam'].keys())} if
+                            isinstance(dataset.pipe_cfg.instrument['pam'], dict) else None,
+                   tilebase=dataset.pipe_cfg.mktiles['tile_base'],
+                   radec=[dataset.pipe_cfg.buildhdf['default_avg_table']['ra'],dataset.pipe_cfg.buildhdf['default_avg_table']['dec']],
+                   filters=[i for i in dataset.data_cfg.filters],
+                   xyaxis={key: dataset.pipe_cfg.instrument['ccd_pix'][key] for key in list(dataset.pipe_cfg.instrument['ccd_pix'].keys())},
+                   zpt=zpt_dict,
+                   Av=Av_dict,
+                   dist=dataset.data_cfg.target['distance'],
+                   type=dataset.pipe_cfg.buildhdf['default_avg_table']['type'],
+                   maxsep=dataset.pipe_cfg.mktiles['max_separation'],
+                   minsep=dataset.pipe_cfg.mktiles['min_separation'],
+                   steps=[],
+                   fitsext=str(dataset.data_cfg.target['fitsext']),
+                   dq2mask=list(dataset.pipe_cfg.buildhdf['dq2mask']),
+                   kmodes=dataset.pipe_cfg.psfsubtraction['kmodes'])
+
+
+    if 'buildhdf' not in dataset.pipe_cfg.flow or (not dataset.pipe_cfg.buildhdf['redo'] and np.all([os.path.exists(dataset.pipe_cfg.paths['out']+'/'+file+'.h5') for file in files_check_list])) or load:
+        getLogger(__name__).info(f'Fetching dataframes from %s'%dataset.pipe_cfg.paths['out'])
+        DF.load_dataframe()
+
     return(DF)

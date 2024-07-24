@@ -91,7 +91,7 @@ def create_empty_df(row_list,columns_list,set_index2=[],int_columns=None,object_
     
     return(empty_df)
 
-def add_flag2dataframe(DF,filter,avg_ids,suffix='',goodness_phot_label='e',default_sat_px=3,default_psf_sat_px=3,default_bad_px=3,default_psf_bad_px=3,default_mag_limit=10,default_psf_goodness_limit=0.01,default_goodness_limit=0.5,sep_wide=2):
+def update_flags(DF,filter,avg_ids,suffix='',goodness_phot_label='e',sat_px=3,psf_sat_px=3,bad_px=3,psf_bad_px=3,mag_limit=10,psf_goodness_limit=0.01,goodness_limit=0.5,sep_wide=2):
     '''
     This is a wrapper for ta add flags to the targets dataframe
 
@@ -103,22 +103,22 @@ def add_flag2dataframe(DF,filter,avg_ids,suffix='',goodness_phot_label='e',defau
     goodness_phot_label: str, optional
         label to look for to mesure the goodness of the photometry, for example 'e' for the error or 'chi' for the chi square.
         Default is 'e'.
-    default_sat_px : int, optional
+    sat_px : int, optional
         default number of saturated pixels in the tile to limit target selection. 
         The default is 3.
-    default_psf_sat_px : int, optional
+    psf_sat_px : int, optional
         default number of saturated pixels in the tile to limit PSF target selection. 
         The default is 3.
-    default_bad_px : int, optional
+    bad_px : int, optional
         default number of bad pixels in the tile to limit target selection. 
         The default is 3.
-    default_psf_bad_px : int, optional
+    psf_bad_px : int, optional
         default number of bad pixels in the tile to limit PSF target selection. 
         The default is 3.
-    default_psf_goodness_limit : int, optional
+    psf_goodness_limit : int, optional
         default magnitude uncertanties or chi square to limit PSF selection. 
         The default is 0.01.
-    default_goodness_limit : int, optional
+    goodness_limit : int, optional
         default magnitude uncertanties or chi square to limit PSF/Candidate selection. 
         The default is 0.5.
     sep_wide : list, optional
@@ -144,11 +144,7 @@ def add_flag2dataframe(DF,filter,avg_ids,suffix='',goodness_phot_label='e',defau
 
         
     avg_df_sel=DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_ids]
-
-
-    # ID_bad_list=avg_df_sel.loc[avg_df_sel.type==0].avg_ids.values
     ID_good_list=avg_df_sel.loc[(avg_df_sel.FirstDist>sep_wide)].avg_ids.values#&~(avg_df_sel.type.isin([0,2]))
-    # ID_psf_list=avg_df_sel.loc[(avg_df_sel.type==1)&avg_df_sel.avg_ids.isin(ID_good_list)].avg_ids.values
     ID_wide_list=avg_df_sel.loc[(avg_df_sel.FirstDist<=sep_wide)].avg_ids.values #|(avg_df_sel.type==3)
     ID_double_list=avg_df_sel.loc[(avg_df_sel.type==2)].avg_ids.values
     
@@ -158,55 +154,49 @@ def add_flag2dataframe(DF,filter,avg_ids,suffix='',goodness_phot_label='e',defau
         crossmatch_sel=DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids==mvs_ids]
         x_sel=~(mvs_df_sel['x_%s'%filter].isna())&(mvs_df_sel['x_%s'%filter]>=(DF.tilebase-1)/2)&(mvs_df_sel['x_%s'%filter]<=DF.xyaxis['x']-(DF.tilebase-1)/2)
         y_sel=~(mvs_df_sel['x_%s'%filter].isna())&(mvs_df_sel['y_%s'%filter]>=(DF.tilebase-1)/2)&(mvs_df_sel['y_%s'%filter]<=DF.xyaxis['y']-(DF.tilebase-1)/2)
-        # print(mvs_ids,(mvs_df_sel['m_%s%s'%(filter,suffix)].values[0] < default_mag_limit) , (mvs_df_sel['%s%s%s'%(goodness_phot_label,filter,suffix)].values[0] > default_goodness_limit) , (mvs_df_sel['spx%s'%filter].values[0] > default_sat_px) , (mvs_df_sel['bpx%s'%filter].values[0] > default_bad_px) )
-        # print(mvs_ids,(mvs_df_sel['m_%s%s'%(filter,suffix)].values[0] , default_mag_limit) , (mvs_df_sel['%s%s%s'%(goodness_phot_label,filter,suffix)].values[0] , default_goodness_limit) , (mvs_df_sel['spx%s'%filter].values[0] , default_sat_px) , (mvs_df_sel['bpx%s'%filter].values[0] , default_bad_px) )
-        if (mvs_df_sel['m_%s%s'%(filter,suffix)].values[0] < default_mag_limit) or (mvs_df_sel['%s_%s%s'%(goodness_phot_label,filter,suffix)].values[0] > default_goodness_limit) or (mvs_df_sel['spx_%s'%filter].values[0] > default_sat_px) or (mvs_df_sel['bpx_%s'%filter].values[0] > default_bad_px) or not x_sel.values[0] or not y_sel.values[0]:#or crossmatch_sel.avg_ids.isin(ID_bad_list).values[0]
-            # DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==mvs_ids,['flag_%s'%filter]]='rejected'
+        if (mvs_df_sel['m_%s%s'%(filter,suffix)].values[0] < mag_limit) or (mvs_df_sel['%s_%s%s'%(goodness_phot_label,filter,suffix)].values[0] > goodness_limit) or (mvs_df_sel['spx_%s'%filter].values[0] > sat_px) or (mvs_df_sel['bpx_%s'%filter].values[0] > bad_px) or not x_sel.values[0] or not y_sel.values[0]:#or crossmatch_sel.avg_ids.isin(ID_bad_list).values[0]
             flag='rejected'
         else:
             if crossmatch_sel.avg_ids.isin(ID_wide_list).values[0]:
-                # DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==mvs_ids,['flag_%s'%filter]]='known_double'
                 flag='known_double'
             elif crossmatch_sel.avg_ids.isin(ID_double_list).values[0]:
-                # DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==mvs_ids,['flag_%s'%filter]]='unresolved_double'
                 flag='unresolved_double'
             else:
-                if  (mvs_df_sel['spx_%s'%filter].values[0] <=default_psf_sat_px) and (mvs_df_sel['bpx_%s'%filter].values[0] <=default_psf_bad_px) and (mvs_df_sel['%s_%s%s'%(goodness_phot_label,filter,suffix)].values[0] <= default_psf_goodness_limit): #crossmatch_sel.avg_ids.isin(ID_psf_list).values[0] and
-                    # DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==mvs_ids,['flag_%s'%filter]]='good_psf'
+                if (mvs_df_sel['spx_%s'%filter].values[0] <=psf_sat_px) and (mvs_df_sel['bpx_%s'%filter].values[0] <=psf_bad_px) and (mvs_df_sel['%s_%s%s'%(goodness_phot_label,filter,suffix)].values[0] <= psf_goodness_limit): #crossmatch_sel.avg_ids.isin(ID_psf_list).values[0] and
                     flag='good_psf'
                 elif crossmatch_sel.avg_ids.isin(ID_good_list).values[0]:
-                    # DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==mvs_ids,['flag_%s'%filter]]='good_target'
                     flag='good_target'
-        # else: raise ValueError('No flag matched. Plese check mvs_ids %s'%mvs_ids)
         flag_list.append([float(mvs_ids),flag])
+
     return(flag_list)
 
-    # add_type2dataframe(DF,avg_ids)
-
-def add_type2dataframe(DF,avg_ids):
+def update_type(DF,avg_ids):
     mvs_ids_list=DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids==avg_ids].mvs_ids.unique()
 
-    if DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list),['flag_%s'%(filter) for filter in DF.filters_list]].apply(lambda x: x.str.contains('rejected',case=False)).all(axis=1).all(axis=0):
+    if DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list),['flag_%s'%(filter) for filter in DF.filters]].apply(lambda x: x.str.contains('rejected',case=False)).all(axis=1).all(axis=0):
         DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_ids,['type']]=0
-    elif DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list),['flag_%s'%(filter) for filter in DF.filters_list]].apply(lambda x: x.str.contains('known',case=False)).any(axis=1).any(axis=0):
-        if DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list),['flag_%s'%(filter) for filter in DF.filters_list]].apply(lambda x: x.str.contains('known|rejected',case=False)).all(axis=1).all(axis=0):
-            if DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_ids].type.isin([0,1,2,3]).values[0]: DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_ids,['type']]=3
+    elif DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list),['flag_%s'%(filter) for filter in DF.filters]].apply(lambda x: x.str.contains('known',case=False)).any(axis=1).any(axis=0):
+        if DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list),['flag_%s'%(filter) for filter in DF.filters]].apply(lambda x: x.str.contains('known|rejected',case=False)).all(axis=1).all(axis=0):
+            if DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_ids].type.isin([0,1,2,3]).values[0]:
+                DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_ids,['type']]=3
         else:
             raise ValueError('All flags should be the same for a known_double. Please check avg_ids %s'%avg_ids)
-    elif DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list),['flag_%s'%(filter) for filter in DF.filters_list]].apply(lambda x: x.str.contains('unresolved',case=False)).any(axis=1).any(axis=0):
-        if DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list),['flag_%s'%(filter) for filter in DF.filters_list]].apply(lambda x: x.str.contains('unresolved|rejected',case=False)).all(axis=1).all(axis=0):
-            if DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_ids].type.isin([0,1,2,3]).values[0]: DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_ids,['type']]=2
+    elif DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list),['flag_%s'%(filter) for filter in DF.filters]].apply(lambda x: x.str.contains('unresolved',case=False)).any(axis=1).any(axis=0):
+        if DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list),['flag_%s'%(filter) for filter in DF.filters]].apply(lambda x: x.str.contains('unresolved|rejected',case=False)).all(axis=1).all(axis=0):
+            if DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_ids].type.isin([0,1,2,3]).values[0]:
+                DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_ids,['type']]=2
         else:
             raise ValueError('All flags should be the same for an unresolved_double. Please check avg_ids %s'%avg_ids)
-    elif DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list),['flag_%s'%(filter) for filter in DF.filters_list]].apply(lambda x: x.str.contains('good',case=False)).any(axis=1).any(axis=0):
-        if DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list),['flag_%s'%(filter) for filter in DF.filters_list]].apply(lambda x: x.str.contains('good|rejected',case=False)).all(axis=1).all(axis=0):
-            if DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_ids].type.isin([0,1,2,3]).values[0]: DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_ids,['type']]=1
+    elif DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list),['flag_%s'%(filter) for filter in DF.filters]].apply(lambda x: x.str.contains('good',case=False)).any(axis=1).any(axis=0):
+        if DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list),['flag_%s'%(filter) for filter in DF.filters]].apply(lambda x: x.str.contains('good|rejected',case=False)).all(axis=1).all(axis=0):
+            if DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_ids].type.isin([0,1,2,3]).values[0]:
+                DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_ids,['type']]=1
         else:
             raise ValueError('All flags should be the good for a psf/target. Please check avg_ids %s'%avg_ids)
 
     else:
        raise ValueError('No type/flag match. Please check avg_ids %s'%avg_ids)
-    return(type)
+    return(DF)
 
 def fk_writing(DF,filter,out,df_label,labels):
     '''
@@ -235,7 +225,10 @@ def fk_writing(DF,filter,out,df_label,labels):
     sel3=(getattr(DF,df_label).index.get_level_values('sep').isin(out[:,2]))
     sel4=(getattr(DF,df_label).index.get_level_values('fk_ids').isin(out[:,3]))
     for elno in range(len(labels)):
-        getattr(DF,df_label).loc[(sel0&sel1&sel2&sel3&sel4),[labels[elno]]]=out[:,elno+4]
+        try: getattr(DF,df_label).loc[(sel0&sel1&sel2&sel3&sel4),[labels[elno]]]=out[:,elno+4]
+        except:
+            raise ValueError
+    return(DF)
 
 
 
@@ -299,14 +292,11 @@ def mk_avg_targets_df(DF, dataset):
     '''
     getLogger(__name__).info(f'Creating the multi-visit targets dataframe')
     df_new = create_empty_df([], [dataset.pipe_cfg.buildhdf['default_avg_table']['id']] + DF.radec + ['m_%s' % i for i in
-                                                                                               DF.filters] + [
-                                 'e_%s' % i for i in DF.filters] + ['type', 'FirstDist', 'SecondDist',
-                                                                              'ThirdDist', 'FirstID', 'SecondID',
-                                                                              'ThirdID'],
-                             int_columns=['avg_ids', 'type'],
-                             flt_columns=DF.radec + ['m_%s' % i for i in DF.filters] + ['e_%s' % i
-                                                                                                       for i in
-                                                                                                       DF.filters])
+                             DF.filters] + ['e_%s' % i for i in DF.filters] + ['type', 'FirstDist', 'SecondDist',
+                             'ThirdDist', 'FirstID', 'SecondID','ThirdID'],
+                             int_columns=['avg_ids', 'type', 'FirstID', 'SecondID','ThirdID'],
+                             flt_columns=DF.radec + ['m_%s' % i for i in DF.filters] + ['e_%s' % i for i in DF.filters] +
+                             ['FirstDist', 'SecondDist','ThirdDist'])
 
     df_new[dataset.pipe_cfg.buildhdf['default_avg_table']['id']] = dataset.avg_table[
         dataset.pipe_cfg.buildhdf['default_avg_table']['id']].values
@@ -351,12 +341,9 @@ def mk_mvs_targets_df(DF, dataset):
 
     '''
     getLogger(__name__).info(f'Creating the average targets dataframe')
-    df_new = create_empty_df([], ['mvs_ids'] + ['x_%s' % i for i in DF.filters] + ['y_%s' % i for i in
-                                                                                        DF.filters] + ['vis',
-                                                                                                            'ext'] + [
-                                 'counts_%s' % i for i in DF.filters] + ['ecounts_%s' % i for i in
-                                                                              DF.filters] + ['m_%s' % i for i in
-                                                                                                  DF.filters] + [
+    df_new = create_empty_df([], ['mvs_ids'] + ['x_%s' % i for i in DF.filters] + ['y_%s' % i for i in DF.filters]
+                             + ['vis', 'ext'] + ['counts_%s' % i for i in DF.filters] + ['ecounts_%s' % i for i in DF.filters] +
+                             ['m_%s' % i for i in DF.filters] + [
                                  'e_%s' % i for i in DF.filters] + ['spx_%s' % i for i in DF.filters] + [
                                  'bpx_%s' % i for i in DF.filters] + ['nap_%s' % i for i in DF.filters] + [
                                  'sky_%s' % i for i in DF.filters] + ['esky_%s' % i for i in DF.filters] + [
@@ -399,10 +386,32 @@ def mk_mvs_targets_df(DF, dataset):
                              str_columns=['vis'] + ['fits_%s' % i for i in DF.filters] + ['flag_%s' % i for i in
                                                                                                DF.filters])
 
-    df_new[['mvs_ids', 'ext']] = dataset.mvs_table[[dataset.pipe_cfg.buildhdf['default_mvs_table']['id'], 'ext']].values
-    df_new['vis'] = dataset.mvs_table['vis'].values
-    df_new[['x_%s' % i for i in DF.filters]] = dataset.mvs_table[['x_%s' % i for i in DF.filters]].values
-    df_new[['y_%s' % i for i in DF.filters]] = dataset.mvs_table[['y_%s' % i for i in DF.filters]].values
+    try:
+        df_new['mvs_ids'] = dataset.mvs_table[dataset.pipe_cfg.buildhdf['default_mvs_table']['id']].values
+    except:
+        getLogger(__name__).critical('mvs_ids is required as input to build the dataframe')
+        raise ValueError('mvs_ids is required as input to build the dataframe')
+    try:
+        df_new[ 'ext'] = dataset.mvs_table['ext'].values
+    except:
+        getLogger(__name__).critical('ext is required as input to build the dataframe')
+        raise ValueError('ext is required as input to build the dataframe')
+    try:
+        df_new['vis'] = dataset.mvs_table['vis'].values
+    except:
+        getLogger(__name__).critical('vis is required as input to build the dataframe')
+        raise ValueError('vis is required as input to build the dataframe')
+    try:
+        df_new[['x_%s' % i for i in DF.filters]] = dataset.mvs_table[['x_%s' % i for i in DF.filters]].values
+    except:
+        getLogger(__name__).critical('x is required as input to build the dataframe')
+        raise ValueError('x is required as input to build the dataframe')
+    try:
+        df_new[['y_%s' % i for i in DF.filters]] = dataset.mvs_table[['y_%s' % i for i in DF.filters]].values
+    except:
+        getLogger(__name__).critical('y is required as input to build the dataframe')
+        raise ValueError('y is required as input to build the dataframe')
+
     try:
         df_new[['rota_%s' % i for i in DF.filters]] = dataset.mvs_table[['rota_%s' % i for i in DF.filters]].values
     except:
@@ -420,11 +429,16 @@ def mk_mvs_targets_df(DF, dataset):
         df_new[['fits_%s' % i for i in DF.filters]] = dataset.mvs_table[
             ['fits_%s' % i for i in DF.filters]].values
     except:
-        df_new[['fits_%s' % i for i in DF.filters]] = 'N/A'
+        getLogger(__name__).critical('fitsroot name is required as input to build the dataframe')
+        raise ValueError('fitsroot name is required as input to build the dataframe')
 
-    df_new[['flag_%s' % i for i in DF.filters]] = 'rejected'
-    for filter in DF.filters:
-        df_new.loc[~df_new['x_%s' % filter].isna(), ['flag_%s' % filter]] = 'good_target'
+    try:
+        df_new[['flag_%s' % i for i in DF.filters]] = dataset.mvs_table[
+            ['flag_%s' % i for i in DF.filters]].values
+    except:
+        df_new[['flag_%s' % i for i in DF.filters]] = 'rejected'
+        for filter in DF.filters:
+            df_new.loc[~df_new['x_%s' % filter].isna(), ['flag_%s' % filter]] = 'good_target'
     df_new[['cell_%s' % i for i in DF.filters]] = np.nan
     DF.mvs_targets_df = df_new
 
@@ -450,9 +464,9 @@ def mk_avg_candidates_df(DF):
 
     '''
 
-    df_new=create_empty_df([],['avg_ids','mass','emass','sep','mkmode']+['n%s'%i for i in DF.filters]+['nsigma_%s'%i for i in DF.filters]+['m_%s'%i for i in DF.filters]+['e_%s'%i for i in DF.filters]+['th_%s'%i for i in DF.filters]+['magbin_%s'%i for i in DF.filters]+['tp_above_th_%s'%i for i in DF.filters]+['tp_above_nsigma_%s'%i for i in DF.filters]+['fp_above_th_%s'%i for i in DF.filters]+['fp_above_nsigma_%s'%i for i in DF.filters]+['auc_%s'%i for i in DF.filters],
+    df_new=create_empty_df([],['avg_ids','mass','emass','sep','mkmode']+['n_%s'%i for i in DF.filters]+['nsigma_%s'%i for i in DF.filters]+['m_%s'%i for i in DF.filters]+['e_%s'%i for i in DF.filters]+['th_%s'%i for i in DF.filters]+['magbin_%s'%i for i in DF.filters]+['tp_above_th_%s'%i for i in DF.filters]+['tp_above_nsigma_%s'%i for i in DF.filters]+['fp_above_th_%s'%i for i in DF.filters]+['fp_above_nsigma_%s'%i for i in DF.filters]+['auc_%s'%i for i in DF.filters],
                            int_columns=['avg_ids','mkmode']+['magbin_%s'%i for i in DF.filters],
-                           flt_columns=['mass','emass','sep']+['nsigma_%s'%i for i in DF.filters]+['m_%s'%i for i in DF.filters]+['e_%s'%i for i in DF.filters]+['th_%s'%i for i in DF.filters]+['tp_above_th_%s'%i for i in DF.filters]+['tp_above_nsigma_%s'%i for i in DF.filters]+['fp_above_th_%s'%i for i in DF.filters]+['fp_above_nsigma_%s'%i for i in DF.filters]+['auc_%s'%i for i in DF.filters])
+                           flt_columns=['mass','emass','sep']+['n_%s'%i for i in DF.filters]+['nsigma_%s'%i for i in DF.filters]+['m_%s'%i for i in DF.filters]+['e_%s'%i for i in DF.filters]+['th_%s'%i for i in DF.filters]+['tp_above_th_%s'%i for i in DF.filters]+['tp_above_nsigma_%s'%i for i in DF.filters]+['fp_above_th_%s'%i for i in DF.filters]+['fp_above_nsigma_%s'%i for i in DF.filters]+['auc_%s'%i for i in DF.filters])
     df_new['avg_ids']=DF.avg_targets_df.avg_ids.unique()
     DF.avg_candidates_df=df_new
 
@@ -495,6 +509,18 @@ def mk_fk_references_df(DF,Nstar):
     df_new['fk_ids']=[i for i in range(Nstar)]
     DF.fk_references_df=df_new
 
+def get_levels(values_range,elno=0):
+    if isinstance(values_range, str):
+        levels = np.arange(int(values_range.split('-')[0]), int(values_range.split('-')[1]) + 1, 1)
+    elif isinstance(values_range, (list, np.ndarray)):
+        levels = np.arange(int(values_range[elno].split('-')[0]), int(values_range[elno].split('-')[1]) + 1, 1)
+    elif isinstance(values_range,int):
+        levels=[i for i in range(int(values_range),int(values_range)+1)]
+    else:
+        getLogger(__name__).critical(f'The range provided must be an int, a str ("X"-"Y") or a list of str ([["X"-"Y"],["XX"-"YY"],...])')
+        raise ValueError()
+    return(levels)
+
 def mk_fakes_df(DF,MagBin_list,Dmag_list,Sep_range,Nstar,filters=None,skip_filters=[]):
     '''
     Create the empty tile data frame for average visits targets
@@ -511,25 +537,25 @@ def mk_fakes_df(DF,MagBin_list,Dmag_list,Sep_range,Nstar,filters=None,skip_filte
     noise_KLIP_list=[]
     Nsigma_KLIP_list=[]
     mag_KLIP_list=[]
-    elno=0
     df_targets_list=[]
     df_candidates_list=[]
-    if len(Sep_range)==1: seps_levels=[i for i in range(Sep_range[0],Sep_range[0]+1)]
-    else:seps_levels=[i for i in range(Sep_range[0],Sep_range[1]+1)]
+
+
     nstar_levels=[i for i in range(Nstar)]
-    for Kmode in  ['_Kmode%i'%i for i in DF.Kmodes_list]:
+    for Kmode in [f'_kmode{i}' for i in DF.kmodes]:
         counts_KLIP_list.extend(['counts%s'%(Kmode)])
         noise_KLIP_list.extend(['noise%s'%Kmode])
-        Nsigma_KLIP_list.extend(['Nsigma%s'%Kmode])
+        Nsigma_KLIP_list.extend(['nsigma%s'%Kmode])
         mag_KLIP_list.extend(['m%s'%(Kmode)])
 
-    if filters==None:filters=DF.filters
+    elno=0
+
     for filter in filters:
         if filter not in skip_filters:
-            if len(MagBin_list[elno])==1: magbins_levels=[i for i in range(MagBin_list[elno][0],MagBin_list[elno][0]+1)]
-            else: magbins_levels=[i for i in range(MagBin_list[elno][0],MagBin_list[elno][1]+1)]
-            if len(Dmag_list[elno])==1: dmags_levels=[i for i in range(Dmag_list[elno][0],Dmag_list[elno][0]+1)]
-            else: dmags_levels=[i for i in range(Dmag_list[elno][0],Dmag_list[elno][1]+1)]
+            magbins_levels=get_levels(MagBin_list,elno)
+            dmags_levels=get_levels(Dmag_list,elno)
+            seps_levels = get_levels(Sep_range,elno)
+
             elno+=1
             df_targets_new=create_empty_df(['filter','magbin','dmag','sep','fk_ids'],[],multy_index=True,levels=[[filter],magbins_levels,dmags_levels,seps_levels,nstar_levels])
             df_candidates_new=create_empty_df(['filter','magbin','dmag','sep','fk_ids'],[],multy_index=True,levels=[[filter],magbins_levels,dmags_levels,seps_levels,nstar_levels])
@@ -556,12 +582,12 @@ def mk_fk_tiles_df(DF):
     Nstar_list=DF.fk_targets_df.index.get_level_values('fk_ids').unique()
     counts_KLIP_list=[]
     for filter in DF.filters:
-        for Kmode in DF.Kmodes_list:
-            counts_KLIP_list.append('%s_Kmode%s'%(filter,Kmode))
-            counts_KLIP_list.append('%s_Kmode%s_no_injection'%(filter,Kmode))
+        for Kmode in DF.kmodes:
+            counts_KLIP_list.append(f'kmode{Kmode}_{filter}')
+            counts_KLIP_list.append(f'Kmode{Kmode}_no_injection_{filter}')
 
 
-    columns=['%s_data'%i for i in DF.filters]+['%s_data_no_injection'%i for i in DF.filters]+counts_KLIP_list
+    columns=['%s_data'%i for i in DF.filters]+[f'data_no_injection_{i}' for i in DF.filters]+counts_KLIP_list
     df_new=create_empty_df(['magbin','dmag','sep','fk_ids'],[columns],multy_index=True,levels=[MagBin_list,Dmag_list,Sep_list,Nstar_list])
     DF.fk_tiles_df=df_new
 
@@ -613,3 +639,4 @@ def mk_fk_completeness_df(DF,nvisit_list,skip_filters=[]):
             df_list.append(df)
 
     DF.fk_completeness_df=pd.concat(df_list)
+    return(DF)

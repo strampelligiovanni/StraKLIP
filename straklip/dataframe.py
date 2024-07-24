@@ -18,7 +18,7 @@ class DataFrame():
     # def __getstate__(self):
     #     return {"data": self.values, "columns": self.columns}
 
-    def __init__(self,path2data='',path2out='',target='',inst='',pixscale=1,gain=1,PAMdict={},tilebase=15,radec=[],filters=[],xyaxis=[],fitsext='_flt',skipphot=False,dq2mask=[],zpt={},Av={},dist=0,Kmodes=[],type='type',maxsep=2,minsep=0,redo=False,kind='dataframe',steps=[]):
+    def __init__(self,path2data='',path2out='',path2database='',path2pam='',target='',inst='',pixscale=1,gain=1,PAMdict={},tilebase=15,radec=[],filters=[],xyaxis=[],fitsext='_flt',skipphot=False,dq2mask=[],zpt={},Av={},dist=0,kmodes=[],type='type',maxsep=2,minsep=0,kind='dataframe',steps=[]):
         '''
         Create the dataframe object
 
@@ -50,8 +50,8 @@ class DataFrame():
             name extension of fits file. The default is flt.
         Av : list, optional
             list of Av=1 extinctions for each filter.
-        Kmodes : list, optional
-            list of Kmodes for PSF subtraction.
+        kmodes : list, optional
+            list of kmodes for PSF subtraction.
         dist : float, optional
             distance of the target in parsec. The default is 0.
         load : bool, optional
@@ -64,10 +64,11 @@ class DataFrame():
         None.
 
         '''
-        self.redo=redo
         self.kind=kind
         self.path2out=path2out
         self.path2data=path2data
+        self.path2database=path2database
+        self.path2pam=path2pam
         self.target=target
         self.inst=inst
         self.filters=filters
@@ -80,7 +81,7 @@ class DataFrame():
         self.dq2mask=dq2mask
         self.zpt=zpt
         self.Av=Av
-        self.Kmodes=Kmodes
+        self.kmodes=kmodes
         self.pixscale=pixscale
         self.tilebase=tilebase
         self.dist=dist
@@ -105,7 +106,7 @@ class DataFrame():
         None.
 
         '''
-        self.steps.append(step)
+        if step not in self.steps: self.steps.append(step)
         self.keys=keys_list_from_dic(self.__dict__,'_df')
         getLogger(__name__).info(f'Saving the the following keys in %s to %s in %s'%(self.keys,self.kind,str(self.path2out)))
         for elno in range(len(self.keys)):
@@ -116,14 +117,18 @@ class DataFrame():
                     if '_df' not in label:
                         getattr(self,key).attrs[label] = vars(self)[label]
 
-            try:
-                with pd.HDFStore(filename) as store:
-                    store.put(key.split('_df')[0], getattr(self,key), format='table')
-                    store.get_storer(key.split('_df')[0]).attrs.metadata = getattr(self,key).attrs
+            # try:
 
-            except:
-                getLogger(__name__).critical(f'Saving of %s failed. Abort' % key)
-                raise ValueError
+            getattr(self,key).to_hdf(filename, key=key, mode='w')
+
+            # with pd.HDFStore(filename) as store:
+            #     store.put(key.split('_df')[0], getattr(self,key), format='table')
+                    # if key == 'crossmatch_ids_df':
+                    #     store.get_storer(key.split('_df')[0]).attrs.metadata = getattr(self,key).attrs
+
+            # except:
+            #     getLogger(__name__).critical(f'Saving of %s failed. Abort' % key)
+            #     raise ValueError
 
     def load_dataframe(self):
         '''
@@ -136,15 +141,18 @@ class DataFrame():
         '''
         self.list_of_HDF5_keys(self.path2out)
         for key in self.keys:
-            with pd.HDFStore(self.path2out+'/'+key+'.h5') as store:
-                if key == 'crossmatch_ids':
-                    metadata = store.get_storer(key).attrs
-                df = store.get(key)
+            filename = self.path2out+'/'+key+'.h5'
+            setattr(self, key+'_df', pd.read_hdf(filename, mode='r'))
 
-            setattr(self, key+'_df', df)
+            # with pd.HDFStore(self.path2out+'/'+key+'.h5') as store:
+            #     # if key == 'crossmatch_ids':
+            #     #     metadata = store.get_storer(key).attrs
+            #     df = store.get(key)
+            #
+            #     setattr(self, key+'_df', df)
 
-        for key in metadata.metadata.keys():
-            setattr(self, key, metadata.metadata[key])
+        # for key in metadata.metadata.keys():
+        #     setattr(self, key, metadata.metadata[key])
 
     def list_of_HDF5_keys(self,path):
         '''

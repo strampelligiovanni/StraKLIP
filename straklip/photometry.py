@@ -105,7 +105,7 @@ class flux_converter:
         self.Nsigma=np.round(self.counts/self.ecounts,3)
 
         
-    def flux2mag(self,zpt=0.0,ezpt=0.0,exptime=1.0,gain=1.0):
+    def flux2mag(self,zpt=0.0,ezpt=0.0,exptime=1.0):#,gain=1.0):
         '''
         Convert flux to magnitudes and uncertanties
 
@@ -119,8 +119,6 @@ class flux_converter:
             exposure time for this detection. The default is 1.
         exptime : float, optional
             exposure time for this detection. The default is 1.
-        gain : float, optional
-            instrument gain. The default is 1.
 
         Returns
         -------
@@ -129,10 +127,12 @@ class flux_converter:
         '''
         self.zpt=zpt
         self.exptime=exptime
-        self.gain=gain
+        # self.gain=gain
 
-        if self.counts/(self.exptime*self.gain)>0:
-            self.mag=-2.5*np.log10((self.counts/(self.exptime*self.gain)))+self.zpt
+        # if self.counts/(self.exptime*self.gain)>0:
+            # self.mag=-2.5*np.log10((self.counts/(self.exptime*self.gain)))+self.zpt
+        if self.counts / (self.exptime) > 0:
+            self.mag=-2.5*np.log10((self.counts/(self.exptime)))+self.zpt
             self.emag=np.sqrt((1.0857*(self.ecounts/self.counts))**2+ezpt**2)
         else:
             self.mag = np.nan
@@ -367,7 +367,7 @@ class photometry_AP:
             if sigmaclip: data = sigma_clip(data[~np.isnan(data)], sigma=sigma)
         
         # data[data<=0]=np.nan
-        self.nsat=(data>=sat_thr).astype(int).sum()
+        self.nsat=(data>=np.float64(sat_thr)).astype(int).sum()
         self.sum=np.round(np.nansum(data[data>0]),r)#[data>0])
         self.mean, self.median, self.std = np.round(sigma_clipped_stats(data[data>0],sigma=sigma),r)
 

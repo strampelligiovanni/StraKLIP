@@ -49,13 +49,13 @@ def FP_analysis(self,avg_ids,filter,AUC_lim,FP_lim=0.001,step=10,nbins=10,showpl
     out=[]
     check_list=[]
     for mvs_ids in self.mvs_candidates_df.loc[self.mvs_candidates_df.mvs_ids.isin(self.crossmatch_ids_df.loc[self.crossmatch_ids_df.avg_ids==avg_ids].mvs_ids)].mvs_ids.unique():
-        magbin=self.mvs_targets_df.loc[self.mvs_targets_df.mvs_ids==mvs_ids,'m%s%s'%(filter[1:4],suffix)].values[0]
-        dmag=self.mvs_candidates_df.loc[self.mvs_candidates_df.mvs_ids==mvs_ids,'m%s'%filter[1:4]].values[0]-magbin
-        sep=self.mvs_candidates_df.loc[self.mvs_candidates_df.mvs_ids==mvs_ids,'%s_sep'%filter].astype(float).values[0]
-        Kmode=self.mvs_candidates_df.loc[self.mvs_candidates_df.mvs_ids==mvs_ids,'%s_Kmode'%filter].astype(float).values[0]
-        Nsigma=self.mvs_candidates_df.loc[self.mvs_candidates_df.mvs_ids==mvs_ids,'%s_Nsigma'%filter].astype(float).values[0]
+        magbin=self.mvs_targets_df.loc[self.mvs_targets_df.mvs_ids==mvs_ids,'m_%s%s'%(filter,suffix)].values[0]
+        dmag=self.mvs_candidates_df.loc[self.mvs_candidates_df.mvs_ids==mvs_ids,'m_%s'%filter].values[0]-magbin
+        sep=self.mvs_candidates_df.loc[self.mvs_candidates_df.mvs_ids==mvs_ids,'sep_%s'%filter].astype(float).values[0]
+        Kmode=self.mvs_candidates_df.loc[self.mvs_candidates_df.mvs_ids==mvs_ids,'kmode_%s'%filter].astype(float).values[0]
+        Nsigma=self.mvs_candidates_df.loc[self.mvs_candidates_df.mvs_ids==mvs_ids,'nsigma_%s'%filter].astype(float).values[0]
         # Nsigma=self.mvs_candidates_df.loc[self.mvs_candidates_df.mvs_ids==mvs_ids,'Nsigma%s'%filter[1:4]].astype(float).values[0]
-        if (self.mvs_targets_df.loc[self.mvs_targets_df.mvs_ids==mvs_ids,'%s_flag'%filter].values[0]!='rejected'):
+        if (self.mvs_targets_df.loc[self.mvs_targets_df.mvs_ids==mvs_ids,'flag_%s'%filter].values[0]!='rejected'):
             if np.isfinite(magbin) and np.isfinite(dmag) and np.isfinite(sep) and np.isfinite(Kmode) and np.isfinite(Nsigma) :
                 magbin=int(magbin)
                 dmag=int(dmag)

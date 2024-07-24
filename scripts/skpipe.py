@@ -6,8 +6,7 @@ import pkg_resources as pkg
 import argparse
 from datetime import datetime
 import steps
-from steps import buildhdf, mktiles, mkphotometry,fow2cells
-from logging.handlers import RotatingFileHandler
+from steps import buildhdf, mktiles, mkphotometry,fow2cells,psfsubtraction,klipphotometry,buildfphdf,mkcompleteness,fpanalysis
 
 def parse():
     # read in command line arguments
@@ -23,15 +22,13 @@ def parse():
     return parser.parse_args()
 
 getLogger('straklip', setup=True, logfile=f'straklip_{datetime.now().strftime("%Y-%m-%d_%H%M")}.log',
-                   configfile=pkg.resource_filename('straklip', './config/logging.yaml'))
-
+          configfile=pkg.resource_filename('straklip', './config/logging.yaml'))
 
 if __name__ == "__main__":
-    args = parse()
-    now = datetime.now()
-    dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
 
-    pipe_cfg = config.configure_pipeline(args.pipe_cfg,pipe_cfg=args.pipe_cfg,data_cfg=args.data_cfg,dt_string=dt_string)
+    args = parse()
+
+    pipe_cfg = config.configure_pipeline(args.pipe_cfg,pipe_cfg=args.pipe_cfg,data_cfg=args.data_cfg,dt_string=datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
     data_cfg = config.configure_data(args.data_cfg,pipe_cfg)
 
     if args.make_paths:
@@ -45,10 +42,15 @@ if __name__ == "__main__":
     dataset = input_tables.Tables(data_cfg, pipe_cfg)
     DF = config.configure_dataframe(dataset)
     for step in pipe_cfg.flow:
-        if not f'steps.{step}' in DF.steps or pipe_cfg.redo or getattr(pipe_cfg, step)['redo']:
-            getattr(steps,step).run({'DF':DF,'dataset':dataset})
+        if step == 'fow2cells':
+            getattr(steps, step).run({'DF': DF, 'dataset': dataset})
         else:
-            getLogger('straklip').info(f'Skipping step "{step}" because is already been succesfully run for this dataframe and redo is False')
+            if step in DF.steps:
+                if getattr(pipe_cfg, step)['redo']:
+                    getattr(steps, step).run({'DF': DF, 'dataset': dataset})
+                else:
+                    getLogger('straklip').info(f'Skipping step "{step}" because is already been succesfully run for this dataframe and redo is False')
+            else:
+                getattr(steps, step).run({'DF': DF, 'dataset': dataset})
 
-    config.closing_statement(pipe_cfg,dataset,DF)
-
+    config.closing_statement(DF,pipe_cfg,dataset)

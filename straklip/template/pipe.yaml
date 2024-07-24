@@ -1,0 +1,122 @@
+instrument:
+  name: WFC3
+  detector: UVIS
+  pixelscale: 0.04
+  gain: 1.5
+  AVs: { 1: 'wfc3,uvis2' }
+  pam: {1:  'UVIS2wfc3_map_cut'}
+  ee_name: { 1: 'wfc3uvis2_aper_007_syn.csv' }
+  ccd_pix: {'x': 2047, 'y': 2050}
+ncpu: 10
+redo: true
+debug: false
+flow:
+- buildhdf
+- mktiles
+#- mkphotometry
+#- fow2cells
+#- psfsubtraction
+#- klipphotometry
+#- fpanalysis
+paths:
+  pyklip: /Users/gstrampelli/PycharmProjects/Giovanni/pyklip/pyklip
+  pam: /Users/gstrampelli/PycharmProjects/Giovanni/work/data/FFP/pam
+  data: /Users/gstrampelli/PycharmProjects/Giovanni/work/data/FFP/fits
+  database: /Users/gstrampelli/PycharmProjects/Giovanni/work/database/FFP
+  out: /Users/gstrampelli/PycharmProjects/Giovanni/work/out/FFP
+buildhdf:
+  redo: false
+  dq2mask: []
+  default_mvs_table:
+    id: mvs_ids
+    vis: vis
+    ext: ext
+    x: x
+    y: y
+    flag: flag
+    fitsroot: fits
+  default_avg_table:
+    id: avg_ids
+    ra: ra
+    dec: dec
+    mag: m
+    emag: e
+    type: type
+  distance_cube:
+    shwoplot: false
+mktiles:
+  redo: false
+  debug: false
+  xy_dmax: 20
+  tile_base: 41
+  max_separation: 2
+  min_separation: 0
+  xy_m : true
+  cr_remove: false
+  la_cr_remove : true
+  parallel_runs : true
+  python_origin : false
+  look4duplicants : true
+  cr_radius: 0.2
+  kill_plots: true
+  multiply_by_exptime: false # true to convert from counts/s or e-/s to counts or e-
+  multiply_by_PAM: true #true when not working with drc images
+  multiply_by_gain: false # true to convert from counts to e-
+  zfactor: 10
+  alignment_box: 3
+mkphotometry:
+  redo: false
+  debug: false
+  parallel_runs: true
+  sat_thr: 78000
+  radius_in : 0.4
+  radius1_in : 0.6
+  radius2_in : 1.95
+  grow_curves: true
+  p: 30
+  gstep: 0.01
+  bad_pixel_flags: [4,16,512,1024]
+  sat_pixel_flags: [256,2048]
+  skip_flags:
+    - rejected
+fow2cells:
+  add_flags: false
+  qx: 1
+  qy: 1
+  psf_nmin: 10
+  sat_px: 3
+  psf_sat_px: 3
+  bad_px: 30
+  psf_bad_px: 30
+  mag_limit: [10,10]
+  psf_goodness_limit: 0.02
+  goodness_limit: 0.1
+psfsubtraction:
+  redo: false
+  overwrite: false
+  parallel_runs: true
+  kmodes: [5,10,20,30,40,50]
+  skip_flags:
+    - rejected
+    - known_double
+klipphotometry:
+  redo: false
+  avg_ids_list: []
+  suffix: ''
+  verbose: False
+  min_mag_list: []
+  max_mag_list: []
+  aptype: 'square'
+  no_median_tile_update: False
+  zfactor: 10
+  alignment_box: 3
+  parallel_runs: true
+  label: 'crclean_data'
+  kill_plots: true
+  delta: 5
+  radius: 3
+  skip_filters: []
+  sat_thr: inf
+  mkd: 2
+  mad: 0.2
+  PSF_sub_flags: 'good|unresolved'

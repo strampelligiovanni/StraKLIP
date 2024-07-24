@@ -31,11 +31,31 @@ loggers:
     handlers: [ default, file ]
     level: DEBUG
     propagate: False
+  steps.fow2cells:
+    handlers: [ default, file ]
+    level: DEBUG
+    propagate: False
   steps.mkphotometry:
     handlers: [ default, file ]
     level: DEBUG
     propagate: False
   steps.psfsubtraction:
+    handlers: [ default, file ]
+    level: DEBUG
+    propagate: False
+  steps.klipphotometry:
+    handlers: [ default, file ]
+    level: DEBUG
+    propagate: False
+  steps.buildfphdf:
+    handlers: [ default, file ]
+    level: DEBUG
+    propagate: False
+  steps.mkcompleteness:
+    handlers: [ default, file ]
+    level: DEBUG
+    propagate: False
+  steps.fpanalysis:
     handlers: [ default, file ]
     level: DEBUG
     propagate: False
@@ -52,6 +72,18 @@ loggers:
     level: DEBUG
     propagate: False
   utils_plot:
+    handlers: [ default, file ]
+    level: DEBUG
+    propagate: False
+  utils_tile:
+    handlers: [ default, file ]
+    level: DEBUG
+    propagate: False
+  utils_completeness:
+    handlers: [ default, file ]
+    level: DEBUG
+    propagate: False
+  utils_fpanalysis:
     handlers: [ default, file ]
     level: DEBUG
     propagate: False

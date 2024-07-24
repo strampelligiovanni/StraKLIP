@@ -2,9 +2,21 @@ target:
   name: FFP # target name
   distance: 1 # averager distance of the targets
   Rv: 3.1 # reddening law
-  zpts: #{'date':'2023-01-01','system':'VEGAmag'} # dictionary with date (of observation) and system (for magnitudes, i.e. STmag, VEGAmag, ABmag) for the acszpt, or list of zeropoints
-    - 25.943
-    - 24.93
+  zpts: # dictionary with date (of observation) and system: e.g. {'date':'2023-01-01','system':'VEGAmag'} for the acszpt,
+        #or filter-wise list of zeropoints e.g.: [24.684, 23.28].  If none, magsystem in pipe.mkphotometry needs to
+        # include at least one between st or ab to automatically provide zeropoitns, vegamag are not supported this way
+#        #Vega:
+#        - 24.684
+#        - 23.28
+#       #AB:
+        - 25.112
+        - 23.81
+#        #ST:
+#        - 25.943
+#        - 24.93
+  photflam:
+    - 1.5232E-19
+    - 3.8736E-19
   kind: table
   fitsext: _flc # fits extension (e.g. _flt, _flc, _drc etc.) to join whit the rootname to identify filename
 mvs_table:
@@ -14,17 +26,26 @@ mvs_table:
   vis: visit # visit column name in catalog
   ext: ext # extension column name in catalog that identify SCI in fits file (for HST if CCDCHIP = 1, EXT = 4, CCDCHIP = 2, EXT = 1)
   x: # x column name in catalog, filter wise (list)
-    - x_814w
-    - x_850lp
+    - x_f814w
+    - x_f850lp
   y: # y column name in catalog, filter wise (list)
-    - y_814w
-    - y_850lp
+    - y_f814w
+    - y_f850lp
+  rota: # rota column name in catalog, filter wise (list)
+    - rota_f814w
+    - rota_f850lp
+  pav3: # pav3 column name in catalog, filter wise (list)
+    - pav3_f814w
+    - pav3_f850lp
+  exptime: # exptime column name in catalog, filter wise (list)
+    - exptime_f814w
+    - exptime_f850lp
   fitsroot: # fitsroot column name in catalog, filter wise (list)
     - fitsroot_f814w
     - fitsroot_f850lp
   flag: # flag column name in catalog, filter wise (list)
-    - flag_814w
-    - flag_850lp
+    - flag_f814w
+    - flag_f850lp
 avg_table:
   name: FFP_avg_target_photometry.csv # filename for the unique (avg) catalog
   sep: ',' # file separator (space, comma, tab etc.)

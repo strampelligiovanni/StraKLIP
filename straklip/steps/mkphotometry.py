@@ -141,6 +141,7 @@ def make_mvs_photometry(DF,filter,mvs_ids_test_list=[],ee_dict=None,workers=None
                           'sky_%s' % filter, 'esky_%s' % filter, 'nsky_%s' % filter,
                           'grow_corr_%s' % filter]] = phot[elno, 2:].astype(float)
                 # DF.mvs_targets_df.loc[sel,['flag_%s'%filter]]=phot[elno,-1:]
+    return(DF)
 
 def make_median_photometry(DF,filter,avg_ids_list=[],workers=None,parallel_runs=True,suffix='',goodness_phot_label='e', skip_flag='rejected',chunksize=None):
     getLogger(__name__).info(f'Make photometry for average targets on filter {filter}')
@@ -163,6 +164,7 @@ def make_median_photometry(DF,filter,avg_ids_list=[],workers=None,parallel_runs=
             DF.avg_targets_df.loc[
                 DF.avg_targets_df.avg_ids == phot_out[0], ['m_%s' % filter, 'e_%s' % filter,
                                                                  'spx_%s' % filter, 'bpx_%s' % filter]] = phot_out[1:]
+    return(DF)
 
 def run(packet):
     DF = packet['DF']
@@ -170,7 +172,7 @@ def run(packet):
     zpt = DF.zpt
     ee_dict=get_ee_df(dataset)
     for filter in dataset.data_cfg.filters:
-        make_mvs_photometry(DF, filter,
+        DF=make_mvs_photometry(DF, filter,
                             mvs_ids_test_list=[],
                             ee_dict=ee_dict,
                             workers=dataset.pipe_cfg.ncpu,
@@ -194,7 +196,7 @@ def run(packet):
                             path2savefile = dataset.pipe_cfg.paths['database'] + f'/targets_photometry_tiles/{filter}')
 
 
-        make_median_photometry(DF,filter,
+        DF=make_median_photometry(DF,filter,
                                avg_ids_list=[],
                                parallel_runs=dataset.pipe_cfg.mkphotometry['parallel_runs'],
                                workers=dataset.pipe_cfg.ncpu)

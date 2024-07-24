@@ -125,12 +125,16 @@ each of the following at least once.
 
 ```
 flow: 
+########## first part of the pipeline ##########
 - buildhdf
 - mktiles
 - mkphotometry
 - fow2cells
 - psfsubtraction
 - klipphotometry
+########## second part of the pipeline ##########
+- buildfphdf
+- mkcompleteness
 - fpanalysis
 ```
 

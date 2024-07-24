@@ -876,6 +876,55 @@ def my_circle_scatter(axes, x_array, y_array, radius=0.5, **kwargs):
         circle = Circle((x,y), radius=radius, **kwargs)
         axes.add_patch(circle)
 
+
+def match_catalogues(df1, df2, radec_col1, radec_col2, tolerance_mas=np.inf, frame='fk5'):
+    """
+    Matches two catalogues based on RA and DEC with a given tolerance in milliarcseconds.
+
+    Parameters:
+        df1 (pd.DataFrame): First catalogue with RA and DEC columns.
+        df2 (pd.DataFrame): Second catalogue with RA and DEC columns.
+        raddec_col1 (list): List of names of the RA column in df1 (degrees).
+        raddec_col2 (list): List of names of the RA column in df2 (degrees).
+        tolerance_mas (float): Tolerance in milliarcseconds for matching. Default: inf
+        frame (str): SkyCoord frame. Default: fk5
+    Returns:
+        pd.DataFrame: DataFrame containing matched rows from both catalogues and their separations in milliarcseconds.
+    """
+
+    # Convert RA and DEC to SkyCoord objects
+    coords1 = SkyCoord(ra=df1[radec_col1[0]].values * u.deg, dec=df1[radec_col1[1]].values * u.deg, frame=frame)
+    coords2 = SkyCoord(ra=df2[radec_col2[0]].values * u.deg, dec=df2[radec_col2[1]].values * u.deg, frame=frame)
+
+    # Define tolerance in milliarcseconds
+    tolerance = tolerance_mas * u.mas
+
+    # Find closest matches within the tolerance
+    matches = []
+
+    for i, coord1 in enumerate(coords1):
+        sep = coord1.separation(coords2).to(u.mas)
+        closest_match_index = sep.argmin()
+        closest_separation = sep[closest_match_index]
+        if closest_separation < tolerance:
+            matches.append((i, closest_match_index, closest_separation.value))
+
+    # Create a DataFrame of matches
+    matches_df = pd.DataFrame(matches, columns=['Index_df1', 'Index_df2', 'Separation'])
+
+    # Ensure the matched rows are unique
+    matches_df.drop_duplicates(inplace=True)
+
+    # Merge matched indices with original DataFrames
+    matched_df1 = df1.loc[matches_df['Index_df1']].reset_index(drop=True)
+    matched_df2 = df2.loc[matches_df['Index_df2']].reset_index(drop=True)
+
+    # Concatenate the matched DataFrames
+    matched_df = pd.concat([matched_df1, matched_df2, matches_df[['Separation']].reset_index(drop=True)], axis=1)
+    matched_df.columns = [f"{col}_df1" for col in df1.columns] + [f"{col}_df2" for col in df2.columns] + ['Separation']
+
+    return matched_df
+
 def calc_chunksize(workers, ntarget, factor=4):
     """Calculate chunksize argument for Pool-methods.
 

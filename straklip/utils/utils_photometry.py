@@ -496,7 +496,7 @@ def KLIP_aperture_photometry_handler(DF,id,filter,data_label='',dq_label='',hdul
     return(detection_AP.counts,detection_AP.ecounts,detection_AP.Nsigma,detection_AP.Nap,detection_AP.mag,detection_AP.emag,spx,bpx,Sky,eSky,nSky,detection_AP.grow_corr)
 
 
-def mvs_aperture_photometry(DF,filter,ee_dict,zpt_dict,fitsname=None,mvs_ids_list_in=[],data_label='',dq_label='',label='data',bpx_list=[],spx_list=[],la_cr_remove=False,cr_radius=1,radius_in=10,radius1_in=10,radius2_in=15,sat_thr=np.inf,kill_plots=True,grow_curves=True,gstep=0.01,p=30,r_in=4,Python_origin=False,remove_candidate=False,multiply_by_exptime=False,multiply_by_gain=False,multiply_by_PAM=False,noBGsub=False,forceSky=False,path2savefile=None):
+def mvs_aperture_photometry(DF,filter,ee_dict,zpt_dict,fitsname=None,mvs_ids_list_in=[],data_label='',dq_label='',label='data',bpx_list=[],spx_list=[],la_cr_remove=False,cr_radius=1,radius_ap=10,radius_sky_inner=10,radius_sky_outer=15,sat_thr=np.inf,kill_plots=True,grow_curves=True,gstep=0.01,p=30,r_in=4,Python_origin=False,remove_candidate=False,multiply_by_exptime=False,multiply_by_gain=False,multiply_by_PAM=False,noBGsub=False,forceSky=False,path2savefile=None):
     getLogger(__name__).info(f'Starting mvs photometry on ids {mvs_ids_list_in}')
     label_dict={'data':1,'crclean_data':4}
     label_KLIP_dict={'data':'','crcleaxn_data':'crclean_'}
@@ -547,9 +547,9 @@ def mvs_aperture_photometry(DF,filter,ee_dict,zpt_dict,fitsname=None,mvs_ids_lis
             else: data=DATA.data
             dqdata=DQ.data
         
-        radius=radius_in
-        radius1=radius1_in
-        radius2=radius2_in
+        radius=radius_ap
+        radius1=radius_sky_inner
+        radius2=radius_sky_outer
         exptime=DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==mvs_ids,'exptime_%s'%filter].values[0]
         ext=DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==mvs_ids,'ext'].values[0]
         if isinstance(zpt_dict,dict):

@@ -21,8 +21,8 @@ from buildhdf import make_candidates_dataframes
 
 def task_mvs_tiles_and_photometry(DF, fitsname, ids_list, filter, use_xy_SN, use_xy_m, use_xy_cen, xy_shift_list,
                                   xy_dmax, bpx_list, spx_list, legend, showplot, overwrite, verbose, Python_origin,
-                                  cr_remove, la_cr_remove, cr_radius, kill_plots, ee_df, zpt, radius_in, radius1_in,
-                                  radius2_in, sat_thr, grow_curves, r_in, p, gstep, multiply_by_exptime,
+                                  cr_remove, la_cr_remove, cr_radius, kill_plots, ee_df, zpt, radius_ap, radius_sky_inner,
+                                  radius_sky_outer, sat_thr, grow_curves, r_in, p, gstep, multiply_by_exptime,
                                   multiply_by_gain, multiply_by_PAM):
     '''
     parallelized task for the update_mvs_tiles.
@@ -245,8 +245,8 @@ def task_mvs_tiles_and_photometry(DF, fitsname, ids_list, filter, use_xy_SN, use
                     phot.append(
                         mvs_aperture_photometry(DF, filter, ee_df, zpt, fitsname=fitsname, mvs_ids_list_in=[id],
                                                 bpx_list=bpx_list, spx_list=spx_list, la_cr_remove=la_cr_remove,
-                                                cr_radius=cr_radius, radius_in=radius_in, radius1_in=radius1_in,
-                                                radius2_in=radius2_in, sat_thr=sat_thr, kill_plots=kill_plots,
+                                                cr_radius=cr_radius, radius_ap=radius_ap, radius_sky_inner=radius_sky_inner,
+                                                radius_sky_outer=radius_sky_outer, sat_thr=sat_thr, kill_plots=kill_plots,
                                                 grow_curves=grow_curves, r_in=r_in, p=p, gstep=gstep, flag=flag,
                                                 multiply_by_exptime=multiply_by_exptime,
                                                 multiply_by_gain=multiply_by_gain, multiply_by_PAM=multiply_by_PAM))
@@ -275,7 +275,7 @@ def task_mvs_tiles_and_photometry(DF, fitsname, ids_list, filter, use_xy_SN, use
 #                                 xy_cen=False, xy_shift_list=[], xy_dmax=3, bpx_list=[], spx_list=[], legend=False,
 #                                 showplot=False, showplot_final=False, verbose=False, workers=None, Python_origin=True,
 #                                 parallel_runs=True, cr_remove=False, la_cr_remove=False, cr_radius=3, kill_plots=False,
-#                                 chunksize=None, ee_df=None, zpt=0, radius_in=10, radius1_in=10, radius2_in=15,
+#                                 chunksize=None, ee_df=None, zpt=0, radius_ap=10, radius_sky_inner=10, radius_sky_outer=15,
 #                                 sat_thr=np.inf, grow_curves=True, r_in=1, p=100, gstep=0.1, multiply_by_exptime=False,
 #                                 multiply_by_gain=False, multiply_by_PAM=False):
 #     '''
@@ -384,8 +384,8 @@ def task_mvs_tiles_and_photometry(DF, fitsname, ids_list, filter, use_xy_SN, use
 #                                  repeat(xy_dmax), repeat(bpx_list), repeat(spx_list), repeat(legend),
 #                                  repeat(showplot), repeat(overwrite), repeat(verbose), repeat(Python_origin),
 #                                  repeat(cr_remove), repeat(la_cr_remove), repeat(cr_radius), repeat(kill_plots),
-#                                  repeat(ee_df), repeat(zpt[q]), repeat(radius_in), repeat(radius1_in),
-#                                  repeat(radius2_in), repeat(sat_thr), repeat(grow_curves), repeat(r_in), repeat(p),
+#                                  repeat(ee_df), repeat(zpt[q]), repeat(radius_ap), repeat(radius_sky_inner),
+#                                  repeat(radius_sky_outer), repeat(sat_thr), repeat(grow_curves), repeat(r_in), repeat(p),
 #                                  repeat(gstep), repeat(multiply_by_exptime), repeat(multiply_by_gain),
 #                                  repeat(multiply_by_PAM), chunksize=chunksize):
 #                 phot = np.array(phot)
@@ -410,8 +410,8 @@ def task_mvs_tiles_and_photometry(DF, fitsname, ids_list, filter, use_xy_SN, use
 #             phot = task_mvs_tiles_and_photometry(DF, fitsname_list[elno], ids_list_of_lists[elno], filter, xy_SN,
 #                                                  xy_m, xy_cen, use_xy_shift_list, xy_dmax, bpx_list, spx_list,
 #                                                  legend, showplot, overwrite, verbose, Python_origin, cr_remove,
-#                                                  la_cr_remove, cr_radius, kill_plots, ee_df, zpt[q], radius_in,
-#                                                  radius1_in, radius2_in, sat_thr, grow_curves, r_in, p, gstep,
+#                                                  la_cr_remove, cr_radius, kill_plots, ee_df, zpt[q], radius_ap,
+#                                                  radius_sky_inner, radius_sky_outer, sat_thr, grow_curves, r_in, p, gstep,
 #                                                  multiply_by_exptime, multiply_by_gain, multiply_by_PAM)
 #             phot = np.array(phot)
 #             for elno in range(len(phot)):

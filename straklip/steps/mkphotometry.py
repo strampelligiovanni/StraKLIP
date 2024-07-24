@@ -40,7 +40,7 @@ def get_ee_df(dataset):
     return ee_dict
 
 def task_mvs_photometry(DF,fitsname,ids_list,filter,ee_dict,zpt,la_cr_remove,cr_radius,multiply_by_exptime,
-                        multiply_by_gain,multiply_by_PAM,bpx_list,spx_list,radius_in,radius1_in,radius2_in,sat_thr,
+                        multiply_by_gain,multiply_by_PAM,bpx_list,spx_list,radius_ap,radius_sky_inner,radius_sky_outer,sat_thr,
                         kill_plots,grow_curves,r_in,p,gstep, path2savefile):
     '''
     parallelized task for the update_mvs_tiles.
@@ -49,8 +49,8 @@ def task_mvs_photometry(DF,fitsname,ids_list,filter,ee_dict,zpt,la_cr_remove,cr_
     for id in ids_list:
         phot.append(mvs_aperture_photometry(DF,filter,ee_dict,zpt,fitsname=fitsname,
                                             mvs_ids_list_in=[id],bpx_list=bpx_list,spx_list=spx_list,
-                                            la_cr_remove=la_cr_remove,cr_radius=cr_radius,radius_in=radius_in,
-                                            radius1_in=radius1_in,radius2_in=radius2_in,sat_thr=sat_thr,
+                                            la_cr_remove=la_cr_remove,cr_radius=cr_radius,radius_ap=radius_ap,
+                                            radius_sky_inner=radius_sky_inner,radius_sky_outer=radius_sky_outer,sat_thr=sat_thr,
                                             kill_plots=kill_plots,grow_curves=grow_curves,r_in=r_in,p=p,
                                             gstep=gstep,multiply_by_exptime=multiply_by_exptime,
                                             multiply_by_gain=multiply_by_gain,multiply_by_PAM=multiply_by_PAM,
@@ -61,15 +61,15 @@ def task_mvs_photometry(DF,fitsname,ids_list,filter,ee_dict,zpt,la_cr_remove,cr_
 def make_mvs_photometry(DF,filter,mvs_ids_test_list=[],ee_dict=None,workers=None,
                       parallel_runs=True,la_cr_remove=False,cr_radius=3,chunksize = None,
                       multiply_by_exptime=False,multiply_by_gain=False,multiply_by_PAM=False, bpx_list=[], spx_list=[],
-                      zpt=0,radius_in=10,radius1_in=10,radius2_in=15, sat_thr=np.inf, kill_plots=True,
+                      zpt=0,radius_ap=10,radius_sky_inner=10,radius_sky_outer=15, sat_thr=np.inf, kill_plots=True,
                       grow_curves=True, r_in=1,p=100,gstep=0.1,skip_flags=['rejected'],path2savefile=None):
     '''
     update the multi-visits dataframe with the tile photometry for each source
 
     '''
-    DF.radius_in = radius_in
-    DF.radius1_in = radius1_in
-    DF.radius2_in = radius2_in
+    DF.radius_ap = radius_ap
+    DF.radius_sky_inner = radius_sky_inner
+    DF.radius_sky_outer = radius_sky_outer
     DF.sat_thr = sat_thr
     DF.grow_curves = grow_curves
     getLogger(__name__).info(f'Make photometry for multi-visits targets on filter {filter}')
@@ -107,8 +107,8 @@ def make_mvs_photometry(DF,filter,mvs_ids_test_list=[],ee_dict=None,workers=None
 
             for phot in executor.map(task_mvs_photometry, repeat(DF), fitsname_list, ids_list_of_lists, repeat(filter), repeat(ee_dict), repeat(zpt), repeat(la_cr_remove), repeat(cr_radius),
                                     repeat(multiply_by_exptime),
-                                    repeat(multiply_by_gain), repeat(multiply_by_PAM), repeat(bpx_list), repeat(spx_list), repeat(radius_in), repeat(radius1_in),
-                                    repeat(radius2_in), repeat(sat_thr),
+                                    repeat(multiply_by_gain), repeat(multiply_by_PAM), repeat(bpx_list), repeat(spx_list), repeat(radius_ap), repeat(radius_sky_inner),
+                                    repeat(radius_sky_outer), repeat(sat_thr),
                                     repeat(kill_plots), repeat(grow_curves), repeat(r_in), repeat(p), repeat(gstep), repeat(path2savefile),
                                   chunksize=chunksize):
 
@@ -128,8 +128,8 @@ def make_mvs_photometry(DF,filter,mvs_ids_test_list=[],ee_dict=None,workers=None
         for elno in range(len(fitsname_list)):
             phot=task_mvs_photometry(DF, fitsname_list[elno], ids_list_of_lists[elno], filter, ee_dict, zpt, la_cr_remove, cr_radius,
                                 multiply_by_exptime,
-                                multiply_by_gain, multiply_by_PAM, bpx_list, spx_list, radius_in, radius1_in,
-                                radius2_in, sat_thr,
+                                multiply_by_gain, multiply_by_PAM, bpx_list, spx_list, radius_ap, radius_sky_inner,
+                                radius_sky_outer, sat_thr,
                                 kill_plots, grow_curves, r_in, p, gstep, path2savefile)
             phot=np.array(phot)
             for elno in range(len(phot)):
@@ -183,9 +183,9 @@ def run(packet):
                             multiply_by_gain=dataset.pipe_cfg.mktiles['multiply_by_gain'],
                             multiply_by_PAM=dataset.pipe_cfg.mktiles['multiply_by_PAM'],
                             zpt=zpt,
-                            radius_in=dataset.pipe_cfg.mkphotometry['radius_in']/DF.pixscale,
-                            radius1_in=dataset.pipe_cfg.mkphotometry['radius1_in']/DF.pixscale,
-                            radius2_in=dataset.pipe_cfg.mkphotometry['radius2_in']/DF.pixscale,
+                            radius_ap=dataset.pipe_cfg.mkphotometry['radius_ap']/DF.pixscale,
+                            radius_sky_inner=dataset.pipe_cfg.mkphotometry['radius_sky_inner']/DF.pixscale,
+                            radius_sky_outer=dataset.pipe_cfg.mkphotometry['radius_sky_outer']/DF.pixscale,
                             kill_plots=not dataset.pipe_cfg.mkphotometry['debug'],
                             grow_curves=dataset.pipe_cfg.mkphotometry['grow_curves'],
                             p=dataset.pipe_cfg.mkphotometry['p'],

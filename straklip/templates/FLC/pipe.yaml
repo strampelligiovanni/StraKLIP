@@ -1,0 +1,165 @@
+instrument:
+  name: WFC3
+  detector: UVIS
+  pixelscale: 0.04
+  gain: 1.5
+  AVs: { 1: 'wfc3,uvis2' }
+  pam: {1:  'UVIS2wfc3_map_cut'}
+  ee_name: { 1: 'wfc3uvis2_aper_007_syn.csv' }
+  ccd_pix: {'x': 2047, 'y': 2050}
+ncpu: 8
+redo: true
+debug: false
+flow:
+########## first part of the pipeline ##########
+#- buildhdf
+#- mktiles
+#- mkphotometry
+#- fow2cells
+#- psfsubtraction
+#- klipphotometry
+########## second part of the pipeline ##########
+#- buildfphdf
+- mkcompleteness
+- fpanalysis
+paths:
+  pyklip: /Users/gstrampelli/PycharmProjects/Giovanni/pyklip/pyklip
+  pam: /Users/gstrampelli/PycharmProjects/Giovanni/work/database/FFP/pam
+  data: /Users/gstrampelli/PycharmProjects/Giovanni/work/data/FFP/fits
+  database: /Users/gstrampelli/PycharmProjects/Giovanni/work/database/FFP
+  out: /Users/gstrampelli/PycharmProjects/Giovanni/work/out/FFP
+buildhdf:
+  redo: false
+  dq2mask: []
+  default_mvs_table:
+    id: mvs_ids
+    vis: vis
+    ext: ext
+    x: x
+    y: y
+    rota: rota
+    exptime: exptime
+    pav3: pav3
+    flag: flag
+    fitsroot: fits
+  default_avg_table:
+    id: avg_ids
+    ra: ra
+    dec: dec
+    mag: m
+    emag: e
+    type: type
+  distance_cube:
+    shwoplot: false
+mktiles:
+  avg_ids_list: []
+  redo: false
+  debug: false
+  xy_dmax: 5
+  tile_base: 41
+  max_separation: 2
+  min_separation: 0
+  xy_m : false
+  cr_remove: false
+  la_cr_remove : true
+  parallel_runs : true
+  python_origin : false
+  look4duplicants : false
+  cr_radius: 0.2
+  kill_plots: true
+  multiply_by_exptime: false # true to convert from counts/s or e-/s to counts or e- or counts
+  multiply_by_PAM: true #true when not working with drc images
+  multiply_by_gain: false # true to convert from counts to e-
+  zfactor: 10
+  alignment_box: 3
+mkphotometry:
+  redo: false
+  debug: true
+  parallel_runs: true
+  sat_thr: 78000
+  radius_ap : 0.4
+  radius_sky_inner : 0.4
+  radius_sky_outer : 1
+  grow_curves: false
+  p: 30
+  gstep: 0.01
+  bad_pixel_flags: [4,16,512,1024]
+  sat_pixel_flags: [256,2048]
+  skip_flags:
+    - rejected
+fow2cells:
+  add_flags: false
+  qx: 1
+  qy: 1
+  psf_nmin: 10
+  sat_px: 3
+  psf_sat_px: 3
+  bad_px: 30
+  psf_bad_px: 30
+  mag_limit: [10,10]
+  psf_goodness_limit: 0.02
+  goodness_limit: 0.1
+psfsubtraction:
+  redo: true
+  avg_ids_list: []
+  parallel_runs: true
+  PSF_sub_flags: 'good|unresolved'
+  kmodes: [1,3 ,5,7,10,15,20,25,30,35,45,50]
+  skip_flags:
+    - rejected
+    - known_double
+klipphotometry:
+  redo: true
+  avg_ids_list: []
+  suffix: ''
+  verbose: false
+  min_mag_list: []
+  max_mag_list: []
+  aptype: 'square'
+  no_median_tile_update: false
+  zfactor: 10
+  alignment_box: 3
+  parallel_runs: true
+  label: 'crclean_data'
+  kill_plots: true
+  delta: 5
+  radius: 3
+  skip_filters: []
+  sat_thr: inf
+  mfk: 1
+  mdf: 2
+  mad: 0.08
+  pruning: true
+buildfphdf:
+  redo: true
+  nstars: 50
+  NPSFsample : 50
+  magbins: '19-20'
+  dmags: '0-10'
+  sep_range: '1-25'
+  skip_filters: []
+  parallel_runs : true
+  inner_shift : 0.25
+  showplot : false
+  suffix : ''
+mkcompleteness:
+  redo: false
+  parallel_runs : true
+  nvisits: '1-4'
+  auc_limit: 0.0
+  fp_limit: 0.001
+  psf_filename : ''
+  showplot : False
+  suffix : ''
+  save_figure: true
+  sma_interp: true
+  smooth: 0.001
+  method: 'linear'
+  sep_step: 0.05
+fpanalysis:
+  redo: false
+  avg_ids_list: []
+  verbose: true
+  sigma: 2.5
+  showplot: true
+  oversubtraction: true

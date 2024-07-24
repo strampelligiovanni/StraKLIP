@@ -170,11 +170,11 @@ def task_fake_infos(DF, magbin, dmag, sep, filter, zpt, psf_list, psf_ids_list, 
         target_psf = psf_scale(target_psf)
         if showplot:
             try:
-                radius_in = DF.header_df.loc['radius_in', 'Values']
-                radius1 = DF.header_df.loc['radius1_in', 'Values']
-                radius2 = DF.header_df.loc['radius2_in', 'Values']
+                radius_ap = DF.header_df.loc['radius_ap', 'Values']
+                radius1 = DF.header_df.loc['radius_sky_inner', 'Values']
+                radius2 = DF.header_df.loc['radius_sky_outer', 'Values']
             except:
-                radius_in = 5
+                radius_ap = 5
                 radius1 = 10
                 radius2 = 15
 
@@ -215,23 +215,23 @@ def task_fake_infos(DF, magbin, dmag, sep, filter, zpt, psf_list, psf_ids_list, 
             print('> Isolated primary with Sky:'.upper())
             aperture_photometry_handler(DF, 0, filter, x=x_cen, y=y_cen, data=im0, zpt=zpt, ezpt=0, aptype='circular',
                                         noBGsub=False, sigma=3, kill_plots=False, Python_origin=True, exptime=exptime,
-                                        radius_a=radius_in, radius1=radius1, radius2=radius2, gain=gain)
+                                        radius_a=radius_ap, radius1=radius1, radius2=radius2, gain=gain)
             print('> Isolated companion without Sky:'.upper())
             print('> Input counts: %e' % (c2 * exptime))
             aperture_photometry_handler(DF, 0, filter, x=x_cen, y=y_cen, data=im2, zpt=zpt, ezpt=0, aptype='circular',
                                         noBGsub=True, sigma=3, kill_plots=False, Python_origin=True, exptime=exptime,
-                                        radius_a=radius_in, radius1=radius1, radius2=radius2, gain=gain)
+                                        radius_a=radius_ap, radius1=radius1, radius2=radius2, gain=gain)
             print('> %s aperture on the same target:' % aptype)
             aperture_photometry_handler(DF, 0, filter, x=x_cen, y=y_cen, data=im2, zpt=zpt, ezpt=0, aptype=aptype,
                                         noBGsub=True, sigma=3, kill_plots=False, Python_origin=True, exptime=exptime,
-                                        radius_a=radius_in, radius1=radius1, radius2=radius2, gain=gain, delta=delta)
+                                        radius_a=radius_ap, radius1=radius1, radius2=radius2, gain=gain, delta=delta)
             print('> Expected counts: %e' % dt.counts)
 
             print('> Binary with the two component combined:'.upper())
             print('> Centered on the primary:')
             aperture_photometry_handler(DF, 0, filter, x=x_cen, y=y_cen, data=im12, zpt=zpt, ezpt=0,
                                         aptype='circular', noBGsub=False, sigma=3, kill_plots=False, Python_origin=True,
-                                        exptime=exptime, radius_a=radius_in, radius1=radius1, radius2=radius2,
+                                        exptime=exptime, radius_a=radius_ap, radius1=radius1, radius2=radius2,
                                         gain=gain)
             print('> Centered on the companion:')
 

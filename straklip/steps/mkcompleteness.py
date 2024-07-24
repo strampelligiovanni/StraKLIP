@@ -1,7 +1,7 @@
 import sys
 sys.path.append('/')
 from utils_dataframe import mk_fk_completeness_df
-from utils_fpanalysis import mk_completeness_from_fakes,mvs_plot_completness,avg_plot_completness
+from utils_fpanalysis import mk_completeness_from_fakes,mvs_plot_completness,unq_plot_completness
 from utils_completeness import flatten_matrix_completeness_curves_df,mk_completeness_curves_df,make_matrix_completeness_curves_df
 from ancillary import interpND
 
@@ -95,7 +95,7 @@ def make_mvs_completeness_maps(DF,path2savedir=None, filters_list=[], Nvisit_ran
                             path2savedir=path2savedir,
                             showplot=False,
                             filters_list=None,
-                            avg_ids_list=None,
+                            unq_ids_list=None,
                             Nvisit_list=None,
                             MagBin_list=None,
                             Kmodes_list=None,
@@ -190,7 +190,7 @@ def mk_interpolations(DF,iso_path='',iso_name='', smooth=0.001,method='linear',s
 
     return(interp_iso_mass_dict,interp_iso_dict)
 
-def make_avg_completeness_maps(DF,filters_list=[],sma_interp=True,skip_filters=[],Nvisit_list=None,KLIPmodes_list=None,
+def make_unq_completeness_maps(DF,filters_list=[],sma_interp=True,skip_filters=[],Nvisit_list=None,KLIPmodes_list=None,
                                sep_step=0.01, mass_list=[0.001, 2], parallel_runs=True, workers=None,save_figure=''):
 
 
@@ -203,7 +203,7 @@ def make_avg_completeness_maps(DF,filters_list=[],sma_interp=True,skip_filters=[
     DF=flatten_completeness_curves_df(DF,filters_list=filters_list,sma_interp=sma_interp,skip_filters=skip_filters,
                                       Nvisit_list=nvisit_list,KLIPmodes_list=KLIPmodes_list)
 
-    avg_plot_completness(DF,ylim=[],xlim=[],dist=DF.dist,df_ylabel='Dmag',df_xlabel='SMA',
+    unq_plot_completness(DF,ylim=[],xlim=[],dist=DF.dist,df_ylabel='Dmag',df_xlabel='SMA',
                          xlabel='projected SMA [arcsec]',ylabel='Dmag',log_y=False,
                          show_plot=False,c_lim=0.1,collapsed=True,path2savedir=save_figure)
     return(DF)
@@ -227,7 +227,7 @@ def run(packet):
                                    save_figure=dataset.pipe_cfg.mkcompleteness['save_figure']
                                    )
 
-    DF=make_avg_completeness_maps(DF,
+    DF=make_unq_completeness_maps(DF,
                                   filters_list=DF.filters,
                                   sma_interp=dataset.pipe_cfg.mkcompleteness['sma_interp'],
                                   skip_filters=dataset.pipe_cfg.klipphotometry['skip_filters'],

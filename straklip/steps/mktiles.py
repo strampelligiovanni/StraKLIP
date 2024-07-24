@@ -78,11 +78,11 @@ def check4duplicants(DF,filter,mvs_ids_list,showduplicants=False):
                     ax[1].imshow(list_of_target4test[q],origin='lower',norm=PowerNorm(0.2),vmin=min,vmax=max)
                     plt.show()
                     display(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids.isin([np.array(ids_list)[k]])|DF.crossmatch_ids_df.mvs_ids.isin([np.array(ids_list)[q]])])
-                    display(DF.avg_targets_df.loc[(DF.avg_targets_df.avg_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids.isin([np.array(ids_list)[k]])].avg_ids.unique()))|(DF.avg_targets_df.avg_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids.isin([np.array(ids_list)[q]])].avg_ids.unique()))])
+                    display(DF.unq_targets_df.loc[(DF.unq_targets_df.unq_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids.isin([np.array(ids_list)[k]])].unq_ids.unique()))|(DF.unq_targets_df.unq_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids.isin([np.array(ids_list)[q]])].unq_ids.unique()))])
                     display(DF.mvs_targets_df.loc[(DF.mvs_targets_df.mvs_ids.isin([np.array(ids_list)[k]]))|(DF.mvs_tiles_df.mvs_ids.isin([np.array(ids_list)[q]]))])
                 ids_skip=(DF.mvs_targets_df.loc[(DF.mvs_targets_df.mvs_ids.isin([np.array(ids_list)[k]]))|(DF.mvs_tiles_df.mvs_ids.isin([np.array(ids_list)[q]]))].mvs_ids.unique())
                 DF.crossmatch_ids_df=DF.crossmatch_ids_df.loc[~DF.crossmatch_ids_df.mvs_ids.isin(ids_skip)]
-    DF.avg_targets_df=DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids.isin(DF.crossmatch_ids_df.avg_ids.unique())]
+    DF.unq_targets_df=DF.unq_targets_df.loc[DF.unq_targets_df.unq_ids.isin(DF.crossmatch_ids_df.unq_ids.unique())]
     DF.mvs_targets_df=DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(DF.crossmatch_ids_df.mvs_ids.unique())]
     print('All duplicants killed')
 
@@ -120,7 +120,7 @@ def task_mvs_tiles(DF,fitsname,ids_list,filter,use_xy_SN,use_xy_m,use_xy_cen,xy_
         for id in ids_list:
             path2tile='%s/mvs_tiles/%s/tile_ID%i.fits'%(DF.path2out,filter,id)
             if not os.path.exists(path2tile) or overwrite:
-                type_flag=DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids==id].avg_ids.unique()[0]].type.values[0]
+                type_flag=DF.unq_targets_df.loc[DF.unq_targets_df.unq_ids==DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids==id].unq_ids.unique()[0]].type.values[0]
                 x=DF.mvs_targets_df.loc[(DF.mvs_targets_df['fits_%s'%(filter)]==fitsname)&(DF.mvs_targets_df.mvs_ids==id),'x_%s'%filter].values[0]
                 y=DF.mvs_targets_df.loc[(DF.mvs_targets_df['fits_%s'%(filter)]==fitsname)&(DF.mvs_targets_df.mvs_ids==id),'y_%s'%filter].values[0]
                 ext=int(DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==id].ext.values[0])
@@ -284,7 +284,7 @@ def mk_mvs_tiles(DF,filter,mvs_ids_test_list=[],xy_SN=True,xy_m=False,xy_cen=Fal
                 DF.mvs_targets_df.loc[(DF.mvs_targets_df.mvs_ids.isin(out[:,0])), ['y_%s' % filter]] = out[:,2]
 
 
-def make_mvs_tiles(DF,filter,pipe_cfg, avg_ids_test_list=[],redo=False, debug=False,
+def make_mvs_tiles(DF,filter,pipe_cfg, unq_ids_test_list=[],redo=False, debug=False,
                    xy_SN=False, xy_m=True,
                    xy_cen=False, xy_shift_list=[], xy_dmax=3, verbose=False, workers=None, look4duplicants=True,
                    showduplicants=False, Python_origin=False, parallel_runs=True, cr_remove=False,
@@ -314,12 +314,12 @@ def make_mvs_tiles(DF,filter,pipe_cfg, avg_ids_test_list=[],redo=False, debug=Fa
         getLogger(__name__).info(f'Updating the targets dataframe')
         update_mvs_targets(DF, pipe_cfg, filter)
     getLogger(__name__).info(f'Working on the tiles')
-    if len(avg_ids_test_list) > 0:
+    if len(unq_ids_test_list) > 0:
         mvs_ids_test_list = np.sort(
-            DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids.isin(avg_ids_test_list)].mvs_ids.unique())
+            DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids.isin(unq_ids_test_list)].mvs_ids.unique())
     else:
         mvs_ids_test_list = []
-    if len(avg_ids_test_list) < 2:
+    if len(unq_ids_test_list) < 2:
         look4duplicants = False
     mk_mvs_tiles(DF, filter, mvs_ids_test_list=mvs_ids_test_list,
                  verbose=verbose, xy_SN=xy_SN, xy_m=xy_m, xy_cen=xy_cen,
@@ -349,7 +349,7 @@ def task_median_tiles(DF,id,filter,zfactor,alignment_box,legend,showplot,method,
     '''
 
     target_images=[]
-    mvs_ids_list=DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids==id].mvs_ids.unique()
+    mvs_ids_list=DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids==id].mvs_ids.unique()
     PAV_3s=[]
     ROTAs=[]
     path2tile = '%s/median_tiles/%s/tile_ID%i.fits' % (DF.path2out, filter, id)
@@ -408,7 +408,7 @@ def task_median_tiles(DF,id,filter,zfactor,alignment_box,legend,showplot,method,
     else:
         getLogger(__name__).info(f'Median Tile {path2tile} already exist. Skipping.')
 
-def make_median_tiles(DF,filter,avg_ids_list=[],workers=None,
+def make_median_tiles(DF,filter,unq_ids_list=[],workers=None,
                    zfactor=10,alignment_box=3,legend=False,showplot=False,
                    parallel_runs=True,method='median',cr_remove=False,la_cr_remove=False,
                    chunksize = None,kill=False,kill_plots=False,
@@ -419,19 +419,19 @@ def make_median_tiles(DF,filter,avg_ids_list=[],workers=None,
     '''
     getLogger(__name__).info(f'Working on median tiles on {filter}')
     config.make_paths(config=None, paths=DF.path2out+'/median_tiles/%s'%filter)
-    if len(avg_ids_list)==0: avg_ids_list=DF.avg_targets_df.avg_ids.unique()
+    if len(unq_ids_list)==0: unq_ids_list=DF.unq_targets_df.unq_ids.unique()
 
     if parallel_runs:
-        workers,chunksize,ntarget=parallelization_package(workers,len(avg_ids_list),chunksize = chunksize)
+        workers,chunksize,ntarget=parallelization_package(workers,len(unq_ids_list),chunksize = chunksize)
         with ProcessPoolExecutor(max_workers=workers) as executor:
-            for _ in executor.map(task_median_tiles,repeat(DF),avg_ids_list,repeat(filter),
+            for _ in executor.map(task_median_tiles,repeat(DF),unq_ids_list,repeat(filter),
                                   repeat(zfactor),repeat(alignment_box),repeat(legend),repeat(showplot),
                                   repeat(method),repeat(cr_remove),repeat(la_cr_remove),repeat(kill),
                                   repeat(kill_plots),repeat(skip_flag),repeat(redo),chunksize=chunksize):
                 pass
 
     else:
-        for id in avg_ids_list:
+        for id in unq_ids_list:
             task_median_tiles(DF,id,filter,zfactor,alignment_box,legend,showplot,method,cr_remove,la_cr_remove,kill,
                       kill_plots,skip_flag,redo)
 
@@ -441,7 +441,7 @@ def run(packet):
     dataset = packet['dataset']
     for filter in dataset.data_cfg.filters:
         make_mvs_tiles(DF,filter,dataset.pipe_cfg,
-                        avg_ids_test_list=dataset.pipe_cfg.mktiles['avg_ids_list'],
+                        unq_ids_test_list=dataset.pipe_cfg.mktiles['unq_ids_list'],
                         xy_m=dataset.pipe_cfg.mktiles['xy_m'],
                         workers=int(dataset.pipe_cfg.ncpu),
                         cr_remove=dataset.pipe_cfg.mktiles['cr_remove'],
@@ -459,7 +459,7 @@ def run(packet):
 
 
         make_median_tiles(DF, filter,
-                            avg_ids_list=dataset.pipe_cfg.mktiles['avg_ids_list'],
+                            unq_ids_list=dataset.pipe_cfg.mktiles['unq_ids_list'],
                             workers=int(dataset.pipe_cfg.ncpu),
                             zfactor=dataset.pipe_cfg.mktiles['zfactor'],
                             alignment_box=dataset.pipe_cfg.mktiles['alignment_box'],

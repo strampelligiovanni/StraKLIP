@@ -18,8 +18,8 @@ def break_FOW_in_cells(DF, filter, suffix='', goodness_phot_label='e', showplot=
     getLogger(__name__).info(f'Braking {filter} FOW in {qx*qy} cells.')
 
     if add_flags:
-        # type_flag = DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids == DF.crossmatch_ids_df.loc[
-        #     DF.crossmatch_ids_df.mvs_ids == mvs_ids].avg_ids.unique()[0]].type.values[0]
+        # type_flag = DF.unq_targets_df.loc[DF.unq_targets_df.unq_ids == DF.crossmatch_ids_df.loc[
+        #     DF.crossmatch_ids_df.mvs_ids == mvs_ids].unq_ids.unique()[0]].type.values[0]
         # if type_flag == 2:
         #     flag = 'unresolved_double'
         # else:
@@ -28,11 +28,11 @@ def break_FOW_in_cells(DF, filter, suffix='', goodness_phot_label='e', showplot=
         #         flag = 'good_target'
 
         getLogger(__name__).info(f'Updating flag for mvs detections.')
-        avg_ids_list = DF.avg_targets_df.avg_ids.unique()
-        workers, chunksize, ntarget = parallelization_package(workers, len(avg_ids_list), chunksize=chunksize)
+        unq_ids_list = DF.unq_targets_df.unq_ids.unique()
+        workers, chunksize, ntarget = parallelization_package(workers, len(unq_ids_list), chunksize=chunksize)
 
         with ProcessPoolExecutor(max_workers=workers) as executor:
-            for out in executor.map(update_flags, repeat(DF), repeat(filter), avg_ids_list, repeat(suffix),
+            for out in executor.map(update_flags, repeat(DF), repeat(filter), unq_ids_list, repeat(suffix),
                                  repeat(goodness_phot_label), repeat(sat_px),
                                  repeat(psf_sat_px), repeat(bad_px), repeat(psf_bad_px),
                                  repeat(mag_limit), repeat(psf_goodness_limit),
@@ -41,8 +41,8 @@ def break_FOW_in_cells(DF, filter, suffix='', goodness_phot_label='e', showplot=
                     DF.mvs_targets_df.loc[
                         DF.mvs_targets_df.mvs_ids == float(out[elno][0]), ['flag_%s' % filter]] = out[elno][1]
 
-        # for avg_ids in avg_ids_list:
-        #     out = update_flags(DF, filter, avg_ids, suffix,
+        # for unq_ids in unq_ids_list:
+        #     out = update_flags(DF, filter, unq_ids, suffix,
         #                          goodness_phot_label, sat_px,
         #                          psf_sat_px, bad_px, psf_bad_px,
         #                          mag_limit, psf_goodness_limit,
@@ -78,7 +78,7 @@ def run(packet):
         elno+=1
 
     getLogger(__name__).info(f'Updating type for unique detections.')
-    for avg_ids in DF.crossmatch_ids_df.avg_ids.unique():
-        DF=update_type(DF, avg_ids)
+    for unq_ids in DF.crossmatch_ids_df.unq_ids.unique():
+        DF=update_type(DF, unq_ids)
 
     DF.save_dataframes(__name__)

@@ -37,7 +37,7 @@ The `data.yaml` file host three major sections:
 ```
 target: this section host the information about the target that can be applied to all the soruces in the catalog as whole
 mvs_table: this section host the convection use by the provided imput catalog for each column
-avg_table: this section host the convection use by the provided imput catalog for each column
+unq_table: this section host the convection use by the provided imput catalog for each column
 ```
 
 The `pipe.yaml` file host 13 major sections:
@@ -60,7 +60,7 @@ paths: path mandatory for the pipeline
   data: path to the fits file. I in the data folder are genrally stored all the heavy files like the fits files
   database: path to catalogs and supplementary material
   out: path to the output directory for the pipeline
-buildhdf: here we record all the specific option for this step of the pipeline. In particular, under default_mvs_table and default_avg_table, we record the default name the pipeline will look for twith the matched name provided by the input catalogs for that specifc column
+buildhdf: here we record all the specific option for this step of the pipeline. In particular, under default_mvs_table and default_unq_table, we record the default name the pipeline will look for twith the matched name provided by the input catalogs for that specifc column
 mktiles: here we record all the specific option for this step of the pipeline
 mkphotometry: here we record all the specific option for this step of the pipeline
 fow2cells: here we record all the specific option for this step of the pipeline
@@ -74,7 +74,7 @@ coordinates and a few additional information of each sources on these images. Ha
 but it's not mandatory. The pipeline will perform it's own aperture photometry.
 
 The mandatory columns for the `mvs_table` catalog are the following:
-1. avg_ids: ids for average catalog 
+1. unq_ids: ids for average catalog 
 2. mvs_ids: ids for multivisit catalog 
 3. vis: visit column name in catalog 
 4. ext: extension column name in catalog that identify SCI in fits file (for HST if CCDCHIP = 1, EXT = 4, CCDCHIP = 2, EXT = 1)
@@ -91,8 +91,8 @@ pipeline default (stored in the `pipe.yaml`).
 An `average` catalog recording the `ra`, `dec` and `type` of each `unique` source is also need. 
 Having their photometry might help, but it's not mandatory. The pipeline will evaluate this as well.
 
-The mandatory columns for the `avg_table` catalog are the following:
-1. avg_ids: ids for average catalog 
+The mandatory columns for the `unq_table` catalog are the following:
+1. unq_ids: ids for average catalog 
 2. ra: ra column name in catalog 
 3. dec: dec column name in catalog 
 4. type: filter wise type column name in catalog (see below)

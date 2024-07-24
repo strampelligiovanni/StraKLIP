@@ -46,7 +46,7 @@ def add_subplot_axes(ax,rect,axisbg='w'):
     subax.yaxis.set_tick_params(labelsize=y_labelsize)
     return(subax)
 
-def avg_completeness_plots(DF,inst=None,fig=None,axes=None,completeness_curves_df=None,binary_df=None,w_pad=0,fx=7,fy=7,dfx=2,show_plot=False,dist=None,pixelscale=None,filters_list=None,df_ylabel='q',df_xlabel='SMA',cmap='Oranges_r',xlabel='SMA [arcsec]',ylabel='q [Mass$_{c}$/Mass$_{p}$]',ylim=[0.01,1],xlim=[0,1],title=False,log_y=False,log_x=False,invert_y=False,c_sel=None,c_lim=0.3,cbar_step=0.1,r=2,collapsed=False,path2savedir=None,show_candidates=False,Nvisits_list=None,select_candidate_by_visit=False,save_completeness=False):
+def unq_completeness_plots(DF,inst=None,fig=None,axes=None,completeness_curves_df=None,binary_df=None,w_pad=0,fx=7,fy=7,dfx=2,show_plot=False,dist=None,pixelscale=None,filters_list=None,df_ylabel='q',df_xlabel='SMA',cmap='Oranges_r',xlabel='SMA [arcsec]',ylabel='q [Mass$_{c}$/Mass$_{p}$]',ylim=[0.01,1],xlim=[0,1],title=False,log_y=False,log_x=False,invert_y=False,c_sel=None,c_lim=0.3,cbar_step=0.1,r=2,collapsed=False,path2savedir=None,show_candidates=False,Nvisits_list=None,select_candidate_by_visit=False,save_completeness=False):
     if inst==None: inst=DF.inst
     if not isinstance(completeness_curves_df, pd.DataFrame):   
         if df_ylabel == 'Dmag':completeness_curves_df=DF.flatten_matrix_dmag_completeness_curves_df
@@ -72,7 +72,7 @@ def avg_completeness_plots(DF,inst=None,fig=None,axes=None,completeness_curves_d
     n=len(filters_list)
     if pixelscale==None: pixelscale=DF.pixscale
     if show_candidates and not isinstance(binary_df, pd.DataFrame): 
-        binary_df=DF.avg_candidates_df.copy()
+        binary_df=DF.unq_candidates_df.copy()
         use_pipeline_df=True
     else:
         use_pipeline_df=False
@@ -115,7 +115,7 @@ def avg_completeness_plots(DF,inst=None,fig=None,axes=None,completeness_curves_d
                                 for idx,row in binary_df.loc[sel_visits].iterrows():
                                     X=find_closer(sma_list,row['sep'])[-1][0]
                                     Y=find_closer(MComp_list,row['q'])[-1][0]
-                                    binary_df.loc[binary_df.avg_ids_p==row.avg_ids_p,'Completeness%s'%filter[1:4]]=p_m_list[Y][X]
+                                    binary_df.loc[binary_df.unq_ids_p==row.unq_ids_p,'Completeness%s'%filter[1:4]]=p_m_list[Y][X]
 
                     else:
                         chek4NaN.append(False)
@@ -137,7 +137,7 @@ def avg_completeness_plots(DF,inst=None,fig=None,axes=None,completeness_curves_d
                             for idx,row in binary_df.iterrows():
                                 X=find_closer(sma_list,row['sep'])[-1][0]
                                 Y=find_closer(MComp_list,row['q'])[-1][0]
-                                binary_df.loc[binary_df.avg_ids_p==row.avg_ids_p,'Completeness%s'%filter[1:4]]=p_m_list[Y][X]
+                                binary_df.loc[binary_df.unq_ids_p==row.unq_ids_p,'Completeness%s'%filter[1:4]]=p_m_list[Y][X]
 
             else:
                 chek4NaN.append(False)
@@ -464,7 +464,7 @@ def mk_qmass_plot(axScatter,xo,yo,fig=None,x=None,y=None,axScHistx=None,axScHist
         print('Saving %s'%path2saveimage)
         fig.savefig(path2saveimage,bbox_inches='tight')
         
-def mvs_completeness_plots(DF,filter,path2savedir='./Plots/',MagBin_list=[],Nvisit_list=[],avg_ids_list=None,Kmodes_list=[],title=None,fx=14,fy=10,fz=20,ncolumns=4,xnew=None,ynew=None,ticks=np.arange(0.3,1.,0.1),show_IDs=False,save_completeness=False,save_figure=False,showplot=True,suffix=''):
+def mvs_completeness_plots(DF,filter,path2savedir='./Plots/',MagBin_list=[],Nvisit_list=[],unq_ids_list=None,Kmodes_list=[],title=None,fx=14,fy=10,fz=20,ncolumns=4,xnew=None,ynew=None,ticks=np.arange(0.3,1.,0.1),show_IDs=False,save_completeness=False,save_figure=False,showplot=True,suffix=''):
     '''
     make completenese tong plot for each candidate visit and bin of magnitude of the primaries
 
@@ -504,7 +504,7 @@ def mvs_completeness_plots(DF,filter,path2savedir='./Plots/',MagBin_list=[],Nvis
     None.
     '''
 
-    if avg_ids_list==None:
+    if unq_ids_list==None:
         save_completeness=False
         for index in Nvisit_list:
 
@@ -543,16 +543,16 @@ def mvs_completeness_plots(DF,filter,path2savedir='./Plots/',MagBin_list=[],Nvis
     
     else:
 
-        if len(avg_ids_list)==0:avg_ids_list=DF.avg_candidates_df.avg_ids.unique()
+        if len(unq_ids_list)==0:unq_ids_list=DF.unq_candidates_df.unq_ids.unique()
         if len(Nvisit_list)==0:
-            Nvisit_list=DF.avg_candidates_df.loc[~DF.avg_candidates_df[f'n_{filter}'].isna(),f'n_{filter}'].unique()
+            Nvisit_list=DF.unq_candidates_df.loc[~DF.unq_candidates_df[f'n_{filter}'].isna(),f'n_{filter}'].unique()
         if len(Kmodes_list)==0:
-            Kmodes_list=DF.avg_candidates_df.loc[~DF.avg_candidates_df['mkmode'].isna(),'mkmode'].unique()
-        for index,row in DF.avg_candidates_df.loc[~DF.avg_candidates_df[f'n_{filter}'].isna()&(DF.avg_candidates_df.avg_ids.isin(avg_ids_list))].groupby(f'n_{filter}'):
+            Kmodes_list=DF.unq_candidates_df.loc[~DF.unq_candidates_df['mkmode'].isna(),'mkmode'].unique()
+        for index,row in DF.unq_candidates_df.loc[~DF.unq_candidates_df[f'n_{filter}'].isna()&(DF.unq_candidates_df.unq_ids.isin(unq_ids_list))].groupby(f'n_{filter}'):
             if index in Nvisit_list:
                 Tot=0
-                for index2,row2 in DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids.isin(row.avg_ids.unique())].groupby(f'magbin_{filter}'):
-                    for index3,row3 in DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids.isin(row2.avg_ids.unique())].groupby('mkmode'):Tot+=1
+                for index2,row2 in DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids.isin(row.unq_ids.unique())].groupby(f'magbin_{filter}'):
+                    for index3,row3 in DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids.isin(row2.unq_ids.unique())].groupby('mkmode'):Tot+=1
                 elno1=0
                 elno2=0
                 nrows =1
@@ -561,17 +561,17 @@ def mvs_completeness_plots(DF,filter,path2savedir='./Plots/',MagBin_list=[],Nvis
                     nrows += Tot // ncolumns 
                 check4NaN=[]
                 fig,ax=plt.subplots(nrows,ncolumns,figsize=(fx*ncolumns,fy*nrows),squeeze=False)
-                for index2,row2 in DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids.isin(row.avg_ids.unique())].groupby(f'magbin_{filter}'):
-                    for index3,row3 in DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids.isin(row2.avg_ids.unique())].groupby('mkmode'):
+                for index2,row2 in DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids.isin(row.unq_ids.unique())].groupby(f'magbin_{filter}'):
+                    for index3,row3 in DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids.isin(row2.unq_ids.unique())].groupby('mkmode'):
                         if index3 in Kmodes_list:
                             if title==None: 
                                 title_in='%s N %i MagBin %i Kmode %i'%(filter,index,index2,index3)
                             if index2 not in DF.fk_completeness_df.loc[(filter)].index.get_level_values('magbin').unique():
                                 index2,_=find_closer(DF.fk_completeness_df.loc[(filter)].index.get_level_values('magbin').unique(),index2)
-                            sel_avg_ids_list=row3.avg_ids.unique()
+                            sel_unq_ids_list=row3.unq_ids.unique()
                             if np.any(~np.isnan(row3[f'm_{filter}'].values)):
                                 check4NaN.append(False)
-                                tong_plot(DF,index,index2,DF.dist,filter,ax=ax[elno1][elno2],avg_ids_list=sel_avg_ids_list,Kmodes_list=[int(index3)],title=title_in,fz=fz,xnew=xnew,ynew=ynew,ticks=ticks,show_IDs=show_IDs,save_completeness=save_completeness,suffix=suffix)
+                                tong_plot(DF,index,index2,DF.dist,filter,ax=ax[elno1][elno2],unq_ids_list=sel_unq_ids_list,Kmodes_list=[int(index3)],title=title_in,fz=fz,xnew=xnew,ynew=ynew,ticks=ticks,show_IDs=show_IDs,save_completeness=save_completeness,suffix=suffix)
                                 elno2+=1
                                 if elno2==ncolumns:
                                     elno2=0
@@ -653,11 +653,11 @@ def plot_dynamical_evoution(ax,ax2,x_list,yr_list,ylim=[0,1],xlim=[0,900],mu=Non
         print('%.1e'%((2*xmax/(mu.value*402))*u.s.to(u.yr)*(u.pc.to(u.km))))
         print(a)
 
-# def plot_completed_histogram(completeness_curves_df,df,xlabel='sep',show_avg_completeness=True,show_hist=True,verbose=True,Ntest=0,axes=None,xcomp_lim=[],sep_bins=[0.1,0.35],q_bins=[0.1,0.3,1],d=402,binwidth=0.25,AUm=0,AUM=600,pixelscale=None,alpha=1,showylabel=True,showxlabel=True,visible_upper_axis=True,fz=25,lfz=22,m_up=None,m_down=None,mass_p_label=None,color_hist='#6A5ACD',color_complete='#7B68EE',axl=None,legend=None,xm=None,xM=None,ym=None,yM=None,set_axes=False,density=False,showplot=False,completeness=False,nlive=500,hollow=False,linewidth=3,xmin=None,xmax=None,set_xlogscale=False,set_ylogscale=False,show_errorbars=True,broken_plaw_fit=False,logNbins=11,edgecolor='k',histtype='step',loc='best',ncol=1,kill_plots=False,zorder=0,show_fit=False):    
+# def plot_completed_histogram(completeness_curves_df,df,xlabel='sep',show_unq_completeness=True,show_hist=True,verbose=True,Ntest=0,axes=None,xcomp_lim=[],sep_bins=[0.1,0.35],q_bins=[0.1,0.3,1],d=402,binwidth=0.25,AUm=0,AUM=600,pixelscale=None,alpha=1,showylabel=True,showxlabel=True,visible_upper_axis=True,fz=25,lfz=22,m_up=None,m_down=None,mass_p_label=None,color_hist='#6A5ACD',color_complete='#7B68EE',axl=None,legend=None,xm=None,xM=None,ym=None,yM=None,set_axes=False,density=False,showplot=False,completeness=False,nlive=500,hollow=False,linewidth=3,xmin=None,xmax=None,set_xlogscale=False,set_ylogscale=False,show_errorbars=True,broken_plaw_fit=False,logNbins=11,edgecolor='k',histtype='step',loc='best',ncol=1,kill_plots=False,zorder=0,show_fit=False):    
     # if isinstance(completeness_curves_df, pd.DataFrame):
-    #     if show_avg_completeness: 
+    #     if show_unq_completeness: 
     #         fig, ax=plt.subplots(1,1,figsize=(10,10),squeeze=False)
-    #         _=avg_completeness_plots(completeness_curves_df,fig=fig,axes=ax ,dist=d,log_y=True,df_ylabel='q',df_xlabel='SMA',xlabel='SMA [arcsec]',ylabel='q [mass$_c$/mass$_p$]',invert_y=False,r=20,bin_df=df.loc[(df.avg_ids_c.isna())],collapsed=True,xlim=xcomp_lim)
+    #         _=unq_completeness_plots(completeness_curves_df,fig=fig,axes=ax ,dist=d,log_y=True,df_ylabel='q',df_xlabel='SMA',xlabel='SMA [arcsec]',ylabel='q [mass$_c$/mass$_p$]',invert_y=False,r=20,bin_df=df.loc[(df.unq_ids_c.isna())],collapsed=True,xlim=xcomp_lim)
     #         for elsep in range(len(sep_bins)): ax[0][0].axvline(sep_bins[elsep],c='k',linestyle='-.',lw=3)
     #         for elq in range(len(q_bins)): ax[0][0].axhline(q_bins[elq],c='k',linestyle='-.',lw=3)
             
@@ -696,11 +696,11 @@ def plot_completed_histogram(df,apply_completeness_correction=False,xlabel='sep'
         data=[]
         for elno in range(len(bins[:-1])):
             x=(bins[elno]+bins[elno+1])/2
-            comp_sel=(df.avg_ids_c.isna())
+            comp_sel=(df.unq_ids_c.isna())
             sep_sel=(df[xlabel]>=bins[elno])&(df[xlabel]<bins[elno+1])
             binaries_sel_df=df.loc[sep_sel&comp_sel]
-            N=df.loc[(sep_sel)].avg_ids_p.nunique()
-            Nb=binaries_sel_df.avg_ids_p.nunique()
+            N=df.loc[(sep_sel)].unq_ids_p.nunique()
+            Nb=binaries_sel_df.unq_ids_p.nunique()
             # Ncomp,VNcomp_d,VNcomp_u=mk_histogram_from_completeness(binaries_sel_df,CFQMCC_df,sep_bins,q_bins,Ntest=Ntest,N=0,nlive=nlive,verbose=verbose)
             Ncomp,VNcomp_d,VNcomp_u=mk_histogram_from_completeness(binaries_sel_df,sep_bins=sep_bins,q_bins=q_bins,apply_completeness_correction=apply_completeness_correction,Ntest=Ntest,N=0,showplot=False,nlive=nlive,verbose=verbose)
 
@@ -893,7 +893,7 @@ def plot_histograms(vars_dict_list,bins_dict_list,fig=None,ax=None,labels_list=N
 
     plt.show()
 
-def plot_cmd(fig,ax,mean_df,filter1,filter2,filter3,yrange,dy,dx,y,x,ex,DM,Avs,xlim,ylim,errmin=None,iso_interp=[],iso_mass_list=np.arange(0.01,2,0.01),iso_age_list=[1],iso_logSPacc_list=[-5],iso_label=[],ID_list=[],ID_label='avg_ids',mean_df2=[],mass_list=[0.8,0.5,0.3,0.1,0.05],marker_list=['o','d','D','v','^'],line_style_list=['-','--','-.',':'],iso_color='k',iso_color_list=['b','r','g','y'],sat_th=None,spx_lim=3,cbar_label='',label_data='Data',label_iso='',label_iso_old='',xlabel=None,ylabel=None,colorbar=False,cmap='Greys_r',cmd_color='gray',iso_df=None,iso_old=None,bin_df=[],IDms=15,s=4,fz=20,color='k',label='',label_p='_p',label_c='_c',sat_min=0,cluster=False,onlycluster=False,legend=False,cm=0,cM=10,cmin=None,cmax=None,show_sat_line=False,show_minorticks=False,show_gird=False,set_tight_layout=False,show_plot=False,path2saveimage=None):
+def plot_cmd(fig,ax,mean_df,filter1,filter2,filter3,yrange,dy,dx,y,x,ex,DM,Avs,xlim,ylim,errmin=None,iso_interp=[],iso_mass_list=np.arange(0.01,2,0.01),iso_age_list=[1],iso_logSPacc_list=[-5],iso_label=[],ID_list=[],ID_label='unq_ids',mean_df2=[],mass_list=[0.8,0.5,0.3,0.1,0.05],marker_list=['o','d','D','v','^'],line_style_list=['-','--','-.',':'],iso_color='k',iso_color_list=['b','r','g','y'],sat_th=None,spx_lim=3,cbar_label='',label_data='Data',label_iso='',label_iso_old='',xlabel=None,ylabel=None,colorbar=False,cmap='Greys_r',cmd_color='gray',iso_df=None,iso_old=None,bin_df=[],IDms=15,s=4,fz=20,color='k',label='',label_p='_p',label_c='_c',sat_min=0,cluster=False,onlycluster=False,legend=False,cm=0,cM=10,cmin=None,cmax=None,show_sat_line=False,show_minorticks=False,show_gird=False,set_tight_layout=False,show_plot=False,path2saveimage=None):
     if onlycluster:cluster=True
 
     mag1_list=mean_df['m_%s%s'%(filter1,label)].values
@@ -1074,7 +1074,7 @@ def plot_cmd(fig,ax,mean_df,filter1,filter2,filter3,yrange,dy,dx,y,x,ex,DM,Avs,x
         plt.savefig(path2saveimage)
     if show_plot: plt.show()
                 
-def tong_plot(DF,N,magbin,d,filter,ax=None,avg_ids_list=[],Kmodes_list=[],title='',fz=20,xnew=None,ynew=None,ticks=np.arange(0.3,1.,0.1),show_IDs=False,save_completeness=False,suffix=''):
+def tong_plot(DF,N,magbin,d,filter,ax=None,unq_ids_list=[],Kmodes_list=[],title='',fz=20,xnew=None,ynew=None,ticks=np.arange(0.3,1.,0.1),show_IDs=False,save_completeness=False,suffix=''):
     '''
     Plot the tong plot for the candidates for a given number of visits, bin of magnitude of the primary and a specific filter.
 
@@ -1090,7 +1090,7 @@ def tong_plot(DF,N,magbin,d,filter,ax=None,avg_ids_list=[],Kmodes_list=[],title=
         target firter where to evaluate the tong plot.
     ax : matplotlib subplots axes, optional
         matplotlib subplots axes. The default is None.
-    avg_ids_list : list, optional
+    unq_ids_list : list, optional
         list of average ids of candidates to evaluate completness for. The default is [].
     Kmodes_list : list, optional
         list of KLIPmode to use to evaluate the median completness for the tong plot. The default is [].
@@ -1155,20 +1155,20 @@ def tong_plot(DF,N,magbin,d,filter,ax=None,avg_ids_list=[],Kmodes_list=[],title=
     ax3.set_xlabel('Sep [arcsec]',labelpad=20,fontsize=20)
     # ax3.set_xlim(ax.get_xlim())
     ax3.tick_params(labelsize=12) 
-    # avg_ids_list2check=DF.avg_candidates_df.loc[(DF.avg_candidates_df['MagBin%s'%filter[1:4]]==magbin)&(DF.avg_candidates_df['N%s'%filter[1:4]]==N)].avg_ids.unique()
-    # if len(avg_ids_list)==0: avg_ids_list=avg_ids_list2check
-    for avg_ids in avg_ids_list:
-        dmag=DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids==avg_ids,f'm_{filter}'].values[0]-DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_ids,f'm_{filter}{suffix}'].values[0]
-        # print(DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids==avg_ids,'m%s'%filter[1:4]].values[0],DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_ids,'m%s%s'%(filter[1:4],suffix)].values[0])
-        sep=DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids==avg_ids].sep.values[0]
+    # unq_ids_list2check=DF.unq_candidates_df.loc[(DF.unq_candidates_df['MagBin%s'%filter[1:4]]==magbin)&(DF.unq_candidates_df['N%s'%filter[1:4]]==N)].unq_ids.unique()
+    # if len(unq_ids_list)==0: unq_ids_list=unq_ids_list2check
+    for unq_ids in unq_ids_list:
+        dmag=DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids==unq_ids,f'm_{filter}'].values[0]-DF.unq_targets_df.loc[DF.unq_targets_df.unq_ids==unq_ids,f'm_{filter}{suffix}'].values[0]
+        # print(DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids==unq_ids,'m%s'%filter[1:4]].values[0],DF.unq_targets_df.loc[DF.unq_targets_df.unq_ids==unq_ids,'m%s%s'%(filter[1:4],suffix)].values[0])
+        sep=DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids==unq_ids].sep.values[0]
         if not np.isnan(dmag):
             if save_completeness:
                 completeness=dataframe_2D_finer_interpolator(DF.fk_completeness_df.loc[(filter,N,magbin,slice(None),slice(None)),[f'ratio_kmode{kmode}']],xnew=sep,ynew=dmag,Z_columns_label=f'ratio_kmode{kmode}')[2][0]
-                DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids==avg_ids,'Completeness%s'%filter[1:4]]=completeness
-                # print(avg_ids,completeness)
+                DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids==unq_ids,'Completeness%s'%filter[1:4]]=completeness
+                # print(unq_ids,completeness)
                     
             if show_IDs:
-                ax.text(sep-0.03,dmag-0.1,'ID %i'%avg_ids,fontsize=10)
+                ax.text(sep-0.03,dmag-0.1,'ID %i'%unq_ids,fontsize=10)
             ax.scatter(sep,dmag,c='k')
 
     divider = make_axes_locatable(ax)
@@ -1183,10 +1183,10 @@ def tong_plot(DF,N,magbin,d,filter,ax=None,avg_ids_list=[],Kmodes_list=[],title=
     cbar.ax.tick_params(labelsize=12) 
     cbar.update_ticks()
 
-def plot_gaussian_comparison(DF, avg_id, labels=['MCMC_d','MCMC_ed_d','MCMC_ed_u'],ref=[402,50,50], npoints=1000, verbose=True):
-    display(DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_id])
-    m0, std01,std02 = [DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_id,labels[0]].values[0],DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_id,labels[1]].values[0],DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_id,labels[2]].values[0]]
-    m1, std1 = [DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_id,labels[0]].values[0],np.nanmean([DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_id,labels[1]],DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_id,labels[1]]])]
+def plot_gaussian_comparison(DF, unq_id, labels=['MCMC_d','MCMC_ed_d','MCMC_ed_u'],ref=[402,50,50], npoints=1000, verbose=True):
+    display(DF.unq_targets_df.loc[DF.unq_targets_df.unq_ids==unq_id])
+    m0, std01,std02 = [DF.unq_targets_df.loc[DF.unq_targets_df.unq_ids==unq_id,labels[0]].values[0],DF.unq_targets_df.loc[DF.unq_targets_df.unq_ids==unq_id,labels[1]].values[0],DF.unq_targets_df.loc[DF.unq_targets_df.unq_ids==unq_id,labels[2]].values[0]]
+    m1, std1 = [DF.unq_targets_df.loc[DF.unq_targets_df.unq_ids==unq_id,labels[0]].values[0],np.nanmean([DF.unq_targets_df.loc[DF.unq_targets_df.unq_ids==unq_id,labels[1]],DF.unq_targets_df.loc[DF.unq_targets_df.unq_ids==unq_id,labels[1]]])]
     print(m0,std01,std02)
     m2, std21, std22 = ref
     if m1 <= m2:
@@ -1205,7 +1205,7 @@ def plot_gaussian_comparison(DF, avg_id, labels=['MCMC_d','MCMC_ed_d','MCMC_ed_u
     if verbose:
         plt.figure(figsize=(10, 10))
         # print(m0, std01,std02,m1, std1)
-        plot1 = plt.plot(x, norm.pdf(x, m1, std1), 'y', label='avg_id %i'%avg_id)
+        plot1 = plt.plot(x, norm.pdf(x, m1, std1), 'y', label='unq_id %i'%unq_id)
         plot1 = plt.plot(np.append(x[x <= m0],x[x>m1]), np.append(norm.pdf(x[x<=m0], m0, std01),norm.pdf(x[x>m0], m0, std02)), 'g')
         if r[0] <= m0:std_s1=std01
         else: std_s1=std02

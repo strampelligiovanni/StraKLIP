@@ -1,5 +1,5 @@
 from stralog import getLogger
-from utils_dataframe import mk_crossmatch_ids_df,mk_avg_targets_df,mk_mvs_targets_df,mk_avg_candidates_df,mk_mvs_candidates_df
+from utils_dataframe import mk_crossmatch_ids_df,mk_unq_targets_df,mk_mvs_targets_df,mk_unq_candidates_df,mk_mvs_candidates_df
 
 def mk_targets_df(DF,dataset):
     '''
@@ -8,7 +8,7 @@ def mk_targets_df(DF,dataset):
     '''
     getLogger(__name__).info(f'Creating the targets dataframe')
     mk_mvs_targets_df(DF,dataset)
-    mk_avg_targets_df(DF,dataset)
+    mk_unq_targets_df(DF,dataset)
 
 def make_candidates_dataframes(DF):
     '''
@@ -20,7 +20,7 @@ def make_candidates_dataframes(DF):
 
     '''
     getLogger(__name__).info(f'Creating the candidates dataframe')
-    mk_avg_candidates_df(DF)
+    mk_unq_candidates_df(DF)
     mk_mvs_candidates_df(DF)
 
 

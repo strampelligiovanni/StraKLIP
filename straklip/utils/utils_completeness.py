@@ -429,7 +429,7 @@ def completeness_correction(binaries_df,Ntest,sep_bins,q_bins,showplot=False,nli
     Ncomp=0
     VNcomp_u=0
     VNcomp_d=0
-    # if showplot==True:print(binaries_df[['avg_ids_p','mass_p','mass_c','q','sep']+binaries_df.columns[binaries_df.columns.str.contains('Completeness')].tolist()])
+    # if showplot==True:print(binaries_df[['unq_ids_p','mass_p','mass_c','q','sep']+binaries_df.columns[binaries_df.columns.str.contains('Completeness')].tolist()])
 
     for elq in range(len(q_bins[:-1])):
         global Ntest_global
@@ -440,7 +440,7 @@ def completeness_correction(binaries_df,Ntest,sep_bins,q_bins,showplot=False,nli
             # selected_index=CFQMCC_df.index[(CFQMCC_df.index>=q_bins[elq])&(CFQMCC_df.index<=q_bins[elq+1])]                
             # q_completeness_curves_sel_df=CFQMCC_df.loc[(selected_index),selected_columns]
             sel=(binaries_df.sep>=sep_bins[elsep])&(binaries_df.sep<sep_bins[elsep+1])&(binaries_df.q>=q_bins[elq])&(binaries_df.q<q_bins[elq+1])
-            N=binaries_df.loc[(sel)].avg_ids_p.nunique()
+            N=binaries_df.loc[(sel)].unq_ids_p.nunique()
             if N>0:
                 # mean_comp=q_completeness_curves_sel_df.mean(axis=1).mean()
                 mean_comp=np.nanmean(binaries_df.loc[sel,binaries_df.columns[binaries_df.columns.str.contains('Completeness')].tolist()])

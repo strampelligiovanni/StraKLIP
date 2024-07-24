@@ -4,7 +4,7 @@ import pandas as pd
 from concurrent.futures import ProcessPoolExecutor
 from itertools import repeat
 from ancillary import parallelization_package
-from utils_photometry import mvs_aperture_photometry,avg_aperture_photometry
+from utils_photometry import mvs_aperture_photometry,unq_aperture_photometry
 import os
 def get_ee_df(dataset):
     """
@@ -143,26 +143,26 @@ def make_mvs_photometry(DF,filter,mvs_ids_test_list=[],ee_dict=None,workers=None
                 # DF.mvs_targets_df.loc[sel,['flag_%s'%filter]]=phot[elno,-1:]
     return(DF)
 
-def make_median_photometry(DF,filter,avg_ids_list=[],workers=None,parallel_runs=True,suffix='',goodness_phot_label='e', skip_flag='rejected',chunksize=None):
+def make_median_photometry(DF,filter,unq_ids_list=[],workers=None,parallel_runs=True,suffix='',goodness_phot_label='e', skip_flag='rejected',chunksize=None):
     getLogger(__name__).info(f'Make photometry for average targets on filter {filter}')
-    if len(avg_ids_list) == 0: avg_ids_list = DF.avg_targets_df.avg_ids.unique()
+    if len(unq_ids_list) == 0: unq_ids_list = DF.unq_targets_df.unq_ids.unique()
     if parallel_runs:
-        workers, chunksize, ntarget = parallelization_package(workers, len(avg_ids_list), chunksize=chunksize)
+        workers, chunksize, ntarget = parallelization_package(workers, len(unq_ids_list), chunksize=chunksize)
         with ProcessPoolExecutor(max_workers=workers) as executor:
-            for phot_out in executor.map(avg_aperture_photometry, repeat(DF), avg_ids_list, repeat(filter),
+            for phot_out in executor.map(unq_aperture_photometry, repeat(DF), unq_ids_list, repeat(filter),
                                               repeat(goodness_phot_label), repeat(suffix), repeat(skip_flag), chunksize=chunksize):
                 phot_out = np.array(phot_out)
-                DF.avg_targets_df.loc[
-                    DF.avg_targets_df.avg_ids == phot_out[0], ['m_%s' % filter, 'e_%s' % filter,
+                DF.unq_targets_df.loc[
+                    DF.unq_targets_df.unq_ids == phot_out[0], ['m_%s' % filter, 'e_%s' % filter,
                                                                  'spx_%s' % filter,
                                                                  'bpx_%s' % filter]] = phot_out[1:]
 
     else:
-        for id in avg_ids_list:
-            phot_out = avg_aperture_photometry(DF, id, filter,goodness_phot_label,suffix,skip_flag)
+        for id in unq_ids_list:
+            phot_out = unq_aperture_photometry(DF, id, filter,goodness_phot_label,suffix,skip_flag)
             phot_out = np.array(phot_out)
-            DF.avg_targets_df.loc[
-                DF.avg_targets_df.avg_ids == phot_out[0], ['m_%s' % filter, 'e_%s' % filter,
+            DF.unq_targets_df.loc[
+                DF.unq_targets_df.unq_ids == phot_out[0], ['m_%s' % filter, 'e_%s' % filter,
                                                                  'spx_%s' % filter, 'bpx_%s' % filter]] = phot_out[1:]
     return(DF)
 
@@ -197,7 +197,7 @@ def run(packet):
 
 
         DF=make_median_photometry(DF,filter,
-                               avg_ids_list=[],
+                               unq_ids_list=[],
                                parallel_runs=dataset.pipe_cfg.mkphotometry['parallel_runs'],
                                workers=dataset.pipe_cfg.ncpu)
 

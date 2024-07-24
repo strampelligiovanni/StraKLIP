@@ -199,7 +199,7 @@ def dataframe_2D_finer_interpolator(hdf, n_step=0.1,xnew=None,ynew=None,X_index_
     znew[znew<0]=0
     return(xnew,ynew,znew,X_index_label,Y_index_label)
 
-def distances_cube(df,id_label='avg_ids',coords_labels=['ra','dec'],showplot=True,pixelscale=1.0,bins=50,nx=10,ny=5,min_separation=0,max_separation=2,skip_type=None):
+def distances_cube(df,id_label='unq_ids',coords_labels=['ra','dec'],showplot=True,pixelscale=1.0,bins=50,nx=10,ny=5,min_separation=0,max_separation=2,skip_type=None):
     '''
     create a datacube with distances between all entry in dataframe. It needs to be use in conjunction with a dataframe class object
 
@@ -304,7 +304,7 @@ def distances_cube(df,id_label='avg_ids',coords_labels=['ra','dec'],showplot=Tru
         plt.show()
     
     # df_temp.loc[df_temp.FirstDist<=max_separation,'type']=3
-    if skip_type!=None:out=pd.concat([df.loc[df.type==skip_type],df_temp]).sort_values('avg_ids')
+    if skip_type!=None:out=pd.concat([df.loc[df.type==skip_type],df_temp]).sort_values('unq_ids')
     else: out=df_temp.copy()
 
     return(out)
@@ -502,7 +502,7 @@ def get_Av_mass_and_Teff_from_isochrone(self,iso_df,filter1,filter2,DM,sel_good,
     A1=self.Av1_extinction[q]
     A2=self.Av1_extinction[w]
     
-    for index,row in tqdm(self.avg_targets_df.loc[sel_good].iterrows()):
+    for index,row in tqdm(self.unq_targets_df.loc[sel_good].iterrows()):
         if show_plot: plt.figure(figsize=(5,7))
         xrange=row['m%s'%filter1[1:4]]-row['m%s'%filter2[1:4]]+1 #distance to color=-0.5
         if xrange>=0:
@@ -523,7 +523,7 @@ def get_Av_mass_and_Teff_from_isochrone(self,iso_df,filter1,filter2,DM,sel_good,
             y1 = np.interp(x,x_model,y_model)
             if show_plot: 
                 plt.axis([-1, 2, 24,10])
-                plt.plot(self.avg_targets_df.loc[sel_good,'m%s'%filter1[1:4]]-self.avg_targets_df.loc[sel_good,'m%s'%filter2[1:4]],self.avg_targets_df.loc[sel_good,'m%s'%filter1[1:4]], '.',color='gray')
+                plt.plot(self.unq_targets_df.loc[sel_good,'m%s'%filter1[1:4]]-self.unq_targets_df.loc[sel_good,'m%s'%filter2[1:4]],self.unq_targets_df.loc[sel_good,'m%s'%filter1[1:4]], '.',color='gray')
                 plt.plot(x_model, y_model, marker='o', mec='none', ms=4, lw=1, label='model')
                 plt.plot(x, y2, marker='o', mec='none', ms=4, lw=1, label='reddened')
                 plt.plot(x, y1, marker='o', mec='none', ms=4, lw=1, label='interp')
@@ -546,9 +546,9 @@ def get_Av_mass_and_Teff_from_isochrone(self,iso_df,filter1,filter2,DM,sel_good,
                 Mass = np.interp(yc.item(),mag_mod,mass_mod)
     
                 if  (Mass >= 0.00101) and (Mass <= 1.395)  and (Av >= 0) and (Av <= Av_MAX):
-                    self.avg_targets_df.loc[index,'mass'] = Mass
-                    self.avg_targets_df.loc[index,'Av'] = Av
-                    if show_plot: display(self.avg_targets_df.loc[index].to_frame().T)
+                    self.unq_targets_df.loc[index,'mass'] = Mass
+                    self.unq_targets_df.loc[index,'Av'] = Av
+                    if show_plot: display(self.unq_targets_df.loc[index].to_frame().T)
                 if show_plot:  
                     plt.show()
                     # break    

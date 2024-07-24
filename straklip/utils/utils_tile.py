@@ -470,7 +470,7 @@ def shift_images(input_images,zfactor=10,alignment_box=0,shift_list_in=None):
 
     return(np.array(shifted_images),shift_list)
 
-def show_binary_PA(binary_df,DF=None,path2dir='',path2fits='',tag_label=None,label_id_p='avg_ids_p',label_id_c='avg_ids_c',label_dict_p='crclean_data',label_dict_c='companion',label_dict=None,primary_tile_label=None,KLIP_tile_label=None,Tag='ID',path2tile=None,xtile=None,ytile=None,tile_base=None,inst=None,tile_name=None,ytext=5,dim=3,ncols=5,row_count=0,column_count=0,skip_filters=['F658N'],no_ids=False,cmap='Greys',color='w',save_name=None,path2savedir='./',max_row=-1,show_more_text=False,show_extra_text=False,percent=99.,percent2=99.,simplenorm=None,simplenorm2=None,norm=None,norm2=None,fontsize=20,truncate=False,tinf=0.1,tsup=1,vmin=None,vmin2=None,vmax=None,vmax2=None,force_wide_KLIP=False,wide=False):
+def show_binary_PA(binary_df,DF=None,path2dir='',path2fits='',tag_label=None,label_id_p='unq_ids_p',label_id_c='unq_ids_c',label_dict_p='crclean_data',label_dict_c='companion',label_dict=None,primary_tile_label=None,KLIP_tile_label=None,Tag='ID',path2tile=None,xtile=None,ytile=None,tile_base=None,inst=None,tile_name=None,ytext=5,dim=3,ncols=5,row_count=0,column_count=0,skip_filters=['F658N'],no_ids=False,cmap='Greys',color='w',save_name=None,path2savedir='./',max_row=-1,show_more_text=False,show_extra_text=False,percent=99.,percent2=99.,simplenorm=None,simplenorm2=None,norm=None,norm2=None,fontsize=20,truncate=False,tinf=0.1,tsup=1,vmin=None,vmin2=None,vmax=None,vmax2=None,force_wide_KLIP=False,wide=False):
     nrows=int(binary_df[label_id_p].nunique()/ncols)
     if nrows < binary_df[label_id_p].nunique()/ncols: nrows+=1
     nrows=nrows*2
@@ -482,48 +482,48 @@ def show_binary_PA(binary_df,DF=None,path2dir='',path2fits='',tag_label=None,lab
         cmap = plt.get_cmap(cmap)
         cmap = truncate_colormap(cmap, tinf,tsup)
     
-    for avg_ids_p in binary_df[label_id_p].unique():
+    for unq_ids_p in binary_df[label_id_p].unique():
         if (primary_tile_label ==None and KLIP_tile_label ==None):
             if DF!=None:
-                if not wide:filters_sel_list=np.array(DF.filters_list)[[i not in skip_filters for i in DF.filters_list]][~(DF.avg_candidates_df.loc[(DF.avg_candidates_df.avg_ids==avg_ids_p),['e%s'%i[1:4] for i in DF.filters_list if i not in skip_filters]].isna()).values[0]]
-                else:filters_sel_list=np.array(DF.filters_list)[[i not in skip_filters for i in DF.filters_list]][~(DF.avg_targets_df.loc[(DF.avg_targets_df.avg_ids==avg_ids_p),['e%s'%i[1:4] for i in DF.filters_list if i not in skip_filters]].isna()).values[0]]
-                q=np.where(DF.avg_targets_df.loc[(DF.avg_targets_df.avg_ids==avg_ids_p),['spx%s'%i[1:4] for i in filters_sel_list if i not in skip_filters]].values[0]==np.nanmin(DF.avg_targets_df.loc[(DF.avg_targets_df.avg_ids==avg_ids_p),['spx%s'%i[1:4] for i in filters_sel_list if i not in skip_filters]].values[0]))[0][-1]
+                if not wide:filters_sel_list=np.array(DF.filters_list)[[i not in skip_filters for i in DF.filters_list]][~(DF.unq_candidates_df.loc[(DF.unq_candidates_df.unq_ids==unq_ids_p),['e%s'%i[1:4] for i in DF.filters_list if i not in skip_filters]].isna()).values[0]]
+                else:filters_sel_list=np.array(DF.filters_list)[[i not in skip_filters for i in DF.filters_list]][~(DF.unq_targets_df.loc[(DF.unq_targets_df.unq_ids==unq_ids_p),['e%s'%i[1:4] for i in DF.filters_list if i not in skip_filters]].isna()).values[0]]
+                q=np.where(DF.unq_targets_df.loc[(DF.unq_targets_df.unq_ids==unq_ids_p),['spx%s'%i[1:4] for i in filters_sel_list if i not in skip_filters]].values[0]==np.nanmin(DF.unq_targets_df.loc[(DF.unq_targets_df.unq_ids==unq_ids_p),['spx%s'%i[1:4] for i in filters_sel_list if i not in skip_filters]].values[0]))[0][-1]
                 filter=filters_sel_list[q]
-                if path2tile==None: path2tile_temp='%s/%s/%s/%s/median_tiles/%s/tile_ID%i.fits'%(path2data,DF.project,DF.target,DF.inst,filter,avg_ids_p)
-                else:path2tile_temp=path2tile+tile_name+'%i.fits'%avg_ids_p
+                if path2tile==None: path2tile_temp='%s/%s/%s/%s/median_tiles/%s/tile_ID%i.fits'%(path2data,DF.project,DF.target,DF.inst,filter,unq_ids_p)
+                else:path2tile_temp=path2tile+tile_name+'%i.fits'%unq_ids_p
                 xtile,ytile=[int((DF.tile_base-1)/2),int((DF.tile_base-1)/2)]
                 tile_base=DF.tile_base
                 inst=DF.inst
             else:
-                path2tile_temp=path2tile+tile_name+'%i.fits'%avg_ids_p
+                path2tile_temp=path2tile+tile_name+'%i.fits'%unq_ids_p
 
         if primary_tile_label ==None:
             DATA=Tile(x=xtile,y=ytile,tile_base=tile_base,inst=inst)
             DATA.load_tile(path2tile_temp,ext=label_dict[label_dict_p],verbose=False,return_Datacube=True)
             DATA.mk_tile(fig=fig,ax=axes[row_count][column_count],showplot=False,keep_size=True,simplenorm='sqrt',return_tile=False)
         else:
-            data=binary_df.loc[binary_df[label_id_p]==avg_ids_p,primary_tile_label].values[0]
+            data=binary_df.loc[binary_df[label_id_p]==unq_ids_p,primary_tile_label].values[0]
             DATA=Tile(x=xtile,y=ytile,tile_base=tile_base,inst=inst,data=data)
             DATA.mk_tile(fig=fig,ax=axes[row_count][column_count],showplot=False,keep_size=True,simplenorm='sqrt',return_tile=False)
 
-        if tag_label!=None:tag_label_temp=binary_df.loc[(binary_df[label_id_p]==avg_ids_p),tag_label].values[0]
-        else: tag_label_temp=avg_ids_p
+        if tag_label!=None:tag_label_temp=binary_df.loc[(binary_df[label_id_p]==unq_ids_p),tag_label].values[0]
+        else: tag_label_temp=unq_ids_p
         if no_ids==False:axes[row_count][column_count].text(1,ytext,'%s%i'%(Tag,tag_label_temp),fontsize=fontsize,color=color)
         
         axes[row_count][column_count].axis('off')
         column_count+=1
-        if (np.isnan(binary_df.loc[(binary_df[label_id_p]==avg_ids_p)][label_id_c].values[0]) or (binary_df.loc[(binary_df[label_id_p]==avg_ids_p)][label_id_c].values[0]==-1)) or force_wide_KLIP:
+        if (np.isnan(binary_df.loc[(binary_df[label_id_p]==unq_ids_p)][label_id_c].values[0]) or (binary_df.loc[(binary_df[label_id_p]==unq_ids_p)][label_id_c].values[0]==-1)) or force_wide_KLIP:
             if KLIP_tile_label ==None:
                 DATA=Tile(x=xtile,y=ytile,tile_base=tile_base,inst=inst)
                 DATA.load_tile(path2tile_temp,ext=label_dict[label_dict_c],verbose=False,return_Datacube=True)
                 DATA.mk_tile(fig=fig,ax=axes[row_count][column_count],showplot=False,keep_size=True,simplenorm='sqrt',return_tile=False)
-                if force_wide_KLIP and not np.all(binary_df.loc[(binary_df[label_id_p]==avg_ids_p)][label_id_c].isna()):
+                if force_wide_KLIP and not np.all(binary_df.loc[(binary_df[label_id_p]==unq_ids_p)][label_id_c].isna()):
                     # Create a Rectangle patch
                     rect = patches.Rectangle((0,0), DATA.tile_base-1, DATA.tile_base-1, linewidth=5, edgecolor='r', facecolor='none')
                     # Add the patch to the Axes
                     axes[row_count][column_count].add_patch(rect)
             else:
-                data=binary_df.loc[binary_df[label_id_p]==avg_ids_p,KLIP_tile_label].values[0]
+                data=binary_df.loc[binary_df[label_id_p]==unq_ids_p,KLIP_tile_label].values[0]
                 DATA=Tile(x=xtile,y=ytile,tile_base=tile_base,inst=inst,data=data)
                 DATA.mk_tile(fig=fig,ax=axes[row_count][column_count],showplot=False,keep_size=True,simplenorm='sqrt',return_tile=False)
 
@@ -582,9 +582,9 @@ def small_tiles(DF,path2fits, path2tiles, filters, dict={},nrows=10, ncols=10, f
 
         for idx, row in DF.loc[~DF[f'x_{filter}'.lower()].isna()].iterrows():
             if crossmatch_ids_df is None:
-                id = int(row.avg_ids)
+                id = int(row.unq_ids)
             else:
-                id = crossmatch_ids_df.loc[crossmatch_ids_df.mvs_ids==row.mvs_ids].avg_ids.unique()
+                id = crossmatch_ids_df.loc[crossmatch_ids_df.mvs_ids==row.mvs_ids].unq_ids.unique()
             fitsname = row[fitsroot.lower()+f'_{filter}'] + f'{ext}.fits'
             getLogger(__name__).debug(f'Loading {fitsname} for mvs_ids {row.mvs_ids}')
             hdul = fits.open(path2fits+'/'+fitsname)

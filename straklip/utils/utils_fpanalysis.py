@@ -1,5 +1,5 @@
 from utils_photometry import aperture_photometry_handler,KLIP_aperture_photometry_handler,photometry_AP,KLIP_throughput
-from utils_plot import mvs_completeness_plots,avg_completeness_plots
+from utils_plot import mvs_completeness_plots,unq_completeness_plots
 from photometry import Detection,flux_converter
 import pandas as pd
 from tiles import Tile
@@ -430,9 +430,9 @@ def task_completeness_from_fakes_infos(DF, filter, Nvisit, magbin, dmag_list, se
 
     return (out_list)
 
-def avg_plot_completness(DF,fig=None,axes=None,w_pad=0,fx=7,fy=7,dfx=2,show_plot=False,dist=None,filters_list=None,Nvisits_list=None,binary_df=None,df_ylabel='q',df_xlabel='SMA',cmap='Oranges_r',xlabel='SMA [arcsec]',ylabel='q [Mass$_{c}$/Mass$_{p}$]',ylim=[0.01,1],xlim=[0,1],title=False,log_y=False,log_x=False,invert_y=False,c_sel=None,c_lim=0.1,cbar_step=0.1,r=2,collapsed=False,path2savedir=None,show_candidates=False,scv=False,save_completeness=False):
+def unq_plot_completness(DF,fig=None,axes=None,w_pad=0,fx=7,fy=7,dfx=2,show_plot=False,dist=None,filters_list=None,Nvisits_list=None,binary_df=None,df_ylabel='q',df_xlabel='SMA',cmap='Oranges_r',xlabel='SMA [arcsec]',ylabel='q [Mass$_{c}$/Mass$_{p}$]',ylim=[0.01,1],xlim=[0,1],title=False,log_y=False,log_x=False,invert_y=False,c_sel=None,c_lim=0.1,cbar_step=0.1,r=2,collapsed=False,path2savedir=None,show_candidates=False,scv=False,save_completeness=False):
         '''
-        This is a wrapper for the avg_plot_completness        
+        This is a wrapper for the unq_plot_completness        
 
         Parameters
         ----------
@@ -494,10 +494,10 @@ def avg_plot_completness(DF,fig=None,axes=None,w_pad=0,fx=7,fy=7,dfx=2,show_plot
         None.
 
         '''
-        avg_completeness_plots(DF,fig=fig,axes=axes,w_pad=w_pad,fx=fx,fy=fy,dfx=dfx,show_plot=show_plot,dist=dist,filters_list=filters_list,Nvisits_list=Nvisits_list,binary_df=binary_df,df_ylabel=df_ylabel,df_xlabel=df_xlabel,cmap=cmap,xlabel=xlabel,ylabel=ylabel,ylim=ylim,xlim=xlim,title=title,log_y=log_y,log_x=log_x,invert_y=invert_y,c_sel=c_sel,c_lim=c_lim,cbar_step=cbar_step,r=r,collapsed=collapsed,path2savedir=path2savedir,show_candidates=show_candidates,select_candidate_by_visit=scv,save_completeness=save_completeness)
+        unq_completeness_plots(DF,fig=fig,axes=axes,w_pad=w_pad,fx=fx,fy=fy,dfx=dfx,show_plot=show_plot,dist=dist,filters_list=filters_list,Nvisits_list=Nvisits_list,binary_df=binary_df,df_ylabel=df_ylabel,df_xlabel=df_xlabel,cmap=cmap,xlabel=xlabel,ylabel=ylabel,ylim=ylim,xlim=xlim,title=title,log_y=log_y,log_x=log_x,invert_y=invert_y,c_sel=c_sel,c_lim=c_lim,cbar_step=cbar_step,r=r,collapsed=collapsed,path2savedir=path2savedir,show_candidates=show_candidates,select_candidate_by_visit=scv,save_completeness=save_completeness)
         if isinstance(binary_df, pd.DataFrame):return(binary_df)
 
-def mvs_plot_completness(DF, filters_list=None, path2savedir=None, MagBin_list=[], Nvisit_list=[], avg_ids_list=None,
+def mvs_plot_completness(DF, filters_list=None, path2savedir=None, MagBin_list=[], Nvisit_list=[], unq_ids_list=None,
                          Kmodes_list=[], title=None, fx=7, fy=7, fz=20, ncolumns=4, xnew=None, ynew=None,
                          ticks=np.arange(0.3, 1., 0.1), show_IDs=False, save_completeness=False, save_figure=False,
                          skip_filters=[], showplot=False, parallel_runs=True, suffix=''):
@@ -555,28 +555,28 @@ def mvs_plot_completness(DF, filters_list=None, path2savedir=None, MagBin_list=[
             if len(MagBin_list) == 0: MagBin_list = DF.fk_completeness_df.index.get_level_values(
                 'magbin').unique()
             mvs_completeness_plots(DF, filter=filter, path2savedir=path2savedir, MagBin_list=MagBin_list,
-                                   Nvisit_list=Nvisit_list, avg_ids_list=avg_ids_list, Kmodes_list=Kmodes_list,
+                                   Nvisit_list=Nvisit_list, unq_ids_list=unq_ids_list, Kmodes_list=Kmodes_list,
                                    title=title, fx=fx, fy=fy, fz=fz, ncolumns=ncolumns, xnew=xnew, ynew=ynew,
                                    ticks=ticks, show_IDs=show_IDs, save_completeness=save_completeness,
                                    save_figure=save_figure, showplot=showplot, suffix=suffix)
 
 
-def update_candidates_photometry(DF, path2tile='./', avg_ids_list=[], label='data', aptype='4pixels', verbose=False, noBGsub=False,
+def update_candidates_photometry(DF, path2tile='./', unq_ids_list=[], label='data', aptype='4pixels', verbose=False, noBGsub=False,
                                  sigma=2.5, DF_fk=None, kill_plots=True, delta=3, skip_filters=[], sat_thr=np.inf,
                                  suffix=''):
     KLIP_label_dict = {'data': 'Kmode', 'crclean_data': 'crclean_Kmode'}
     if DF_fk == None: DF_fk = DF
-    if len(avg_ids_list) == 0:
-        avg_ids_list = DF.avg_candidates_df.avg_ids.unique()
+    if len(unq_ids_list) == 0:
+        unq_ids_list = DF.unq_candidates_df.unq_ids.unique()
 
-    getLogger(__name__).info(f'Updating the candidates photometry. Loading a total of {len(avg_ids_list)} targets')
+    getLogger(__name__).info(f'Updating the candidates photometry. Loading a total of {len(unq_ids_list)} targets')
 
-    for avg_ids in avg_ids_list:
+    for unq_ids in unq_ids_list:
         mvs_ids_list = DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(
-            DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids == avg_ids].mvs_ids.values)].mvs_ids.unique()
+            DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids == unq_ids].mvs_ids.values)].mvs_ids.unique()
         if verbose:
             print('> Before:')
-            display(DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids == avg_ids])
+            display(DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_ids])
             display(DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list)])
         zelno = 0
         for filter in DF.filters:
@@ -674,34 +674,34 @@ def update_candidates_photometry(DF, path2tile='./', avg_ids_list=[], label='dat
                 sep = np.nanmean(DF.mvs_candidates_df.loc[
                                      DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list), [f'sep_{filter}' for filter in
                                                                                          DF.filters]].values)
-                DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids == avg_ids, f'm_{filter}'] = np.round(m,
+                DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_ids, f'm_{filter}'] = np.round(m,
                                                                                                                       3)
-                DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids == avg_ids, f'e_{filter}'] = np.round(
+                DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_ids, f'e_{filter}'] = np.round(
                     em, 3)
-                DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids == avg_ids, 'sep'] = np.round(sep, 3)
+                DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_ids, 'sep'] = np.round(sep, 3)
                 dmag = \
-                DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids == avg_ids, f'm_{filter}'].values[0] - \
-                DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids == avg_ids, f'm_{filter}'].values[0]
+                DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_ids, f'm_{filter}'].values[0] - \
+                DF.unq_targets_df.loc[DF.unq_targets_df.unq_ids == unq_ids, f'm_{filter}'].values[0]
                 if dmag < 0:
-                    columns = DF.avg_candidates_df.columns[DF.avg_candidates_df.columns.str.contains(filter[1:4])]
-                    DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids == avg_ids, columns] = np.nan
+                    columns = DF.unq_candidates_df.columns[DF.unq_candidates_df.columns.str.contains(filter[1:4])]
+                    DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_ids, columns] = np.nan
         if verbose:
             print('> After:')
-            display(DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids == avg_ids])
+            display(DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_ids])
             display(DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list)])
 
     bad_mvs_ids = []
-    bad_avg_ids = []
-    for avg_ids in DF.avg_candidates_df.avg_ids.unique():
-        mvs_ids_list = DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids.isin([avg_ids])].mvs_ids.unique()
+    bad_unq_ids = []
+    for unq_ids in DF.unq_candidates_df.unq_ids.unique():
+        mvs_ids_list = DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids.isin([unq_ids])].mvs_ids.unique()
         if DF.mvs_candidates_df.loc[
             DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list), [f'flag_{filter}' for filter in
                                                                 DF.filters]].apply(
                 lambda x: x.str.contains('rejected', case=False)).all(axis=1).all(axis=0):
             bad_mvs_ids.extend(mvs_ids_list)
-            bad_avg_ids.append(avg_ids)
+            bad_unq_ids.append(unq_ids)
     DF.mvs_candidates_df = DF.mvs_candidates_df.loc[~DF.mvs_candidates_df.mvs_ids.isin(bad_mvs_ids)].reset_index(
         drop=True)
-    DF.avg_candidates_df = DF.avg_candidates_df.loc[~DF.avg_candidates_df.avg_ids.isin(bad_avg_ids)].reset_index(
+    DF.unq_candidates_df = DF.unq_candidates_df.loc[~DF.unq_candidates_df.unq_ids.isin(bad_unq_ids)].reset_index(
         drop=True)
     return(DF)

@@ -154,13 +154,13 @@ def aperture_photometry_handler(DF,id,filter,data_label='',dq_label='',hdul=None
     df_label : str, optional
         label name of the dataframe. 
         choose between:
-            'avg_tiles_df'
+            'unq_tiles_df'
             'mvs_tiles_df'
         The default is 'mvs_tiles_df'.
     df_ids : str, optional
         label name of the ID dataframe. 
         choose between:
-            'avg_ids'
+            'unq_ids'
             'mvs_ids'
         The default is 'mvs_ids'.
     showplot : bool, optional
@@ -386,13 +386,13 @@ def KLIP_aperture_photometry_handler(DF,id,filter,data_label='',dq_label='',hdul
     df_label : str, optional
         label name of the dataframe. 
         choose between:
-            'avg_tiles_df'
+            'unq_tiles_df'
             'mvs_tiles_df'
         The default is 'mvs_tiles_df'.
     df_ids : str, optional
         label name of the ID dataframe. 
         choose between:
-            'avg_ids'
+            'unq_ids'
             'mvs_ids'
         The default is 'mvs_ids'.
     showplot : bool, optional
@@ -524,7 +524,7 @@ def mvs_aperture_photometry(DF,filter,ee_dict,zpt_dict,fitsname=None,mvs_ids_lis
             DQ=Tile(x=int((DF.tilebase-1)/2),y=int((DF.tilebase-1)/2),tile_base=DF.tilebase,inst=DF.inst)
             DQ.load_tile(path2tile,ext='dq',verbose=False,return_Datacube=False)
             if remove_candidate:
-                Kmode=DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids==mvs_ids].avg_ids)].mKmode.values[0]
+                Kmode=DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids==mvs_ids].unq_ids)].mKmode.values[0]
                 KLIP=Tile(x=int((DF.tilebase-1)/2),y=int((DF.tilebase-1)/2),tile_base=DF.tilebase,inst=DF.inst)
                 KLIP.load_tile(path2tile,ext='%sKmode%i'%(label_KLIP_dict[label],Kmode),verbose=False,return_Datacube=False)
                 filtered_data = sigma_clip(KLIP.data[KLIP.data<0])
@@ -570,9 +570,9 @@ def mvs_aperture_photometry(DF,filter,ee_dict,zpt_dict,fitsname=None,mvs_ids_lis
         del hdul
     return(phot)
     
-def avg_aperture_photometry(DF,avg_ids,filter,goodness_phot_label,suffix,skip_flags):
-    getLogger(__name__).info(f'Performing average photometry on ID {avg_ids}')
-    sel_ids=DF.mvs_targets_df.mvs_ids.isin(DF.crossmatch_ids_df.loc[(DF.crossmatch_ids_df.avg_ids==avg_ids)].mvs_ids)&~DF.mvs_targets_df['flag_%s'%filter].str.contains(skip_flags)
+def unq_aperture_photometry(DF,unq_ids,filter,goodness_phot_label,suffix,skip_flags):
+    getLogger(__name__).info(f'Performing average photometry on ID {unq_ids}')
+    sel_ids=DF.mvs_targets_df.mvs_ids.isin(DF.crossmatch_ids_df.loc[(DF.crossmatch_ids_df.unq_ids==unq_ids)].mvs_ids)&~DF.mvs_targets_df['flag_%s'%filter].str.contains(skip_flags)
     ydata=DF.mvs_targets_df.loc[sel_ids,['m_%s'%filter]].values#.ravel()
     eydata=DF.mvs_targets_df.loc[sel_ids,['%s_%s%s'%(goodness_phot_label,filter,suffix)]].values#.ravel()
 
@@ -583,7 +583,7 @@ def avg_aperture_photometry(DF,avg_ids,filter,goodness_phot_label,suffix,skip_fl
     else:
         yav, we = [np.nan,np.nan]
 
-    return([avg_ids,yav,np.sqrt(1/we),DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids==avg_ids].mvs_ids),['spx_%s'%filter]].mean().values[0],DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids==avg_ids].mvs_ids),['bpx_%s'%filter]].mean().values[0]])
+    return([unq_ids,yav,np.sqrt(1/we),DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids==unq_ids].mvs_ids),['spx_%s'%filter]].mean().values[0],DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids==unq_ids].mvs_ids),['bpx_%s'%filter]].mean().values[0]])
 
 def read_dq_from_tile(DF,path2tile=None,dq=None,bpx_list=[],spx_list=[]):
     if not isinstance(dq,(np.ndarray,list)):

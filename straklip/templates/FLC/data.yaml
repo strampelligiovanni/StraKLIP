@@ -21,7 +21,7 @@ target:
   fitsext: _flc # fits extension (e.g. _flt, _flc, _drc etc.) to join whit the rootname to identify filename
 mvs_table:
   name: FFP_mvs_target_photometry.csv # filename for multivists catalog
-  id: {'avg_ids':'avg_ids', 'mvs_ids': 'mvs_ids'} #dictionary linking default multivisit (mvs_ids) and unique (avg_ids) id columns to catalog
+  id: {'unq_ids':'unq_ids', 'mvs_ids': 'mvs_ids'} #dictionary linking default multivisit (mvs_ids) and unique (unq_ids) id columns to catalog
   sep: ',' # file separator (space, comma, tab etc.)
   vis: visit # visit column name in catalog
   ext: ext # extension column name in catalog that identify SCI in fits file (for HST if CCDCHIP = 1, EXT = 4, CCDCHIP = 2, EXT = 1)
@@ -46,10 +46,10 @@ mvs_table:
   flag: # flag column name in catalog, filter wise (list)
     - flag_f814w
     - flag_f850lp
-avg_table:
-  name: FFP_avg_target_photometry.csv # filename for the unique (avg) catalog
+unq_table:
+  name: FFP_unq_target_photometry.csv # filename for the unique (avg) catalog
   sep: ',' # file separator (space, comma, tab etc.)
-  id: avg_ids # unique id column name in catalog
+  id: unq_ids # unique id column name in catalog
   ra: ra # ra column name in catalog
   dec: dec # dec column name in catalog
   type: type # type column name in catalog

@@ -9,7 +9,7 @@ class Tables:
     def __init__(self,data_cfg, pipe_cfg):
         self.pipe_cfg = pipe_cfg
         self.data_cfg = data_cfg
-        for table_name in ['mvs_table','avg_table']:
+        for table_name in ['mvs_table','unq_table']:
             self.load_table_into_df(table_name)
         self.select_tables()
 
@@ -17,9 +17,9 @@ class Tables:
         self.mvs_table=self.mvs_table.loc[
             ~self.mvs_table[self.mvs_table.columns[self.mvs_table.columns.str.contains('fits')]].isna().all(
                 axis=1)]
-        self.avg_table=self.avg_table.loc[self.avg_table.avg_ids.isin(self.mvs_table.avg_ids.unique())]
-        self.crossmatch_ids_table=self.mvs_table[['avg_ids','mvs_ids']]
-        self.mvs_table.drop('avg_ids',inplace=True,axis=1)
+        self.unq_table=self.unq_table.loc[self.unq_table.unq_ids.isin(self.mvs_table.unq_ids.unique())]
+        self.crossmatch_ids_table=self.mvs_table[['unq_ids','mvs_ids']]
+        self.mvs_table.drop('unq_ids',inplace=True,axis=1)
 
     def canonize(self,label_list=['vis']):
         """ Enforce cannonicity of df str values lowercase"""
@@ -52,7 +52,7 @@ class Tables:
             setattr(self, table_name, pd.read_table(getattr(self.pipe_cfg,'paths')['database'] + '/' +
                                                     getattr(self.data_cfg,table_name)['name'],
                                                     sep=getattr(self.data_cfg,table_name)['sep'], skip_blank_lines=True,
-                                                    converters={getattr(self.data_cfg, table_name)['id']['avg_ids']: int,
+                                                    converters={getattr(self.data_cfg, table_name)['id']['unq_ids']: int,
                                                     getattr(self.data_cfg, table_name)['id']['mvs_ids']: int,
                                                     getattr(self.data_cfg, table_name)['vis']: str}
                                                     ).dropna(

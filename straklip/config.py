@@ -219,7 +219,7 @@ def get_zpt(dataset):
     return {dataset.data_cfg.filters[i]: zpt_list[i] for i in range(len(dataset.data_cfg.filters))}
 
 def configure_dataframe(dataset,load=False):
-    files_check_list = ['crossmatch_ids','avg_targets','mvs_targets','avg_candidates','mvs_candidates']
+    files_check_list = ['crossmatch_ids','unq_targets','mvs_targets','unq_candidates','mvs_candidates']
     if 'AVs' in dataset.data_cfg.target and isinstance(dataset.data_cfg.target['AVs'],dict):
         Av_dict = dataset.data_cfg.target['AVs']
     else:
@@ -252,13 +252,13 @@ def configure_dataframe(dataset,load=False):
                             list(dataset.pipe_cfg.instrument['pam'].keys())} if
                             isinstance(dataset.pipe_cfg.instrument['pam'], dict) else None,
                    tilebase=dataset.pipe_cfg.mktiles['tile_base'],
-                   radec=[dataset.pipe_cfg.buildhdf['default_avg_table']['ra'],dataset.pipe_cfg.buildhdf['default_avg_table']['dec']],
+                   radec=[dataset.pipe_cfg.buildhdf['default_unq_table']['ra'],dataset.pipe_cfg.buildhdf['default_unq_table']['dec']],
                    filters=[i for i in dataset.data_cfg.filters],
                    xyaxis={key: dataset.pipe_cfg.instrument['ccd_pix'][key] for key in list(dataset.pipe_cfg.instrument['ccd_pix'].keys())},
                    zpt=zpt_dict,
                    Av=Av_dict,
                    dist=dataset.data_cfg.target['distance'],
-                   type=dataset.pipe_cfg.buildhdf['default_avg_table']['type'],
+                   type=dataset.pipe_cfg.buildhdf['default_unq_table']['type'],
                    maxsep=dataset.pipe_cfg.mktiles['max_separation'],
                    minsep=dataset.pipe_cfg.mktiles['min_separation'],
                    steps=[],

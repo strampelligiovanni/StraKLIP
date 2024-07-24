@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 from sklearn import metrics
 
-def FP_analysis(self,avg_ids,filter,AUC_lim,FP_lim=0.001,step=10,nbins=10,showplot=False,DF_fk=None,fig=None,ax=None,suffix=''):
+def FP_analysis(self,unq_ids,filter,AUC_lim,FP_lim=0.001,step=10,nbins=10,showplot=False,DF_fk=None,fig=None,ax=None,suffix=''):
     '''
     Read the True Positive (signal where we inject the companion) and 
     False Positive (signla where we do not inject the companion) from the
@@ -22,7 +22,7 @@ def FP_analysis(self,avg_ids,filter,AUC_lim,FP_lim=0.001,step=10,nbins=10,showpl
 
     Parameters
     ----------
-    avg_ids : int
+    unq_ids : int
         average id for the single target.
     filter : str
         DESCRIPTION.name of the filter
@@ -41,14 +41,14 @@ def FP_analysis(self,avg_ids,filter,AUC_lim,FP_lim=0.001,step=10,nbins=10,showpl
 
     '''
     if not isinstance(DF_fk,pd.DataFrame):DF_fk=self
-    ncols=self.crossmatch_ids_df.loc[self.crossmatch_ids_df.avg_ids==avg_ids].mvs_ids.count()
+    ncols=self.crossmatch_ids_df.loc[self.crossmatch_ids_df.unq_ids==unq_ids].mvs_ids.count()
     FP_sel=FP_lim**(1/(ncols))
     if fig==None or not isinstance(ax, (list,np.ndarray)):fig,ax=plt.subplots(2,ncols,squeeze=False,figsize=(7*ncols,14))
     elno=0
     
     out=[]
     check_list=[]
-    for mvs_ids in self.mvs_candidates_df.loc[self.mvs_candidates_df.mvs_ids.isin(self.crossmatch_ids_df.loc[self.crossmatch_ids_df.avg_ids==avg_ids].mvs_ids)].mvs_ids.unique():
+    for mvs_ids in self.mvs_candidates_df.loc[self.mvs_candidates_df.mvs_ids.isin(self.crossmatch_ids_df.loc[self.crossmatch_ids_df.unq_ids==unq_ids].mvs_ids)].mvs_ids.unique():
         magbin=self.mvs_targets_df.loc[self.mvs_targets_df.mvs_ids==mvs_ids,'m_%s%s'%(filter,suffix)].values[0]
         dmag=self.mvs_candidates_df.loc[self.mvs_candidates_df.mvs_ids==mvs_ids,'m_%s'%filter].values[0]-magbin
         sep=self.mvs_candidates_df.loc[self.mvs_candidates_df.mvs_ids==mvs_ids,'sep_%s'%filter].astype(float).values[0]

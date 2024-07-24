@@ -109,15 +109,18 @@ def allign_images(target_images,rot_angles,PAV_3s,filter,fig=None,ax=None,shift_
 
     '''
     if xy_dmax!=None: xy_dmax=xy_dmax*zfactor
+    if len(target_images)>1:
+        rotated_images,rotated_angles=rotate_images(target_images,rot_angles=rot_angles,zfactor=zfactor)
+        shifted_images,shift_list=shift_images(rotated_images,zfactor=zfactor,alignment_box=alignment_box,shift_list_in=shift_list)
+        for elno in range(len(shifted_images)):
+            shifted_images[elno][shifted_images[elno]==0]=np.nan
 
-    rotated_images,rotated_angles=rotate_images(target_images,rot_angles=rot_angles,zfactor=zfactor)
-    shifted_images,shift_list=shift_images(rotated_images,zfactor=zfactor,alignment_box=alignment_box,shift_list_in=shift_list)
-    for elno in range(len(shifted_images)):
-        shifted_images[elno][shifted_images[elno]==0]=np.nan
+        if method=='median': image=np.nanmedian(shifted_images,axis=0)
+        elif method == 'mean':image=np.nanmean(shifted_images,axis=0)
+        else: raise ValueError('method MUST be either median or mean.')
+    else:
+        image=target_images[0]
 
-    if method=='median': image=np.nanmedian(shifted_images,axis=0)
-    elif method == 'mean':image=np.nanmean(shifted_images,axis=0)
-    else: raise ValueError('method MUST be either median or mean.')
     x=int((image.shape[1]-1)/2)
     y=int((image.shape[0]-1)/2)
 

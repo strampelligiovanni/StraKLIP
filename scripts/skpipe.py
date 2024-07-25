@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-import sys,logging
-from stralog import getLogger
-from straklip import config, input_tables
+import sys,os
+from stralog import getLogger,setupLogger
 import pkg_resources as pkg
 import argparse
 from datetime import datetime
 import steps
+from straklip import config, input_tables
 from steps import buildhdf, mktiles, mkphotometry,fow2cells,psfsubtraction,klipphotometry,buildfphdf,mkcompleteness,fpanalysis
 
 def parse():
@@ -21,10 +21,15 @@ def parse():
 
     return parser.parse_args()
 
-getLogger('straklip', setup=True, logfile=f'straklip_{datetime.now().strftime("%Y-%m-%d_%H%M")}.log',
+
+if 'SHARED_LOG_FILE' not in os.environ:
+    os.environ['SHARED_LOG_FILE'] = f'straklip_{datetime.now().strftime("%Y-%m-%d_%H%M")}.log'
+
+getLogger('straklip', setup=True, logfile=os.environ['SHARED_LOG_FILE'],
           configfile=pkg.resource_filename('straklip', './config/logging.yaml'))
 
 if __name__ == "__main__":
+
 
     args = parse()
 

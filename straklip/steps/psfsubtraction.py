@@ -50,8 +50,8 @@ def task_perform_KLIP_PSF_subtraction_on_tiles(DF,filter,cell,mvs_ids_list,label
                 elno=0
                 if not targ_tiles.data.isna().all():
                     ref_tiles=pd.DataFrame(data=[[[0]]],columns=['data'])
-                    avg_ids=DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids==id].avg_ids.unique()[0]
-                    for refid in DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(psf_ids_list)&~(DF.mvs_targets_df.mvs_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids==avg_ids].mvs_ids))].mvs_ids.unique():
+                    unq_ids=DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids==id].unq_ids.unique()[0]
+                    for refid in DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(psf_ids_list)&~(DF.mvs_targets_df.mvs_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids==unq_ids].mvs_ids))].mvs_ids.unique():
                         path2ref = '%s/mvs_tiles/%s/tile_ID%i.fits' % (DF.path2out, filter, refid)
                         REF=Tile(x=(DF.tilebase-1)/2,y=(DF.tilebase-1)/2,tile_base=DF.tilebase,delta=0,inst=DF.inst,Python_origin=True)
                         REF.load_tile(path2ref,ext=label_dict[label],verbose=False,hdul_max=hdul_dict[label])
@@ -141,7 +141,7 @@ def perform_KLIP_PSF_subtraction_on_tiles(DF,filter,label,workers=None,parallel_
             task_perform_KLIP_PSF_subtraction_on_tiles(DF,filter,cell,mvs_ids_list,label_dict,hdul_dict,KLIP_label_dict,skip_flags,label,kmodes,overwrite)
 
 
-def KLIP_PSF_subtraction(DF, filter, label, avg_ids_list=[], kmodes=[], workers=None, parallel_runs=True,
+def KLIP_PSF_subtraction(DF, filter, label, unq_ids_list=[], kmodes=[], workers=None, parallel_runs=True,
                          skip_flags=['rejected', 'known_double'],PSF_sub_flags='good|unresolved',overwrite=False, chunksize=None):
     '''
     This is a wrapper for KLIP PSF subtraction step
@@ -151,22 +151,22 @@ def KLIP_PSF_subtraction(DF, filter, label, avg_ids_list=[], kmodes=[], workers=
     if len(kmodes)==1 and '-' in str(kmodes[0]):
         kmodes=np.arange(int(kmodes[0].split('-')[0]),int(kmodes[0].split('-')[1])+1)
 
-    if len(avg_ids_list) == 0:
+    if len(unq_ids_list) == 0:
         mvs_ids_list = DF.mvs_targets_df.loc[(
             DF.mvs_targets_df[['flag_%s' % (filter) for filter in DF.filters]].apply(
                 lambda x: x.str.contains(PSF_sub_flags, case=False)).any(axis=1))].mvs_ids.unique()
-        avg_ids_list_in = DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids.isin(mvs_ids_list)].avg_ids.unique()
+        unq_ids_list_in = DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids.isin(mvs_ids_list)].unq_ids.unique()
     else:
-        avg_ids_list_in = []
-        for avg_id in avg_ids_list:
-            if avg_id in DF.avg_candidates_df.avg_ids.unique():
-                avg_ids_list_in.append(avg_id)
+        unq_ids_list_in = []
+        for avg_id in unq_ids_list:
+            if avg_id in DF.avg_candidates_df.unq_ids.unique():
+                unq_ids_list_in.append(avg_id)
 
 
     perform_KLIP_PSF_subtraction_on_tiles(DF, filter, label,
                                           workers=workers,
                                           parallel_runs=parallel_runs,
-                                          mvs_ids_list=DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids.isin(avg_ids_list_in)].mvs_ids.unique(),
+                                          mvs_ids_list=DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids.isin(unq_ids_list_in)].mvs_ids.unique(),
                                           kmodes=kmodes,
                                           skip_flags=skip_flags,
                                           chunksize=chunksize,
@@ -185,7 +185,7 @@ def run(packet):
     for filter in dataset.data_cfg.filters:
         KLIP_PSF_subtraction(DF, filter,
                              label=label,
-                             avg_ids_list=dataset.pipe_cfg.psfsubtraction['avg_ids_list'],
+                             unq_ids_list=dataset.pipe_cfg.psfsubtraction['unq_ids_list'],
                              kmodes=dataset.pipe_cfg.psfsubtraction['kmodes'],
                              workers=dataset.pipe_cfg.ncpu,
                              parallel_runs=dataset.pipe_cfg.psfsubtraction['parallel_runs'],

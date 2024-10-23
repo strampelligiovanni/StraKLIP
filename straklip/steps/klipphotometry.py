@@ -91,8 +91,8 @@ def task_mvs_tiles_and_photometry(DF, fitsname, ids_list, filter, use_xy_SN, use
             # path2tile = '%s/%s/%s/%s/mvs_tiles/%s/tile_ID%i.fits' % (
             # path2data, DF.project, DF.target, DF.inst, filter, id)
             path2tile='%s/mvs_tiles/%s/tile_ID%i.fits' % (DF.path2out, filter, mvs_ids)
-            type_flag = DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids == DF.crossmatch_ids_df.loc[
-                DF.crossmatch_ids_df.mvs_ids == id].avg_ids.unique()[0]].type.values[0]
+            type_flag = DF.unq_targets_df.loc[DF.unq_targets_df.unq_ids == DF.crossmatch_ids_df.loc[
+                DF.crossmatch_ids_df.mvs_ids == id].unq_ids.unique()[0]].type.values[0]
             x = DF.mvs_targets_df.loc[(DF.mvs_targets_df[f'fits_{filter}'] == fitsname) & (
                         DF.mvs_targets_df.mvs_ids == id), f'x_{filter}'].values[0]
             y = DF.mvs_targets_df.loc[(DF.mvs_targets_df[f'fits_{filter}'] == fitsname) & (
@@ -454,15 +454,15 @@ def task_mvs_targets_infos(DF,avg_id,skip_filters,aptype,verbose,noBGsub,sigma,k
 
     # if verbose: getLogger(__name__).info('Verbose mode: ',verbose)
     # if verbose:
-    #     display(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids==avg_id])
-    #     display(DF.avg_targets_df.loc[DF.avg_targets_df.avg_ids==avg_id])
-    #     display(DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids==avg_id].mvs_ids)])
+    #     display(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids==avg_id])
+    #     display(DF.unq_targets_df.loc[DF.unq_targets_df.unq_ids==avg_id])
+    #     display(DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids==avg_id].mvs_ids)])
 
-    candidate_df=create_empty_df(['filter','mvs_ids'],['counts','ecounts','nsky','Nsigma','mag','emag','flag','ROTA','PA_V3','std','sep'],multy_index=True,levels=[DF.filters,DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids==avg_id].mvs_ids])
+    candidate_df=create_empty_df(['filter','mvs_ids'],['counts','ecounts','nsky','Nsigma','mag','emag','flag','ROTA','PA_V3','std','sep'],multy_index=True,levels=[DF.filters,DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids==avg_id].mvs_ids])
     for filter in DF.filters:
         if filter not in skip_filters:
             getLogger(__name__).info(f'Performing aperture photometry on filter {filter}')
-            mvs_ids=DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids==avg_id].mvs_ids.unique()
+            mvs_ids=DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids==avg_id].mvs_ids.unique()
             for id in mvs_ids:
                 if not DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==id,f'flag_{filter}'].str.contains('rejected').values[0]:
                     getLogger(__name__).info(f'Performing aperture photometry on mvs_ids {id}')
@@ -516,11 +516,11 @@ def task_median_candidate_infos(DF,id,filter,column_name,zfactor,alignment_box,l
     KLIP_label_dict={'data':'Kmode','crclean_data':'crclean_Kmode'}
     path2tile=DF.path2out+f'/median_tiles/{filter}/tile_ID{id}.fits'
 
-    cand_mvs_ids_list=DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids==id].mvs_ids.unique())].mvs_ids.unique()
+    cand_mvs_ids_list=DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids==id].mvs_ids.unique())].mvs_ids.unique()
 
-    # sel_ids=DF.mvs_targets_df.mvs_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids==id].mvs_ids.unique())
+    # sel_ids=DF.mvs_targets_df.mvs_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids==id].mvs_ids.unique())
     sel_flag=(DF.mvs_targets_df[f'flag_{filter}']!='rejected')
-    mvs_ids_list=DF.mvs_targets_df.loc[sel_flag&DF.mvs_targets_df.mvs_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids==id].mvs_ids.unique())].mvs_ids.unique()
+    mvs_ids_list=DF.mvs_targets_df.loc[sel_flag&DF.mvs_targets_df.mvs_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids==id].mvs_ids.unique())].mvs_ids.unique()
     # sel_ids=DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list)
     sel_ids = DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list) & DF.mvs_targets_df.mvs_ids.isin(cand_mvs_ids_list)
     PAV_3s=DF.mvs_targets_df.loc[sel_ids&sel_flag,f'pav3_{filter}'].values
@@ -531,7 +531,7 @@ def task_median_candidate_infos(DF,id,filter,column_name,zfactor,alignment_box,l
 
     getLogger(__name__).info(f'Making median candidate tiles for KLIPmodes: {DF.kmodes}')
     for Kmode in DF.kmodes:
-        getLogger(__name__).info(f'KLIPmode: {Kmode} ,avg_ids: {id}, mvs_ids: {mvs_ids_list}')
+        getLogger(__name__).info(f'KLIPmode: {Kmode} ,unq_ids: {id}, mvs_ids: {mvs_ids_list}')
 
         target_images = []
         candidate_images = []
@@ -547,7 +547,7 @@ def task_median_candidate_infos(DF,id,filter,column_name,zfactor,alignment_box,l
             if len(target_images)>0:
                 target_tile,shift_list=allign_images(target_images,ROTAs,PAV_3s,filter,zfactor=zfactor,alignment_box=alignment_box,tile_base=DF.tilebase)
 
-                # if not DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids==id].mvs_ids)].empty and (DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,f'flag_{filter}'].values[0]!='rejected'):
+                # if not DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids==id].mvs_ids)].empty and (DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,f'flag_{filter}'].values[0]!='rejected'):
                 #     Kmode=int(DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,f'Kmode_{filter}'].values[0])
                 # else:
                 #     Kmode=int(max(DF.kmodes))
@@ -560,8 +560,8 @@ def task_median_candidate_infos(DF,id,filter,column_name,zfactor,alignment_box,l
         if len(candidate_images)>0:
             candidate_tile,shift_list=allign_images(candidate_images,ROTAs,PAV_3s,filter,shift_list=shift_list,zfactor=zfactor,alignment_box=alignment_box,title=column_name+f'{Kmode}',tile_base=DF.tilebase)
 
-        if Datacube!=None:
-            candidate_tile.append_tile(path2tile,Datacube=Datacube,verbose=False,name=f'{(KLIP_label_dict[label])}{Kmode}',return_Datacube=False,write=False)
+            if Datacube!=None:
+                candidate_tile.append_tile(path2tile,Datacube=Datacube,verbose=False,name=f'{(KLIP_label_dict[label])}{Kmode}',return_Datacube=False,write=False)
 
 def task_mvs_candidates_infos(DF,avg_id,d,skip_filters,aptype,verbose,noBGsub,sigma,DF_fk,label,kill_plots,delta,radius,sat_thr,mfk,mdf,mad):
     '''
@@ -607,10 +607,10 @@ def task_mvs_candidates_infos(DF,avg_id,d,skip_filters,aptype,verbose,noBGsub,si
 
     if verbose:
         getLogger(__name__).info('Verbose mode: ',verbose)
-        display(DF.mvs_targets_df.loc[DF.crossmatch_ids_df.avg_ids==avg_id])
+        display(DF.mvs_targets_df.loc[DF.crossmatch_ids_df.unq_ids==avg_id])
     filters_list=[filter for filter in DF.filters if filter not in ['F658N']]
-    temporary_candidate_df=create_empty_df(['Kmode','filter','mvs_ids'],['x_tile','y_tile','x_rot','y_rot','pdc','ROTA','PA_V3','Nsigma','flag','counts','ecounts','mag','emag'],multy_index=True,levels=[DF.kmodes,filters_list,DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids==avg_id].mvs_ids])
-    sub_ids=DF.crossmatch_ids_df.loc[(DF.crossmatch_ids_df.avg_ids==avg_id)].mvs_ids.unique()
+    temporary_candidate_df=create_empty_df(['Kmode','filter','mvs_ids'],['x_tile','y_tile','x_rot','y_rot','pdc','ROTA','PA_V3','Nsigma','flag','counts','ecounts','mag','emag'],multy_index=True,levels=[DF.kmodes,filters_list,DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids==avg_id].mvs_ids])
+    sub_ids=DF.crossmatch_ids_df.loc[(DF.crossmatch_ids_df.unq_ids==avg_id)].mvs_ids.unique()
     for Kmode in DF.kmodes:
         for filter in DF.filters:
             if filter not in skip_filters:
@@ -746,14 +746,14 @@ def task_mvs_candidates_infos(DF,avg_id,d,skip_filters,aptype,verbose,noBGsub,si
         getLogger(__name__).info(f'BOOMER!!!!! No Candidate found for id {avg_id}')
     return(Kmode_final,candidate_df)
 
-def update_median_candidates_tile(DF, avg_ids_list, column_name='Kmode', workers=None, zfactor=10, alignment_box=3,
+def update_median_candidates_tile(DF, unq_ids_list, column_name='Kmode', workers=None, zfactor=10, alignment_box=3,
                                   parallel_runs=True, chunksize=None, label='data', kill_plots=True, skip_filters=[]):
     '''
     Update the median candidate dataframe tile.
 
     Parameters
     ----------
-    avg_ids_list : list
+    unq_ids_list : list
         list of average ids.
     column_name : list, optional
         list of column names. The default is 'data'.
@@ -780,20 +780,20 @@ def update_median_candidates_tile(DF, avg_ids_list, column_name='Kmode', workers
 
     '''
     # if __name__ == 'utils_straklip':
-    getLogger(__name__).info('Loading a total of %i images' % len(avg_ids_list))
+    getLogger(__name__).info('Loading a total of %i images' % len(unq_ids_list))
     for filter in DF.filters:
         if filter not in skip_filters:
             getLogger(__name__).info('Working in %s: ' % filter)
             if parallel_runs:
-                workers, chunksize, ntarget = parallelization_package(workers, len(avg_ids_list),
+                workers, chunksize, ntarget = parallelization_package(workers, len(unq_ids_list),
                                                                       chunksize=chunksize)
                 with ProcessPoolExecutor(max_workers=workers) as executor:
-                    for _ in executor.map(task_median_candidate_infos, repeat(DF), avg_ids_list, repeat(filter),
+                    for _ in executor.map(task_median_candidate_infos, repeat(DF), unq_ids_list, repeat(filter),
                                          repeat(column_name), repeat(zfactor), repeat(alignment_box), repeat(label),
                                          chunksize=chunksize):
                         pass
             else:
-                for id in avg_ids_list:
+                for id in unq_ids_list:
                     task_median_candidate_infos(DF, id, filter, column_name, zfactor, alignment_box, label)
 
 def update_companion_ZPT(DF,suffix='',skip_filters='',aptype='4pixels',verbose=False,workers=None,noBGsub=True,sigma=2.5,min_mag_list=[],max_mag_list=[],DF_fk=None,parallel_runs=True,chunksize = None,kill_plots=True,label='data',delta=3,sat_thr=np.inf):
@@ -837,13 +837,13 @@ def update_companion_ZPT(DF,suffix='',skip_filters='',aptype='4pixels',verbose=F
 
     '''
     if DF_fk==None: DF_fk=DF
-    avg_ids=DF.avg_targets_df.avg_ids.unique()
+    unq_ids=DF.unq_targets_df.unq_ids.unique()
     ############################################################ ZPT ##############################################################
     getLogger(__name__).info('Working on the zero points for candidates')
     if parallel_runs:
-        workers,chunksize,ntarget=parallelization_package(workers,len(avg_ids),chunksize = chunksize)
+        workers,chunksize,ntarget=parallelization_package(workers,len(unq_ids),chunksize = chunksize)
         with ProcessPoolExecutor(max_workers=workers) as executor:
-            for candidate_df in executor.map(task_mvs_targets_infos,repeat(DF),avg_ids,repeat(skip_filters),repeat(aptype),repeat(verbose),repeat(noBGsub),repeat(sigma),repeat(kill_plots),repeat(label),repeat(delta),repeat(sat_thr),chunksize=chunksize):
+            for candidate_df in executor.map(task_mvs_targets_infos,repeat(DF),unq_ids,repeat(skip_filters),repeat(aptype),repeat(verbose),repeat(noBGsub),repeat(sigma),repeat(kill_plots),repeat(label),repeat(delta),repeat(sat_thr),chunksize=chunksize):
                 for filter in candidate_df.index.get_level_values('filter'):
                     DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(candidate_df.index.get_level_values('mvs_ids').unique()),f'counts_{filter}_ap']=candidate_df.loc[(filter),'counts'].values.astype('float')
                     DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(candidate_df.index.get_level_values('mvs_ids').unique()),f'ecounts_{filter}_ap']=candidate_df.loc[(filter),'ecounts'].values.astype('float')
@@ -851,7 +851,7 @@ def update_companion_ZPT(DF,suffix='',skip_filters='',aptype='4pixels',verbose=F
                     DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(candidate_df.index.get_level_values('mvs_ids').unique()),f'm_{filter}_ap']=candidate_df.loc[(filter),'mag'].values.astype('float')
                     DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(candidate_df.index.get_level_values('mvs_ids').unique()),f'e_{filter}_ap']=candidate_df.loc[(filter),'emag'].values.astype('float')
     else:
-        for id in avg_ids:
+        for id in unq_ids:
             candidate_df =task_mvs_targets_infos(DF,id,skip_filters,aptype,verbose,noBGsub,sigma,kill_plots,label,delta,sat_thr)
             for filter in candidate_df.index.get_level_values('filter'):
                 DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(candidate_df.index.get_level_values('mvs_ids').unique()),f'counts_{filter}_ap']=candidate_df.loc[(filter),'counts'].values.astype('float')
@@ -891,7 +891,7 @@ def update_companion_ZPT(DF,suffix='',skip_filters='',aptype='4pixels',verbose=F
     return (DF)
 
 
-def update_candidates(DF, avg_ids_list=[], suffix='', d=1., skip_filters='F658N', aptype='4pixels', verbose=False,
+def update_candidates(DF, unq_ids_list=[], suffix='', d=1., skip_filters='F658N', aptype='4pixels', verbose=False,
                       workers=None, noBGsub=False, sigma=2.5, min_mag_list=[], max_mag_list=[], DF_fk=None,
                       parallel_runs=True, chunksize=None, label='data', kill_plots=True, delta=3,
                       radius=3, sat_thr=np.inf, mfk=1, mdf=2, mad=0.1):
@@ -900,7 +900,7 @@ def update_candidates(DF, avg_ids_list=[], suffix='', d=1., skip_filters='F658N'
 
     Parameters
     ----------
-    avg_ids_list : list, optional
+    unq_ids_list : list, optional
         list of ids from the average dataframe to test. The default is [].
     suffix: str, optional
         suffix to append to mag label. For example, if original photometry is present in the catalog, it canbe use with suffix='_o'.
@@ -951,16 +951,16 @@ def update_candidates(DF, avg_ids_list=[], suffix='', d=1., skip_filters='F658N'
 
     if parallel_runs:
         getLogger(__name__).info('Working on the candidates')
-        workers, chunksize, ntarget = parallelization_package(workers, len(avg_ids_list), chunksize=chunksize)
+        workers, chunksize, ntarget = parallelization_package(workers, len(unq_ids_list), chunksize=chunksize)
         with ProcessPoolExecutor(max_workers=workers) as executor:
-            for Kmode_final, candidate_df in executor.map(task_mvs_candidates_infos, repeat(DF), avg_ids_list, repeat(d), repeat(skip_filters),
+            for Kmode_final, candidate_df in executor.map(task_mvs_candidates_infos, repeat(DF), unq_ids_list, repeat(d), repeat(skip_filters),
                                  repeat(aptype), repeat(verbose), repeat(False), repeat(3), repeat(DF_fk),
                                  repeat(label), repeat(kill_plots), repeat(delta), repeat(radius), repeat(sat_thr), repeat(mfk),
                                  repeat(mdf), repeat(mad), chunksize=chunksize):
                 if Kmode_final != None: update_candidates_with_detection(DF, candidate_df, Kmode_final, verbose)
 
     else:
-        for avg_id in avg_ids_list:
+        for avg_id in unq_ids_list:
             try:
                 Kmode_final, candidate_df = task_mvs_candidates_infos(DF, avg_id, d, skip_filters, aptype, verbose,
                                                                       False, 3, DF_fk, label, kill_plots, delta, radius,
@@ -969,42 +969,42 @@ def update_candidates(DF, avg_ids_list=[], suffix='', d=1., skip_filters='F658N'
             except:
                 raise ValueError('Something wrong with avg_id %s, Please check' % avg_id)
 
-    selected_avg_ids = DF.crossmatch_ids_df.loc[
-        DF.crossmatch_ids_df.mvs_ids.isin(DF.mvs_candidates_df.mvs_ids)].avg_ids.unique()
-    DF.avg_candidates_df = DF.avg_candidates_df.loc[
-        DF.avg_candidates_df.avg_ids.isin(selected_avg_ids)].reset_index(drop=True)
-    for avg_ids in DF.avg_candidates_df.avg_ids:
-        mvs_ids_list = DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids == avg_ids].mvs_ids.unique()
-        DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids == avg_ids, 'mkmode'] = np.nanmedian(
+    selected_unq_ids = DF.crossmatch_ids_df.loc[
+        DF.crossmatch_ids_df.mvs_ids.isin(DF.mvs_candidates_df.mvs_ids)].unq_ids.unique()
+    DF.unq_candidates_df = DF.unq_candidates_df.loc[
+        DF.unq_candidates_df.unq_ids.isin(selected_unq_ids)].reset_index(drop=True)
+    for unq_ids in DF.unq_candidates_df.unq_ids:
+        mvs_ids_list = DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids == unq_ids].mvs_ids.unique()
+        DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_ids, 'mkmode'] = np.nanmedian(
             DF.mvs_candidates_df.loc[
                 DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list), [f'kmode_{filter}' for filter in
                                                                     DF.filters]].values)
-        DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids == avg_ids, 'sep'] = np.nanmean(
+        DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_ids, 'sep'] = np.nanmean(
             DF.mvs_candidates_df.loc[
                 DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list), [f'sep_{filter}' for filter in
                                                                     DF.filters]].values)
 
         for filter in DF.filters:
             if filter not in skip_filters and not \
-            DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids == avg_ids, f'm_{filter}'].isna().values[0]:
-                DF.avg_candidates_df.loc[
-                    DF.avg_candidates_df.avg_ids == avg_ids, f'nsigma_{filter}'] = np.nanmedian(
+            DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_ids, f'm_{filter}'].isna().values[0]:
+                DF.unq_candidates_df.loc[
+                    DF.unq_candidates_df.unq_ids == unq_ids, f'nsigma_{filter}'] = np.nanmedian(
                     DF.mvs_candidates_df.loc[
                         DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list), f'nsigma_{filter}'].values)
                 try:
-                    DF.avg_candidates_df.loc[(DF.avg_candidates_df.avg_ids == avg_ids), f'magbin_{filter}'] = \
-                    DF.avg_targets_df.loc[
-                        (DF.avg_targets_df.avg_ids == avg_ids), f'm_{filter}{suffix}'].values[0].astype(int)
+                    DF.unq_candidates_df.loc[(DF.unq_candidates_df.unq_ids == unq_ids), f'magbin_{filter}'] = \
+                    DF.unq_targets_df.loc[
+                        (DF.unq_targets_df.unq_ids == unq_ids), f'm_{filter}{suffix}'].values[0].astype(int)
                 except:
-                    DF.avg_candidates_df[
-                        (DF.avg_candidates_df.avg_ids == avg_ids), f'magBin_{filter}'] = np.nan
+                    DF.unq_candidates_df[
+                        (DF.unq_candidates_df.unq_ids == unq_ids), f'magBin_{filter}'] = np.nan
     return(DF)
 
 def pruning_catalogs(DF):
     getLogger(__name__).info('Pruning the candidates df')
     mvs_bad_ids_list = []
-    for avg_ids in DF.avg_candidates_df.avg_ids:
-        mvs_ids_list = DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.avg_ids == avg_ids].mvs_ids.unique()
+    for unq_ids in DF.unq_candidates_df.unq_ids:
+        mvs_ids_list = DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids == unq_ids].mvs_ids.unique()
 
         sel_mvs_ids = (DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list))
         sel_flags = (('good_candidate' == DF.mvs_candidates_df[['flag_%s' % i for i in DF.filters]]).astype(
@@ -1016,9 +1016,9 @@ def pruning_catalogs(DF):
     DF.mvs_candidates_df = DF.mvs_candidates_df.loc[
         ~DF.mvs_candidates_df.mvs_ids.isin(mvs_bad_ids_list)].reset_index(drop=True)
 
-    avg_ids_list=DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids.isin(DF.mvs_candidates_df.mvs_ids)].avg_ids.unique()
-    DF.avg_candidates_df = DF.avg_candidates_df.loc[
-        DF.avg_candidates_df.avg_ids.isin(avg_ids_list)].reset_index(drop=True)
+    unq_ids_list=DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids.isin(DF.mvs_candidates_df.mvs_ids)].unq_ids.unique()
+    DF.unq_candidates_df = DF.unq_candidates_df.loc[
+        DF.unq_candidates_df.unq_ids.isin(unq_ids_list)].reset_index(drop=True)
 
     getLogger(__name__).info('Candidates df pruned.')
     return(DF)
@@ -1070,15 +1070,15 @@ def update_candidates_with_detection(DF,candidate_df,Kmode_final,verbose):
                 m,w=np.average(mags,weights=1/emags**2,axis=0,returned=True)
                 em=1/np.sqrt(w)
             else:m,em=[mags,emags]
-            DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids.isin(candidate_df.index.get_level_values('mvs_ids').unique())].avg_ids),'m_%s'%filter]=np.round(m,3)
-            DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids.isin(candidate_df.index.get_level_values('mvs_ids').unique())].avg_ids),'e_%s'%filter]=np.round(em,3)
-            DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids.isin(candidate_df.index.get_level_values('mvs_ids').unique())].avg_ids),'n_%s'%filter]=len(emags)
+            DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids.isin(candidate_df.index.get_level_values('mvs_ids').unique())].unq_ids),'m_%s'%filter]=np.round(m,3)
+            DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids.isin(candidate_df.index.get_level_values('mvs_ids').unique())].unq_ids),'e_%s'%filter]=np.round(em,3)
+            DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids.isin(candidate_df.index.get_level_values('mvs_ids').unique())].unq_ids),'n_%s'%filter]=len(emags)
     if verbose:
-        display(DF.avg_candidates_df.loc[DF.avg_candidates_df.avg_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids.isin(candidate_df.index.get_level_values('mvs_ids').unique())].avg_ids)])
+        display(DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids.isin(candidate_df.index.get_level_values('mvs_ids').unique())].unq_ids)])
         display(DF.mvs_candidates_df.loc[(DF.mvs_candidates_df.mvs_ids.isin(candidate_df.index.get_level_values('mvs_ids').unique()))])
     return(DF)
 
-def update_candidate_dataframe(DF, avg_ids_list=[], suffix='', verbose=False, workers=None, min_mag_list=[],
+def update_candidate_dataframe(DF, unq_ids_list=[], suffix='', verbose=False, workers=None, min_mag_list=[],
                                max_mag_list=[], aptype='4pixels', no_median_tile_update=False, zfactor=10,
                                alignment_box=3, parallel_runs=True, chunksize=None, label='data',
                                kill_plots=True, delta=3, radius=3, skip_filters=[], sat_thr=np.inf, mfk=1, mdf=2, mad=0.2,
@@ -1088,7 +1088,7 @@ def update_candidate_dataframe(DF, avg_ids_list=[], suffix='', verbose=False, wo
 
     Parameters
     ----------
-    avg_ids_list : list, optional
+    unq_ids_list : list, optional
         list of average ids to test. The default is [].
     suffix: str, optional
         suffix to append to mag label. For example, if original photometry is present in the catalog, it canbe use with suffix='_o'.
@@ -1138,27 +1138,27 @@ def update_candidate_dataframe(DF, avg_ids_list=[], suffix='', verbose=False, wo
 
     '''
     getLogger(__name__).info('Updating the candidates dataframe')
-    if len(avg_ids_list) == 0:
+    if len(unq_ids_list) == 0:
         mvs_ids_list = DF.mvs_targets_df.loc[(
             DF.mvs_targets_df[['flag_%s' % (filter) for filter in DF.filters]].apply(
                 lambda x: x.str.contains(PSF_sub_flags, case=False)).any(axis=1))].mvs_ids.unique()
-        avg_ids_list_in = DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids.isin(mvs_ids_list)].avg_ids.unique()
-        # avg_ids_list_in=DF.avg_candidates_df.avg_ids.unique()
+        unq_ids_list_in = DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids.isin(mvs_ids_list)].unq_ids.unique()
+        # unq_ids_list_in=DF.unq_candidates_df.unq_ids.unique()
     else:
-        avg_ids_list_in = []
-        for avg_id in avg_ids_list:
-            if avg_id in DF.avg_candidates_df.avg_ids.unique():
-                avg_ids_list_in.append(avg_id)
+        unq_ids_list_in = []
+        for avg_id in unq_ids_list:
+            if avg_id in DF.unq_candidates_df.unq_ids.unique():
+                unq_ids_list_in.append(avg_id)
 
-    DF=update_candidates(DF, avg_ids_list=avg_ids_list_in, suffix=suffix, verbose=verbose, aptype=aptype,
+    DF=update_candidates(DF, unq_ids_list=unq_ids_list_in, suffix=suffix, verbose=verbose, aptype=aptype,
                       min_mag_list=min_mag_list, max_mag_list=max_mag_list, workers=workers,
                       parallel_runs=parallel_runs, label=label, kill_plots=kill_plots,
                       delta=delta, radius=radius, skip_filters=skip_filters, sat_thr=sat_thr, mfk=mfk, mdf=mdf, mad=mad)
 
     if not no_median_tile_update:
         getLogger(__name__).info('Updating the median tiles for the candidates')
-        # avg_ids_list_in=DF.avg_candidates_df.avg_ids.unique()
-        update_median_candidates_tile(DF, avg_ids_list=avg_ids_list_in, workers=workers, zfactor=zfactor,
+        # unq_ids_list_in=DF.unq_candidates_df.unq_ids.unique()
+        update_median_candidates_tile(DF, unq_ids_list=unq_ids_list_in, workers=workers, zfactor=zfactor,
                                       alignment_box=alignment_box, parallel_runs=parallel_runs, chunksize=chunksize,
                                       label=label, kill_plots=kill_plots, skip_filters=skip_filters)
     if pruning:
@@ -1173,7 +1173,7 @@ def run(packet):
     if dataset.pipe_cfg.klipphotometry['redo']: make_candidates_dataframes(DF)
 
     DF=update_candidate_dataframe(DF,
-                               avg_ids_list=dataset.pipe_cfg.klipphotometry['avg_ids_list'],
+                               unq_ids_list=dataset.pipe_cfg.klipphotometry['unq_ids_list'],
                                suffix=dataset.pipe_cfg.klipphotometry['suffix'],
                                verbose=dataset.pipe_cfg.klipphotometry['verbose'],
                                workers=dataset.pipe_cfg.ncpu,

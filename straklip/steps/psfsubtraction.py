@@ -5,11 +5,13 @@ from tiles import Tile
 import numpy.ma as ma
 from astropy.io import fits
 import pandas as pd
-from utils_tile import perform_PSF_subtraction, mk_raw_contrast_curves
+from utils_tile import perform_PSF_subtraction
+from utils_plot import mk_raw_contrast_curves,mk_residual_tile_plots
 from itertools import repeat
 from ancillary import parallelization_package
+from straklip import config
 
-def task_perform_KLIP_PSF_subtraction_on_tiles(DF,filter,cell,mvs_ids_list,label_dict,hdul_dict,KLIP_label_dict,skip_flags,label,kmodes,overwrite):
+def task_perform_KLIP_PSF_subtraction_on_tiles(DF,filter,cell,mvs_ids_list,label_dict,hdul_dict,KLIP_label_dict,skip_flags,label,kmodes,overwrite,fwhm):
     if len(mvs_ids_list)==0:
         ids_list=DF.mvs_targets_df.loc[(DF.mvs_targets_df['cell_%s'%filter]==cell)&~DF.mvs_targets_df['flag_%s'%filter].isin([skip_flags])].mvs_ids.unique()
     else:
@@ -76,14 +78,16 @@ def task_perform_KLIP_PSF_subtraction_on_tiles(DF,filter,cell,mvs_ids_list,label
                     residuals,psf_models=perform_PSF_subtraction(targ_tiles['data'],ref_tiles['data'],kmodes=kmodes)
                     getLogger(__name__).info(f'Performing raw contrast curve on {path2tile}.')
                     mk_raw_contrast_curves(id, np.nanmax(targ_tiles['data'].values[0]), residuals, klstep=1,
-                                           path2dir='%s/mvs_tiles/%s/' % (DF.path2out, filter), dataset_iwa=1,
-                                           dataset_owa=10, fwhm=1.460)
+                                           path2dir='%s/residual_tiles/%s/' % (DF.path2out, filter), dataset_iwa=1,
+                                           dataset_owa=10, fwhm=fwhm)
 
                     return_Datacube=True
                     for Kmode in residuals.columns: # loop over the residuals of the different kmodes
                         KLIP=Tile(data=residuals[Kmode].tolist()[0],x=(DF.tilebase-1)/2,y=(DF.tilebase-1)/2,tile_base=DF.tilebase,delta=0,inst=DF.inst,Python_origin=True)
                         KLIP.mk_tile(pad_data=False,legend=False,showplot=False,verbose=False,title='Kmode%i'%Kmode,kill_plots=True)
                         Datacube=KLIP.append_tile(path2tile,Datacube=Datacube,verbose=False,name='%s%i'%(KLIP_label_dict[label],Kmode),return_Datacube=return_Datacube,write=False)
+                    mk_residual_tile_plots(targ_tiles['data'].values[0], KLIP.data, id, '%s/residual_tiles/%s/' % (DF.path2out, filter))
+
                     for model in psf_models.columns:
                         if model == psf_models.columns[-1]:return_Datacube=False
                         PSF=Tile(data=psf_models[model].tolist()[0],x=(DF.tilebase-1)/2,y=(DF.tilebase-1)/2,tile_base=DF.tilebase,delta=0,inst=DF.inst,Python_origin=True)
@@ -94,7 +98,7 @@ def task_perform_KLIP_PSF_subtraction_on_tiles(DF,filter,cell,mvs_ids_list,label
                 getLogger(__name__).info(f'overwrite {overwrite} and all the kmodes {kmodes} layers are already saved in tile: {path2tile}. Skipping.')
 
 
-def perform_KLIP_PSF_subtraction_on_tiles(DF,filter,label,workers=None,parallel_runs=True,mvs_ids_list=[],kmodes=[],skip_flags=['rejected','known_double'],overwrite=False,chunksize = None):
+def perform_KLIP_PSF_subtraction_on_tiles(DF,filter,label,workers=None,parallel_runs=True,mvs_ids_list=[],kmodes=[],skip_flags=['rejected','known_double'],overwrite=False,chunksize = None, fwhm={}):
     '''
     Perform PSF subtraction on targets tiles
 
@@ -141,16 +145,16 @@ def perform_KLIP_PSF_subtraction_on_tiles(DF,filter,label,workers=None,parallel_
     if parallel_runs:
         workers,chunksize,ntarget=parallelization_package(workers,len(cell_list),chunksize = chunksize)
         with ProcessPoolExecutor(max_workers=workers) as executor:
-            for _ in executor.map(task_perform_KLIP_PSF_subtraction_on_tiles,repeat(DF),repeat(filter),cell_list,repeat(mvs_ids_list),repeat(label_dict),repeat(hdul_dict),repeat(KLIP_label_dict),repeat(skip_flags),repeat(label),repeat(kmodes),repeat(overwrite),chunksize=chunksize):
+            for _ in executor.map(task_perform_KLIP_PSF_subtraction_on_tiles,repeat(DF),repeat(filter),cell_list,repeat(mvs_ids_list),repeat(label_dict),repeat(hdul_dict),repeat(KLIP_label_dict),repeat(skip_flags),repeat(label),repeat(kmodes),repeat(overwrite),repeat(fwhm[filter]),chunksize=chunksize):
                 pass
 
     else:
         for cell in cell_list:
-            task_perform_KLIP_PSF_subtraction_on_tiles(DF,filter,cell,mvs_ids_list,label_dict,hdul_dict,KLIP_label_dict,skip_flags,label,kmodes,overwrite)
+            task_perform_KLIP_PSF_subtraction_on_tiles(DF,filter,cell,mvs_ids_list,label_dict,hdul_dict,KLIP_label_dict,skip_flags,label,kmodes,overwrite,fwhm[filter])
 
 
 def KLIP_PSF_subtraction(DF, filter, label, unq_ids_list=[], kmodes=[], workers=None, parallel_runs=True,
-                         skip_flags=['rejected', 'known_double'],PSF_sub_flags='good|unresolved',overwrite=False, chunksize=None):
+                         skip_flags=['rejected', 'known_double'],PSF_sub_flags='good|unresolved',overwrite=False, chunksize=None,fwhm={}):
     '''
     This is a wrapper for KLIP PSF subtraction step
 
@@ -178,7 +182,8 @@ def KLIP_PSF_subtraction(DF, filter, label, unq_ids_list=[], kmodes=[], workers=
                                           kmodes=kmodes,
                                           skip_flags=skip_flags,
                                           chunksize=chunksize,
-                                          overwrite=overwrite)
+                                          overwrite=overwrite,
+                                          fwhm=fwhm)
 
 def run(packet):
     dataset = packet['dataset']
@@ -190,7 +195,9 @@ def run(packet):
         label='data'
         getLogger(__name__).info(f'Performing KLIP PSF subtraction on tiles.')
 
+
     for filter in dataset.data_cfg.filters:
+        config.make_paths(config=None, paths=DF.path2out + '/residual_tiles/%s' % filter)
         KLIP_PSF_subtraction(DF, filter,
                              label=label,
                              unq_ids_list=dataset.pipe_cfg.psfsubtraction['unq_ids_list'],
@@ -199,5 +206,6 @@ def run(packet):
                              parallel_runs=dataset.pipe_cfg.psfsubtraction['parallel_runs'],
                              PSF_sub_flags=dataset.pipe_cfg.psfsubtraction['PSF_sub_flags'],
                              skip_flags=dataset.pipe_cfg.psfsubtraction['skip_flags'],
-                             overwrite=dataset.pipe_cfg.psfsubtraction['redo'])
+                             overwrite=dataset.pipe_cfg.psfsubtraction['redo'],
+                             fwhm=dataset.pipe_cfg.instrument['fwhm'])
     DF.save_dataframes(__name__)

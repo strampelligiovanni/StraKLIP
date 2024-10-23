@@ -22,7 +22,7 @@ from scipy.stats import norm
 # from astropy.stats import sigma_clip
 from stralog import getLogger
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-
+import pyklip.klip as klip
 
 def add_subplot_axes(ax,rect,axisbg='w'):
     fig = plt.gcf()
@@ -391,6 +391,35 @@ def mk_arrows(xa,ya,theta_0,PAV3_0,plt,L=1,Lp=None,dtx=0.3,dty=0.15,head_width=0
     if roll==True:
         plt.arrow(xa,ya, xEnd2,yEnd2, head_width=head_width, head_length=head_length,width=width, fc=fc, ec=ec)        # Plot arrow
         plt.text(xa+xEnd2+dtx,ya+yEnd2+dty,'PA',color=tc,fontsize=fz)
+
+
+def mk_raw_contrast_curves(id,normalization, residuals, klstep=5, path2dir='./', dataset_iwa = 1, dataset_owa = 10, fwhm = 1.460,minmax=[0,1]):
+    fig, ax1 = plt.subplots(figsize=(12,6))
+    contrasts=[]
+    for KL in residuals.columns.values[::klstep]:
+        klframe = residuals[KL].values[0]/normalization
+        contrast_seps, contrast = klip.meas_contrast(klframe, dataset_iwa, dataset_owa, fwhm,
+                                                     center=[(klframe.shape[0]-1)//2,(klframe.shape[1]-1)//2])
+
+        ax1.plot(contrast_seps, contrast, '-.',label=f'KL = {KL}',linewidth=3.0)
+        contrasts.append(contrast)
+
+    ax1.set_ylim([np.nanmin(contrasts),np.nanmax(contrasts)])
+    ax1.set_yscale('log')
+    ax1.set_ylabel('5$\sigma$ Contrast')
+    ax1.set_xlabel('Separation [pix]')
+    fig.legend(ncols=3,loc=1)
+    plt.tight_layout()
+    plt.savefig(path2dir+f'/tile_ID{id}_raw_cc.png',bbox_inches='tight')
+    plt.close()
+
+def mk_residual_tile_plots(SCI,RES,id,pat2savedir):
+    fig, ax = plt.subplots(1, 2, figsize=(10, 5))
+    fig.suptitle(f'tile_ID{id}_res.png')
+    ax[0].imshow(SCI, origin='lower', cmap='gray')
+    ax[1].imshow(RES, origin='lower', cmap='gray')
+    plt.savefig(f'{pat2savedir}/tile_ID{id}_res.png')
+    plt.close()
 
 def mk_qmass_plot(axScatter,xo,yo,fig=None,x=None,y=None,axScHistx=None,axScHisty=None,color='grey',xmin0=None,xmax0=None,rotation_m1=-82,rotation_m2=-82,xm1=0.055,xm2=0.0095,ym1=0.9,ym2=0.9,path2saveimage=None,fmt='%.1f',mass_list=None,q_list=None,n=None,label_line=False,binwidthx = 0.25,binwidthy = 0.1,levels=None,labelsize=15,countour_plot=False,mk='+',ms=2,mscolor='grey',linewidth=3,edgecolors=None,mass_limit=None,hollow=False,xlog=True):
     if xmin0==None: xmin0=min(xo)

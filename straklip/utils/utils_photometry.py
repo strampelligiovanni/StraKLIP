@@ -234,13 +234,13 @@ def aperture_photometry_handler(DF,id,filter,data_label='',dq_label='',hdul=None
         if y==None: y=DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==id,'y_%s'%filter].values[0]
         if ext == None: ext=int(DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==id].ext.values[0])
         dqdata=hdul[ext+2].data
-        DQDATA=Tile(data=dqdata,x=x,y=y,tile_base=radius2*2+5,inst=DF.inst,Python_origin=Python_origin)
+        DQDATA=Tile(data=dqdata,x=x,y=y,tile_base=DF.tilebase,inst=DF.inst,Python_origin=Python_origin)
         DQDATA.mk_tile(pad_data=True,legend=False,showplot=False,verbose=False,title='DQ',kill_plots=True,cbar=True)
         dq=DQDATA.data
         bpx,spx=read_dq_from_tile(DF,dq=dq,bpx_list=bpx_list,spx_list=spx_list)
 
         if not kill_plots:
-            DQDATA=Tile(data=dq,x=DQDATA.x_tile,y=DQDATA.y_tile,tile_base=DQDATA.tile_base,inst=DF.inst,Python_origin=Python_origin)
+            DQDATA=Tile(data=dq,x=DQDATA.x_tile,y=DQDATA.y_tile,tile_base=DF.tilebase,inst=DF.inst,Python_origin=Python_origin)
             DQDATA.mk_tile(fig=fig,ax=ax[2],pad_data=False,legend=False,showplot=False,verbose=False,title='shiftedDQ',kill_plots=kill_plots,cbar=True)
     
     else:
@@ -254,7 +254,7 @@ def aperture_photometry_handler(DF,id,filter,data_label='',dq_label='',hdul=None
             bpx,spx=read_dq_from_tile(DF,dq=dq,bpx_list=bpx_list,spx_list=spx_list)
     
             if not kill_plots:
-                DQDATA=Tile(data=dq,x=DQDATA.x_tile,y=DQDATA.y_tile,tile_base=DQDATA.tile_base,inst=DF.inst,Python_origin=Python_origin)
+                DQDATA=Tile(data=dq,x=DQDATA.x_tile,y=DQDATA.y_tile,tile_base=DF.tilebase,inst=DF.inst,Python_origin=Python_origin)
                 DQDATA.mk_tile(fig=fig,ax=ax[2],pad_data=False,legend=False,showplot=False,verbose=False,title='shiftedDQ',kill_plots=kill_plots,cbar=True)
     
         else:
@@ -271,13 +271,13 @@ def aperture_photometry_handler(DF,id,filter,data_label='',dq_label='',hdul=None
         if len(forcedSky)>0:
             Sky,eSky,nSky=forcedSky
         else: Sky,eSky,nSky=[0,1,1]
-        DATA=Tile(data=data,x=x,y=y,tile_base=radius2*2+5,inst=DF.inst,Python_origin=Python_origin,dqdata=dq)
+        DATA=Tile(data=data,x=x,y=y,tile_base=DF.tilebase,inst=DF.inst,Python_origin=Python_origin,dqdata=dq)
         DATA.mk_tile(fig=fig,ax=ax[0],la_cr_remove=la_cr_remove,pad_data=True,verbose=False,xy_m=False,legend=False,showplot=False,keep_size=False,xy_dmax=None,cbar=True,title='ID%i ROTA %i PAV3 %i'%(id,ROTA,PAV3),return_tile=False,kill_plots=kill_plots)
 
         detection_AP=Detection(DATA.data,DATA.x_tile,DATA.y_tile,Sky=Sky,nSky=nSky,eSky=eSky,thrpt=thrpt,ethrpt=ethrpt)
             
     else:
-        DATA=Tile(data=data,x=x,y=y,tile_base=radius2*2+5,inst=DF.inst,Python_origin=Python_origin,dqdata=dq)
+        DATA=Tile(data=data,x=x,y=y,tile_base=DF.tilebase,inst=DF.inst,Python_origin=Python_origin,dqdata=dq)
         DATA.mk_tile(fig=fig,ax=ax[0],la_cr_remove=la_cr_remove,cr_radius=cr_radius,pad_data=True,verbose=False,xy_m=False,legend=False,showplot=False,keep_size=False,xy_dmax=None,cbar=True,title='ID%i ROTA %i PAV3 %i'%(id,ROTA,PAV3),return_tile=False,kill_plots=kill_plots)
         
         if aptype=='4pixels':
@@ -291,7 +291,7 @@ def aperture_photometry_handler(DF,id,filter,data_label='',dq_label='',hdul=None
 
             if not kill_plots:
                 BG = Tile(data=bkg.data_mask_in, x=DATA.x_tile, y=DATA.y_tile,
-                            tile_base=bkg.data_mask_in.shape[0], inst=DF.inst, Python_origin=False)
+                            tile_base=DF.tilebase, inst=DF.inst, Python_origin=False)
                 BG.mk_tile(fig=fig, ax=ax[3], pad_data=False, verbose=False, xy_m=False, legend=False, showplot=False,
                            keep_size=True, xy_dmax=None, cbar=True, title='Sky Area', return_tile=False, kill_plots=kill_plots)
             Sky=bkg.median
@@ -321,7 +321,7 @@ def aperture_photometry_handler(DF,id,filter,data_label='',dq_label='',hdul=None
     photometry_AP.mask_aperture_data(detection_AP)
     photometry_AP.aperture_stats(detection_AP,aperture=detection_AP.aperture,sat_thr=sat_thr,fill=np.nan)
     if not kill_plots:
-        AP=Tile(data=detection_AP.data_mask_in,x=DATA.x_tile,y=DATA.y_tile,tile_base=detection_AP.data_mask_in.shape[1],inst=DF.inst,raise_errors=False)
+        AP=Tile(data=detection_AP.data_mask_in,x=DATA.x_tile,y=DATA.y_tile,tile_base=DF.tilebase,inst=DF.inst,raise_errors=False)
         AP.mk_tile(fig=fig,ax=ax[1],showplot=False,keep_size=True,cbar=True,title='Aperture Area',simplenorm='sqrt',return_tile=False,kill_plots=kill_plots)
      
     flux_converter.counts_and_errors(detection_AP)
@@ -466,7 +466,7 @@ def KLIP_aperture_photometry_handler(DF,id,filter,data_label='',dq_label='',hdul
         photometry_AP.aperture_stats(bkg,aperture=bkg.aperture,sigma=sigma,sat_thr=sat_thr,fill=np.nan)
         if not kill_plots:
             BG = Tile(data=bkg.data_mask_out, x=x_tile, y=y_tile,
-                            tile_base=bkg.data_mask_in.shape[0], inst=DF.inst, Python_origin=False)
+                            tile_base=DF.tilebase, inst=DF.inst, Python_origin=False)
             BG.mk_tile(fig=fig, ax=ax[2], pad_data=False, verbose=False, xy_m=False, legend=False, showplot=False,
                        keep_size=True, xy_dmax=None, cbar=True, title='Sky Area', return_tile=False, kill_plots=kill_plots)
 

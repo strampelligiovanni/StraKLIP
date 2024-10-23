@@ -5,7 +5,7 @@ from tiles import Tile
 import numpy.ma as ma
 from astropy.io import fits
 import pandas as pd
-from utils_tile import perform_PSF_subtraction
+from utils_tile import perform_PSF_subtraction, mk_raw_contrast_curves
 from itertools import repeat
 from ancillary import parallelization_package
 
@@ -51,8 +51,10 @@ def task_perform_KLIP_PSF_subtraction_on_tiles(DF,filter,cell,mvs_ids_list,label
                 if not targ_tiles.data.isna().all():
                     ref_tiles=pd.DataFrame(data=[[[0]]],columns=['data'])
                     unq_ids=DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids==id].unq_ids.unique()[0]
+                    psfnames=[]
                     for refid in DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(psf_ids_list)&~(DF.mvs_targets_df.mvs_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids==unq_ids].mvs_ids))].mvs_ids.unique():
                         path2ref = '%s/mvs_tiles/%s/tile_ID%i.fits' % (DF.path2out, filter, refid)
+                        psfnames.append(path2ref)
                         REF=Tile(x=(DF.tilebase-1)/2,y=(DF.tilebase-1)/2,tile_base=DF.tilebase,delta=0,inst=DF.inst,Python_origin=True)
                         REF.load_tile(path2ref,ext=label_dict[label],verbose=False,hdul_max=hdul_dict[label])
                         DQREF=Tile(x=int((DF.tilebase-1)/2),y=int((DF.tilebase-1)/2),tile_base=DF.tilebase,inst=DF.inst)
@@ -72,6 +74,11 @@ def task_perform_KLIP_PSF_subtraction_on_tiles(DF,filter,cell,mvs_ids_list,label
                             elno+=1
 
                     residuals,psf_models=perform_PSF_subtraction(targ_tiles['data'],ref_tiles['data'],kmodes=kmodes)
+                    getLogger(__name__).info(f'Performing raw contrast curve on {path2tile}.')
+                    mk_raw_contrast_curves(id, np.nanmax(targ_tiles['data'].values[0]), residuals, klstep=1,
+                                           path2dir='%s/mvs_tiles/%s/' % (DF.path2out, filter), dataset_iwa=1,
+                                           dataset_owa=10, fwhm=1.460)
+
                     return_Datacube=True
                     for Kmode in residuals.columns: # loop over the residuals of the different kmodes
                         KLIP=Tile(data=residuals[Kmode].tolist()[0],x=(DF.tilebase-1)/2,y=(DF.tilebase-1)/2,tile_base=DF.tilebase,delta=0,inst=DF.inst,Python_origin=True)
@@ -82,6 +89,7 @@ def task_perform_KLIP_PSF_subtraction_on_tiles(DF,filter,cell,mvs_ids_list,label
                         PSF=Tile(data=psf_models[model].tolist()[0],x=(DF.tilebase-1)/2,y=(DF.tilebase-1)/2,tile_base=DF.tilebase,delta=0,inst=DF.inst,Python_origin=True)
                         PSF.mk_tile(pad_data=False,legend=False,showplot=False,verbose=False,title='Model%s'%model,kill_plots=True)
                         Datacube=PSF.append_tile(path2tile,Datacube=Datacube,verbose=False,name='Model%s'%model,return_Datacube=return_Datacube,write=False)
+
             else:
                 getLogger(__name__).info(f'overwrite {overwrite} and all the kmodes {kmodes} layers are already saved in tile: {path2tile}. Skipping.')
 

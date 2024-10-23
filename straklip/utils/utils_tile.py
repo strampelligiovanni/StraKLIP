@@ -5,7 +5,6 @@ import os,math
 from tiles import Tile
 from ancillary import truncate_colormap
 
-import pyklip.klip as klip
 from pyklip.klip import klip_math
 
 import pandas as pd 
@@ -241,26 +240,6 @@ def make_tile_from_flat(flat, indices=None, shape=None, squeeze=True):
     if squeeze == True:
         img = np.squeeze(img)
     return img
-
-def mk_raw_contrast_curves(id,normalization, residuals, klstep=5, path2dir='./', dataset_iwa = 1, dataset_owa = 10, fwhm = 1.460,minmax=[0,1]):
-    fig, ax1 = plt.subplots(figsize=(12,6))
-    contrasts=[]
-    for KL in residuals.columns.values[::klstep]:
-        klframe = residuals[KL].values[0]/normalization
-        contrast_seps, contrast = klip.meas_contrast(klframe, dataset_iwa, dataset_owa, fwhm,
-                                                     center=[(klframe.shape[0]-1)//2,(klframe.shape[1]-1)//2])
-
-        ax1.plot(contrast_seps, contrast, '-.',label=f'KL = {KL}',linewidth=3.0)
-        contrasts.append(contrast)
-
-    ax1.set_ylim([np.nanmin(contrasts),np.nanmax(contrasts)])
-    ax1.set_yscale('log')
-    ax1.set_ylabel('5$\sigma$ Contrast')
-    ax1.set_xlabel('Separation [pix]')
-    fig.legend(ncols=3,loc=1)
-    plt.tight_layout()
-    plt.savefig(path2dir+f'/tile_ID{id}_raw_cc.png',bbox_inches='tight')
-    plt.close()
 
 def perform_PSF_subtraction(targ_tiles,ref_tiles,kmodes=[],no_PSF_models=False):
     '''

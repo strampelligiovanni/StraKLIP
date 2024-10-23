@@ -2,15 +2,11 @@
 utilities functions that can be use by or with the tile class
 """
 import os,math
-# sys.path.append('/')
-# from pipeline_config import path2data,path2pyKLIP
-
 from tiles import Tile
 from ancillary import truncate_colormap
 
-# sys.path.append(path2pyKLIP)
-# print(path2pyKLIP)
-from klip import klip_math
+import pyklip.klip as klip
+from pyklip.klip import klip_math
 
 import pandas as pd 
 import numpy as np
@@ -19,12 +15,10 @@ import matplotlib.pyplot as plt
 from scipy.ndimage import zoom,rotate,fourier_shift
 from skimage.registration import phase_cross_correlation
 from functools import reduce
-import matplotlib.patches as patches
 from stralog import getLogger
 from astropy.visualization import simple_norm
 import matplotlib.patches as patches
 from astropy.io import fits
-from tqdm import tqdm
 
 def allign_images(target_images,rot_angles,PAV_3s,filter,fig=None,ax=None,shift_list=None,cmap='Greys_r',tile_base=15,inst='WFC3',simplenorm='linear',min_percent=0,max_percent=100,power=1,log=1000,xy_m=True,xy_cen=False,legend=False,showplot=False,verbose=False,cbar=True,title='',xy_dmax=None,zfactor=10,alignment_box=0,step=1,Python_origin=True,method='median',kill=False,kill_plots=True,mk_arrow=False):
     '''
@@ -248,6 +242,26 @@ def make_tile_from_flat(flat, indices=None, shape=None, squeeze=True):
         img = np.squeeze(img)
     return img
 
+def mk_raw_contrast_curves(id,normalization, residuals, klstep=5, path2dir='./', dataset_iwa = 1, dataset_owa = 10, fwhm = 1.460,minmax=[0,1]):
+    fig, ax1 = plt.subplots(figsize=(12,6))
+    contrasts=[]
+    for KL in residuals.columns.values[::klstep]:
+        klframe = residuals[KL].values[0]/normalization
+        contrast_seps, contrast = klip.meas_contrast(klframe, dataset_iwa, dataset_owa, fwhm,
+                                                     center=[(klframe.shape[0]-1)//2,(klframe.shape[1]-1)//2])
+
+        ax1.plot(contrast_seps, contrast, '-.',label=f'KL = {KL}',linewidth=3.0)
+        contrasts.append(contrast)
+
+    ax1.set_ylim([np.nanmin(contrasts),np.nanmax(contrasts)])
+    ax1.set_yscale('log')
+    ax1.set_ylabel('5$\sigma$ Contrast')
+    ax1.set_xlabel('Separation [pix]')
+    fig.legend(ncols=3,loc=1)
+    plt.tight_layout()
+    plt.savefig(path2dir+f'/tile_ID{id}_raw_cc.png',bbox_inches='tight')
+    plt.close()
+
 def perform_PSF_subtraction(targ_tiles,ref_tiles,kmodes=[],no_PSF_models=False):
     '''
     Perform KLIP subtraction on all the stamps for one star. Since stamps
@@ -288,11 +302,6 @@ def perform_PSF_subtraction(targ_tiles,ref_tiles,kmodes=[],no_PSF_models=False):
 
         numbasis=numbasis[numbasis<=len(ref_stamps_flat)]
 
-    # if len(ref_stamps_flat) < np.nanmax(kmodes):
-    #     getLogger(__name__).warning(f'Limiting kmods to the maximum number of references: {len(ref_stamps_flat)}')
-    #     numbasis=numbasis[numbasis<=len(ref_stamps_flat)]
-
-    # try:
     klip_results = targ_stamps_flat.apply(lambda x: klip_math(x,
                                                               ref_stamps_flat,
                                                               numbasis = numbasis,
@@ -315,9 +324,6 @@ def perform_PSF_subtraction(targ_tiles,ref_tiles,kmodes=[],no_PSF_models=False):
         psf_models = psf_models.applymap(make_tile_from_flat)
 
     return(residuals,psf_models)
-    # except:
-    #     getLogger(__name__).warning(
-    #         f'Skipping due to a problem with the PSF subtraction. Please check')
 
 def psf_tile_from_basis(target, kl_basis, numbasis=None):
     """

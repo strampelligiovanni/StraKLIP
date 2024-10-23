@@ -140,60 +140,6 @@ def perform_KLIP_PSF_subtraction_on_tiles(DF,filter,label,workers=None,parallel_
         for cell in cell_list:
             task_perform_KLIP_PSF_subtraction_on_tiles(DF,filter,cell,mvs_ids_list,label_dict,hdul_dict,KLIP_label_dict,skip_flags,label,kmodes,overwrite)
 
-def perform_KLIP_PSF_subtraction_on_tiles(DF,filter,label,workers=None,parallel_runs=True,mvs_ids_list=[],kmodes=[],skip_flags=['rejected','known_double'],overwrite=False,chunksize = None):
-    '''
-    Perform PSF subtraction on targets tiles
-
-
-    Parameters
-    ----------
-    filter : TYPE
-        DESCRIPTION.
-    label : TYPE
-        DESCRIPTION.
-    workers : TYPE, optional
-        DESCRIPTION. The default is None.
-    parallel_runs : TYPE, optional
-        DESCRIPTION. The default is True.
-    mvs_ids_list : TYPE, optional
-        list of ids from the multivisit dataframe to test. The default is [].
-    kmodes : TYPE, optional
-        list of KLIP modes to use for the PSF subtraction. The default is [].
-    skip_flags : TYPE, optional
-        list of flagged targets to skip during PSF subtraction. The default is ['rejected','known_double']. The default is ['rejected','known_double'].
-    num_of_chunks : TYPE, optional
-        DESCRIPTION. The default is None.
-    overwrite : bool, optional
-        if True, overwrite existing residuals.
-        if False overwrite them ONLY if one or more Kmodes are missing. Defaulte False.
-    chunksize : TYPE, optional
-        DESCRIPTION. The default is None.
-
-    Returns
-    -------
-    None.
-
-    '''
-    label_dict={'data':1,'crclean_data':4}
-    hdul_dict={'data':3,'crclean_data':4}
-    KLIP_label_dict={'data':'Kmode','crclean_data':'crclean_Kmode'}
-    if label not in ['data','crclean_data']:
-        raise ValueError('Chose either data or crclean_data label for subtraction')
-
-    if len(mvs_ids_list)==0: cell_list=DF.mvs_targets_df['cell_%s'%filter].unique()
-    else: cell_list=np.sort(DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list), 'cell_%s'%filter].unique())
-    cell_list=cell_list[~np.isnan(cell_list)]
-
-    if parallel_runs:
-        workers,chunksize,ntarget=parallelization_package(workers,len(cell_list),chunksize = chunksize)
-        with ProcessPoolExecutor(max_workers=workers) as executor:
-            for _ in executor.map(task_perform_KLIP_PSF_subtraction_on_tiles,repeat(DF),repeat(filter),cell_list,repeat(mvs_ids_list),repeat(label_dict),repeat(hdul_dict),repeat(KLIP_label_dict),repeat(skip_flags),repeat(label),repeat(kmodes),repeat(overwrite),chunksize=chunksize):
-                pass
-
-    else:
-        for cell in cell_list:
-            task_perform_KLIP_PSF_subtraction_on_tiles(DF,filter,cell,mvs_ids_list,label_dict,hdul_dict,KLIP_label_dict,skip_flags,label,kmodes,overwrite)
-
 
 def KLIP_PSF_subtraction(DF, filter, label, avg_ids_list=[], kmodes=[], workers=None, parallel_runs=True,
                          skip_flags=['rejected', 'known_double'],PSF_sub_flags='good|unresolved',overwrite=False, chunksize=None):

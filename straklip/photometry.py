@@ -319,7 +319,6 @@ class photometry_AP:
             del data_mask_out
 
         elif isinstance(self.aperture,ApertureMask):
-        # elif isinstance(self.aperture,photutils.aperture.circle.ApertureMask):
             data_mask_in = self.aperture.multiply(self.data)
             mask=self.aperture.to_image((self.data.shape[0],self.data.shape[1])).astype(bool)
             # print(mask)

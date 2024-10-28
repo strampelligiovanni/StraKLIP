@@ -975,15 +975,7 @@ def update_candidates(DF, unq_ids_list=[], suffix='', d=1., skip_filters='F658N'
         DF.unq_candidates_df.unq_ids.isin(selected_unq_ids)].reset_index(drop=True)
     for unq_ids in DF.unq_candidates_df.unq_ids:
         mvs_ids_list = DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids == unq_ids].mvs_ids.unique()
-        DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_ids, 'mkmode'] = np.nanmedian(
-            DF.mvs_candidates_df.loc[
-                DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list), [f'kmode_{filter}' for filter in
-                                                                    DF.filters]].values)
-        DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_ids, 'sep'] = np.nanmean(
-            DF.mvs_candidates_df.loc[
-                DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list), [f'sep_{filter}' for filter in
-                                                                    DF.filters]].values)
-
+                                                          DF.filters]].values)
         for filter in DF.filters:
             if filter not in skip_filters and not \
             DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_ids, f'm_{filter}'].isna().values[0]:
@@ -991,6 +983,15 @@ def update_candidates(DF, unq_ids_list=[], suffix='', d=1., skip_filters='F658N'
                     DF.unq_candidates_df.unq_ids == unq_ids, f'nsigma_{filter}'] = np.nanmedian(
                     DF.mvs_candidates_df.loc[
                         DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list), f'nsigma_{filter}'].values)
+
+                DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_ids, 'mkmode'] = np.nanmedian(
+                    DF.mvs_candidates_df.loc[
+                        DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list), [f'kmode_{filter}' for filter in
+                                                                          DF.filters]].values)
+                DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_ids, 'sep'] = np.nanmean(
+                    DF.mvs_candidates_df.loc[
+                        DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_list), [f'sep_{filter}' for filter in
+                                                                          DF.filters]].values)
                 try:
                     DF.unq_candidates_df.loc[(DF.unq_candidates_df.unq_ids == unq_ids), f'magbin_{filter}'] = \
                     DF.unq_targets_df.loc[

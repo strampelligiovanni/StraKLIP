@@ -975,7 +975,7 @@ def update_candidates(DF, unq_ids_list=[], suffix='', d=1., skip_filters='F658N'
         DF.unq_candidates_df.unq_ids.isin(selected_unq_ids)].reset_index(drop=True)
     for unq_ids in DF.unq_candidates_df.unq_ids:
         mvs_ids_list = DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids == unq_ids].mvs_ids.unique()
-                                                          DF.filters]].values)
+
         for filter in DF.filters:
             if filter not in skip_filters and not \
             DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_ids, f'm_{filter}'].isna().values[0]:

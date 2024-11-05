@@ -573,7 +573,6 @@ class ShowRoom():
         else:
             unq_column_name=f'KMODE{unq_column_name}'
 
-
         mvs_ids_list_selected_global=self.DF.crossmatch_ids_df.loc[self.DF.crossmatch_ids_df.unq_ids==id].mvs_ids.values
         filters_list_selected_global=self.DF.filters
         nrows=len(mvs_ids_list_selected_global)

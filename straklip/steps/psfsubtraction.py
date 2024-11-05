@@ -10,6 +10,7 @@ from utils_plot import mk_raw_contrast_curves,mk_residual_tile_plots
 from itertools import repeat
 from ancillary import parallelization_package
 from straklip import config
+import os
 
 def task_perform_KLIP_PSF_subtraction_on_tiles(DF,filter,cell,mvs_ids_list,label_dict,hdul_dict,KLIP_label_dict,skip_flags,label,kmodes,overwrite,fwhm):
     if len(mvs_ids_list)==0:
@@ -48,15 +49,14 @@ def task_perform_KLIP_PSF_subtraction_on_tiles(DF,filter,cell,mvs_ids_list,label
                 mx = ma.masked_array(x, mask=mask_x)
                 mx.data[mx.mask]=-9999
                 mx.data[mx.data<0]=0
-                targ_tiles=pd.DataFrame(data=[[np.array(mx.data)]],columns=['data'])
+                targ_tiles=np.array(mx.data)
+                filename = DF.path2out + f'/mvs_tiles/{filter}/tile_ID{id}.fits'
                 elno=0
-                if not targ_tiles.data.isna().all():
-                    ref_tiles=pd.DataFrame(data=[[[0]]],columns=['data'])
-                    unq_ids=DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.mvs_ids==id].unq_ids.unique()[0]
+                if not np.all(np.isnan(targ_tiles)):
+                    ref_tiles=[]
                     psfnames=[]
-                    for refid in DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(psf_ids_list)&~(DF.mvs_targets_df.mvs_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids==unq_ids].mvs_ids))].mvs_ids.unique():
+                    for refid in DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(psf_ids_list)].mvs_ids.unique():
                         path2ref = '%s/mvs_tiles/%s/tile_ID%i.fits' % (DF.path2out, filter, refid)
-                        psfnames.append(path2ref)
                         REF=Tile(x=(DF.tilebase-1)/2,y=(DF.tilebase-1)/2,tile_base=DF.tilebase,delta=0,inst=DF.inst,Python_origin=True)
                         REF.load_tile(path2ref,ext=label_dict[label],verbose=False,hdul_max=hdul_dict[label])
                         DQREF=Tile(x=int((DF.tilebase-1)/2),y=int((DF.tilebase-1)/2),tile_base=DF.tilebase,inst=DF.inst)
@@ -65,34 +65,41 @@ def task_perform_KLIP_PSF_subtraction_on_tiles(DF,filter,cell,mvs_ids_list,label
                         xref=REF.data.copy()
                         mask_ref=DQREF.data.copy()
                         for i in [i for i in DQ_list if i not in DF.dq2mask]:  mask_ref[(mask_ref==i)]=0
-                        # mask_ref[(mask_ref!=4096)&(mask_ref!=8192)]=0
                         mref = ma.masked_array(xref, mask=mask_ref)
                         mref.data[mref.mask]=-9999
-                        ref_tiles.loc[elno]=[np.array(mref.data)]
-                        if len(mref[mref<=-9999])>10:pass
+                        if len(mref[mref<=-9999])>10:
+                            pass
                         else:
+                            psfnames.append(path2ref)
                             mref.data[mref.data<0]=0
-                            ref_tiles.loc[elno]=[np.array(mref.data)]
-                            elno+=1
+                            ref_tiles.append(np.array(mref.data))
+                        elno+=1
+                    if id not in psf_ids_list:
+                        psfnames.append(filename)
+                        ref_tiles.append(targ_tiles)
 
-                    residuals,psf_models=perform_PSF_subtraction(targ_tiles['data'],ref_tiles['data'],kmodes=kmodes)
-                    getLogger(__name__).info(f'Performing raw contrast curve on {path2tile}.')
-                    mk_raw_contrast_curves(id, np.nanmax(targ_tiles['data'].values[0]), residuals, klstep=1,
-                                           path2dir='%s/residual_tiles/%s/' % (DF.path2out, filter), dataset_iwa=1,
-                                           dataset_owa=10, fwhm=fwhm)
+                    residuals, psf_models = perform_PSF_subtraction(targ_tiles,
+                                                                    np.array(ref_tiles),
+                                                                    filename=filename,
+                                                                    psfnames=psfnames,
+                                                                    kmodes=kmodes,
+                                                                    outputdir=DF.path2out+'/kliptemp/')
 
-                    return_Datacube=True
-                    for Kmode in residuals.columns: # loop over the residuals of the different kmodes
-                        KLIP=Tile(data=residuals[Kmode].tolist()[0],x=(DF.tilebase-1)/2,y=(DF.tilebase-1)/2,tile_base=DF.tilebase,delta=0,inst=DF.inst,Python_origin=True)
-                        KLIP.mk_tile(pad_data=False,legend=False,showplot=False,verbose=False,title='Kmode%i'%Kmode,kill_plots=True)
-                        Datacube=KLIP.append_tile(path2tile,Datacube=Datacube,verbose=False,name='%s%i'%(KLIP_label_dict[label],Kmode),return_Datacube=return_Datacube,write=False)
-                    mk_residual_tile_plots(targ_tiles['data'].values[0], KLIP.data, id, '%s/residual_tiles/%s/' % (DF.path2out, filter))
+                    for elno in range(len(kmodes)): # loop over the residuals of the different kmodes
+                        KL = kmodes[elno]
+                        KLIP=Tile(data=residuals[elno],x=(DF.tilebase-1)/2,y=(DF.tilebase-1)/2,tile_base=DF.tilebase,delta=0,inst=DF.inst,Python_origin=True)
+                        KLIP.mk_tile(pad_data=False,legend=False,showplot=False,verbose=False,title='Kmode%i'%KL,kill_plots=True)
+                        Datacube=KLIP.append_tile(path2tile,Datacube=Datacube,verbose=False,name='%s%i'%(KLIP_label_dict[label],KL),return_Datacube=True,write=False)
+                    mk_residual_tile_plots(targ_tiles, KLIP.data, id, '%s/residual_tiles/%s/' % (DF.path2out, filter))
 
-                    for model in psf_models.columns:
-                        if model == psf_models.columns[-1]:return_Datacube=False
-                        PSF=Tile(data=psf_models[model].tolist()[0],x=(DF.tilebase-1)/2,y=(DF.tilebase-1)/2,tile_base=DF.tilebase,delta=0,inst=DF.inst,Python_origin=True)
-                        PSF.mk_tile(pad_data=False,legend=False,showplot=False,verbose=False,title='Model%s'%model,kill_plots=True)
-                        Datacube=PSF.append_tile(path2tile,Datacube=Datacube,verbose=False,name='Model%s'%model,return_Datacube=return_Datacube,write=False)
+                    for elno in range(len(kmodes)):  # loop over the residuals of the different kmodes
+                        KL = kmodes[elno]
+                        PSF = Tile(data=psf_models[elno], x=(DF.tilebase - 1) / 2, y=(DF.tilebase - 1) / 2,
+                               tile_base=DF.tilebase, delta=0, inst=DF.inst, Python_origin=True)
+                        PSF.mk_tile(pad_data=False, legend=False, showplot=False, verbose=False, title='Model%s' % KL,
+                                    kill_plots=True)
+                        PSF.append_tile(path2tile, Datacube=Datacube, verbose=False, name='Model%s' % KL,
+                                                   return_Datacube=False, write=False)
 
             else:
                 getLogger(__name__).info(f'overwrite {overwrite} and all the kmodes {kmodes} layers are already saved in tile: {path2tile}. Skipping.')
@@ -188,6 +195,10 @@ def KLIP_PSF_subtraction(DF, filter, label, unq_ids_list=[], kmodes=[], workers=
 def run(packet):
     dataset = packet['dataset']
     DF = packet['DF']
+    if not os.path.exists(DF.path2out+'/kliptemp/'):
+        os.makedirs(DF.path2out+'/kliptemp')
+        getLogger(__name__).info(f'Making {DF.path2out}/kliptemp to storage temporary PSF subtractions')
+
     if dataset.pipe_cfg.mktiles['cr_remove'] or dataset.pipe_cfg.mktiles['la_cr_remove']:
         label='crclean_data'
         getLogger(__name__).info(f'Performing KLIP PSF subtraction on CR cleaned tiles.')

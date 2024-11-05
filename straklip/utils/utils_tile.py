@@ -18,6 +18,9 @@ from stralog import getLogger
 from astropy.visualization import simple_norm
 import matplotlib.patches as patches
 from astropy.io import fits
+from pyklip.instruments.Instrument import GenericData
+import pyklip.rdi as rdi
+import pyklip.parallelized as parallelized
 
 def allign_images(target_images,rot_angles,PAV_3s,filter,fig=None,ax=None,shift_list=None,cmap='Greys_r',tile_base=15,inst='WFC3',simplenorm='linear',min_percent=0,max_percent=100,power=1,log=1000,xy_m=True,xy_cen=False,legend=False,showplot=False,verbose=False,cbar=True,title='',xy_dmax=None,zfactor=10,alignment_box=0,step=1,Python_origin=True,method='median',kill=False,kill_plots=True,mk_arrow=False):
     '''
@@ -241,7 +244,19 @@ def make_tile_from_flat(flat, indices=None, shape=None, squeeze=True):
         img = np.squeeze(img)
     return img
 
-def perform_PSF_subtraction(targ_tiles,ref_tiles,kmodes=[],no_PSF_models=False):
+def setup_DATASET(DF, id, filter, d):
+    filename = DF.path2out + f'/mvs_tiles/{filter}/tile_ID{id}.fits'
+    hdulist = pyfits.open(filename)
+    data = hdulist['SCI'].data
+    data[data < 0] = 0
+    centers = [int((data.shape[1] - 1) / 2), int((data.shape[0] - 1) / 2)]
+
+    # now let's generate a dataset to reduce for KLIP. This contains data at both roll angles
+    dataset = GenericData([data], [centers], filenames=[DF.path2out + f'/mvs_tiles/{filter}/tile_ID52.fits'])
+
+    return(dataset)
+
+def perform_PSF_subtraction(targ_tiles,ref_tiles,filename,psfnames,kmodes=[],outputdir='./'):
     '''
     Perform KLIP subtraction on all the stamps for one star. Since stamps
     of the same star share the same references, this computes the Z_k's for
@@ -255,54 +270,49 @@ def perform_PSF_subtraction(targ_tiles,ref_tiles,kmodes=[],no_PSF_models=False):
         reference tiles to use for the PSF library.
     kmodes : list, optional
         list of KLIP modes to use in the PSF subtraction. If empty, use all The default is [].
-    no_PSF_models : bool, optional
-        choose to retrun the psf models. The default is False.
+    filename: path to the target tile
+    psfnames: path to the target tiles used as psfs
+    outputdir: path to the temporary dir to save klip output
 
     Returns
     -------
     (residuals,psf_models).
 
     '''
-    # flatten
-    targ_stamps_flat = targ_tiles.apply(flatten_tile_axes)
-    ref_stamps_flat = flatten_tile_axes(np.stack(ref_tiles))
+    centers = [int((targ_tiles.shape[1] - 1) / 2), int((targ_tiles.shape[0] - 1) / 2)]
+    # now let's generate a dataset to reduce for KLIP. This contains data at both roll angles
+    dataset = GenericData([targ_tiles], [centers], filenames=[filename])
+    # make the PSF library
+    # we need to compute the correlation matrix of all images vs each other since we haven't computed it before
+    psflib = rdi.PSFLibrary(ref_tiles, centers, np.array(psfnames), compute_correlation=True)
 
-    # apply KLIP
-    if len(kmodes) ==0:
-        numbasis = np.arange(1, len(ref_stamps_flat)-1)
-    else:
-        if isinstance(kmodes,np.ndarray):
-            numbasis=kmodes
-        else:
-            numbasis = np.array(kmodes)
+    # now we need to prepare the PSF library to reduce this dataset
+    # what this does is tell the PSF library to not use files from this star in the PSF library for RDI
+    psflib.prepare_library(dataset)
 
-        if len(ref_stamps_flat) < np.nanmax(kmodes):
-            getLogger(__name__).warning(f'Limiting kmods to the maximum number of references: {len(ref_stamps_flat)}')
+    parallelized.klip_dataset(dataset,
+                              mode='RDI',
+                              outputdir=outputdir,
+                              fileprefix="parallel",
+                              annuli=1,
+                              subsections=1,
+                              movement=0.,
+                              numbasis=kmodes,
+                              maxnumbasis=np.nanmax(kmodes),
+                              aligned_center=dataset._centers[0],
+                              psf_library=psflib,
+                              corr_smooth=0,
+                              verbose=False)
 
-        numbasis=numbasis[numbasis<=len(ref_stamps_flat)]
-
-    klip_results = targ_stamps_flat.apply(lambda x: klip_math(x,
-                                                              ref_stamps_flat,
-                                                              numbasis = numbasis,
-                                                              return_basis = True))
-    # subtraction results
-    residuals = klip_results.apply(lambda x: pd.Series(dict(zip(numbasis, x[0].T))))
-    residuals = residuals.applymap(make_tile_from_flat)
-    if no_PSF_models:
-        psf_models=[]
-    else:
-        # generate PSF models and store in dataframe
-        # klip basis
-        klip_basis = klip_results.apply(lambda x: pd.Series(dict(zip(numbasis, x[1]))))
-        model_gen_df = pd.merge(targ_stamps_flat, klip_basis, left_index=True, right_index=True)
-        psf_models = model_gen_df.apply(lambda x: psf_tile_from_basis(x[targ_tiles.name],
-                                                                       np.stack(x[numbasis]),
-                                                                       numbasis=numbasis),
-                                                                       axis=1)
-        psf_models = psf_models.apply(lambda x: pd.Series(dict(zip(numbasis, x))))
-        psf_models = psf_models.applymap(make_tile_from_flat)
+    hdulist = fits.open(f'{outputdir}/parallel-KLmodes-all.fits')
+    residuals = hdulist[0].data
+    hdulist.close()
+    psf_models = np.array([targ_tiles - res for res in residuals])
+    if os.path.exists(f'{outputdir}/parallel-KLmodes-all.fits'):
+        os.remove(f'{outputdir}/parallel-KLmodes-all.fits')
 
     return(residuals,psf_models)
+
 
 def psf_tile_from_basis(target, kl_basis, numbasis=None):
     """

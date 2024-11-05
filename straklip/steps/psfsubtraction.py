@@ -171,7 +171,7 @@ def KLIP_PSF_subtraction(DF, filter, label, unq_ids_list=[], kmodes=[], workers=
     else:
         unq_ids_list_in = []
         for avg_id in unq_ids_list:
-            if avg_id in DF.avg_candidates_df.unq_ids.unique():
+            if avg_id in DF.unq_candidates_df.unq_ids.unique():
                 unq_ids_list_in.append(avg_id)
 
 

@@ -441,7 +441,7 @@ def run(packet):
     dataset = packet['dataset']
     for filter in dataset.data_cfg.filters:
         make_mvs_tiles(DF,filter,dataset.pipe_cfg,
-                        unq_ids_test_list=dataset.pipe_cfg.mktiles['unq_ids_list'],
+                        unq_ids_test_list=dataset.pipe_cfg.unq_ids_list,
                         xy_m=dataset.pipe_cfg.mktiles['xy_m'],
                         workers=int(dataset.pipe_cfg.ncpu),
                         cr_remove=dataset.pipe_cfg.mktiles['cr_remove'],
@@ -459,7 +459,7 @@ def run(packet):
 
 
         make_median_tiles(DF, filter,
-                            unq_ids_list=dataset.pipe_cfg.mktiles['unq_ids_list'],
+                            unq_ids_list=dataset.pipe_cfg.unq_ids_list,
                             workers=int(dataset.pipe_cfg.ncpu),
                             zfactor=dataset.pipe_cfg.mktiles['zfactor'],
                             alignment_box=dataset.pipe_cfg.mktiles['alignment_box'],

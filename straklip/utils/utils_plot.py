@@ -393,7 +393,7 @@ def mk_arrows(xa,ya,theta_0,PAV3_0,plt,L=1,Lp=None,dtx=0.3,dty=0.15,head_width=0
         plt.text(xa+xEnd2+dtx,ya+yEnd2+dty,'PA',color=tc,fontsize=fz)
 
 
-def mk_raw_contrast_curves(id,normalization, residuals, klstep=5, path2dir='./', dataset_iwa = 1, dataset_owa = 10, fwhm = 1.460,minmax=[0,1]):
+def mk_raw_contrast_curves(id,normalization, residuals, klstep=5, path2dir='./', dataset_iwa = 1, dataset_owa = 10, fwhm = 1.460, filename=None):
     fig, ax1 = plt.subplots(figsize=(12,6))
     contrasts=[]
     for KL in residuals.columns.values[::klstep]:
@@ -410,7 +410,9 @@ def mk_raw_contrast_curves(id,normalization, residuals, klstep=5, path2dir='./',
     ax1.set_xlabel('Separation [pix]')
     fig.legend(ncols=3,loc=1)
     plt.tight_layout()
-    plt.savefig(path2dir+f'/tile_ID{id}_raw_cc.png',bbox_inches='tight')
+    if filename is None:
+        filename = f'tile_ID{id}_raw_cc.png'
+    plt.savefig(path2dir+f'/{filename}',bbox_inches='tight')
     plt.close()
 
 def mk_residual_tile_plots(SCI,RES,id,pat2savedir):

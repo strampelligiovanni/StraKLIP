@@ -200,7 +200,7 @@ def run(packet):
         config.make_paths(config=None, paths=DF.path2out + '/residual_tiles/%s' % filter)
         KLIP_PSF_subtraction(DF, filter,
                              label=label,
-                             unq_ids_list=dataset.pipe_cfg.psfsubtraction['unq_ids_list'],
+                             unq_ids_list=dataset.pipe_cfg.unq_ids_list,
                              kmodes=dataset.pipe_cfg.psfsubtraction['kmodes'],
                              workers=dataset.pipe_cfg.ncpu,
                              parallel_runs=dataset.pipe_cfg.psfsubtraction['parallel_runs'],

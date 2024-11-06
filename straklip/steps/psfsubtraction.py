@@ -11,8 +11,25 @@ from itertools import repeat
 from ancillary import parallelization_package
 from straklip import config
 import os
+from scipy.ndimage import median_filter
 
-def task_perform_KLIP_PSF_subtraction_on_tiles(DF,filter,cell,mvs_ids_list,label_dict,hdul_dict,KLIP_label_dict,skip_flags,label,kmodes,overwrite,fwhm):
+def replace_badpx_with(image,pxdq_temp,mode='median', mask_size=5):
+    # Step 1: Identify where NaNs are in the image
+    # nan_mask = np.isnan(image)
+
+    # Step 2: Apply a median filter over the image, ignoring NaNs temporarily
+    # Use `np.nanmedian` by applying a filter that ignores NaNs
+    median_filtered_image = median_filter(np.nan_to_num(image, nan=np.nanmean(image)), size=mask_size)
+
+    if mode == 'median':
+        # Step 3: Replace the NaNs with the corresponding median value
+        image[pxdq_temp] = median_filtered_image[pxdq_temp]
+    else:
+        image[pxdq_temp] = mode
+
+    return image
+
+def task_perform_KLIP_PSF_subtraction_on_tiles(DF,filter,cell,mvs_ids_list,label_dict,hdul_dict,KLIP_label_dict,skip_flags,label,kmodes,overwrite,skipDQ):
     if len(mvs_ids_list)==0:
         ids_list=DF.mvs_targets_df.loc[(DF.mvs_targets_df['cell_%s'%filter]==cell)&~DF.mvs_targets_df['flag_%s'%filter].isin([skip_flags])].mvs_ids.unique()
     else:
@@ -38,18 +55,23 @@ def task_perform_KLIP_PSF_subtraction_on_tiles(DF,filter,cell,mvs_ids_list,label
                 getLogger(__name__).info(f'Working on tile: {path2tile}.')
                 DATA=Tile(x=(DF.tilebase-1)/2,y=(DF.tilebase-1)/2,tile_base=DF.tilebase,delta=0,inst=DF.inst,Python_origin=True)
                 Datacube=DATA.load_tile(path2tile,ext=label_dict[label],verbose=False,return_Datacube=True,hdul_max=hdul_dict[label],mode='update',raise_errors=True)
-                DQ=Tile(x=int((DF.tilebase-1)/2),y=int((DF.tilebase-1)/2),tile_base=DF.tilebase,inst=DF.inst)
-                DQ.load_tile(path2tile,ext='dq',verbose=False,return_Datacube=False)
-                DQ_list=list(set(DQ.data.ravel()))
+                if skipDQ:
+                    DQ=Tile(x=int((DF.tilebase-1)/2),y=int((DF.tilebase-1)/2),tile_base=DF.tilebase,inst=DF.inst)
+                    DQ.load_tile(path2tile,ext='dq',verbose=False,return_Datacube=False)
+                    DQ_list=list(set(DQ.data.ravel()))
 
                 x = DATA.data.copy()
-                mask_x=DQ.data.copy()
-                for i in [i for i in DQ_list if i not in DF.dq2mask]:
-                    mask_x[(mask_x==i)]=0
-                mx = ma.masked_array(x, mask=mask_x)
-                mx.data[mx.mask]=-9999
-                mx.data[mx.data<0]=0
-                targ_tiles=np.array(mx.data)
+                if skipDQ:
+                    mask_x=DQ.data.copy()
+                    for i in [i for i in DQ_list if i not in DF.dq2mask]:
+                        mask_x[(mask_x==i)]=0
+                    mx = ma.masked_array(x, mask=mask_x)
+                    mx.data[mx.mask]=-9999
+                    mx.data[mx.data<0]=0
+                    targ_tiles=np.array(mx.data)
+                else:
+                    x[x<0]=0
+                    targ_tiles=np.array(x)
                 filename = DF.path2out + f'/mvs_tiles/{filter}/tile_ID{id}.fits'
                 elno=0
                 if not np.all(np.isnan(targ_tiles)):
@@ -59,20 +81,25 @@ def task_perform_KLIP_PSF_subtraction_on_tiles(DF,filter,cell,mvs_ids_list,label
                         path2ref = '%s/mvs_tiles/%s/tile_ID%i.fits' % (DF.path2out, filter, refid)
                         REF=Tile(x=(DF.tilebase-1)/2,y=(DF.tilebase-1)/2,tile_base=DF.tilebase,delta=0,inst=DF.inst,Python_origin=True)
                         REF.load_tile(path2ref,ext=label_dict[label],verbose=False,hdul_max=hdul_dict[label])
-                        DQREF=Tile(x=int((DF.tilebase-1)/2),y=int((DF.tilebase-1)/2),tile_base=DF.tilebase,inst=DF.inst)
-                        DQREF.load_tile(path2ref,ext='dq',verbose=False,return_Datacube=False)
+                        if skipDQ:
+                            DQREF=Tile(x=int((DF.tilebase-1)/2),y=int((DF.tilebase-1)/2),tile_base=DF.tilebase,inst=DF.inst)
+                            DQREF.load_tile(path2ref,ext='dq',verbose=False,return_Datacube=False)
 
                         xref=REF.data.copy()
-                        mask_ref=DQREF.data.copy()
-                        for i in [i for i in DQ_list if i not in DF.dq2mask]:  mask_ref[(mask_ref==i)]=0
-                        mref = ma.masked_array(xref, mask=mask_ref)
-                        mref.data[mref.mask]=-9999
-                        if len(mref[mref<=-9999])>10:
-                            pass
+                        psfnames.append(path2ref)
+                        if skipDQ:
+                            mask_ref=DQREF.data.copy()
+                            for i in [i for i in DQ_list if i not in DF.dq2mask]:  mask_ref[(mask_ref==i)]=0
+                            mref = ma.masked_array(xref, mask=mask_ref)
+                            mref.data[mref.mask]=-9999
+                            if len(mref[mref<=-9999])>10:
+                                pass
+                            else:
+                                ref_tiles.append(np.array(mref.data))
+                                mref.data[mref.data<0]=0
                         else:
-                            psfnames.append(path2ref)
-                            mref.data[mref.data<0]=0
-                            ref_tiles.append(np.array(mref.data))
+                            xref[xref<0]=0
+                            ref_tiles.append(np.array(xref))
                         elno+=1
                     if id not in psf_ids_list:
                         psfnames.append(filename)
@@ -105,7 +132,7 @@ def task_perform_KLIP_PSF_subtraction_on_tiles(DF,filter,cell,mvs_ids_list,label
                 getLogger(__name__).info(f'overwrite {overwrite} and all the kmodes {kmodes} layers are already saved in tile: {path2tile}. Skipping.')
 
 
-def perform_KLIP_PSF_subtraction_on_tiles(DF,filter,label,workers=None,parallel_runs=True,mvs_ids_list=[],kmodes=[],skip_flags=['rejected','known_double'],overwrite=False,chunksize = None, fwhm={}):
+def perform_KLIP_PSF_subtraction_on_tiles(DF,filter,label,workers=None,parallel_runs=True,mvs_ids_list=[],kmodes=[],skip_flags=['rejected','known_double'],overwrite=False,chunksize = None, skipDQ = False):
     '''
     Perform PSF subtraction on targets tiles
 
@@ -152,16 +179,16 @@ def perform_KLIP_PSF_subtraction_on_tiles(DF,filter,label,workers=None,parallel_
     if parallel_runs:
         workers,chunksize,ntarget=parallelization_package(workers,len(cell_list),chunksize = chunksize)
         with ProcessPoolExecutor(max_workers=workers) as executor:
-            for _ in executor.map(task_perform_KLIP_PSF_subtraction_on_tiles,repeat(DF),repeat(filter),cell_list,repeat(mvs_ids_list),repeat(label_dict),repeat(hdul_dict),repeat(KLIP_label_dict),repeat(skip_flags),repeat(label),repeat(kmodes),repeat(overwrite),repeat(fwhm[filter]),chunksize=chunksize):
+            for _ in executor.map(task_perform_KLIP_PSF_subtraction_on_tiles,repeat(DF),repeat(filter),cell_list,repeat(mvs_ids_list),repeat(label_dict),repeat(hdul_dict),repeat(KLIP_label_dict),repeat(skip_flags),repeat(label),repeat(kmodes),repeat(overwrite),repeat(skipDQ),chunksize=chunksize):
                 pass
 
     else:
         for cell in cell_list:
-            task_perform_KLIP_PSF_subtraction_on_tiles(DF,filter,cell,mvs_ids_list,label_dict,hdul_dict,KLIP_label_dict,skip_flags,label,kmodes,overwrite,fwhm[filter])
+            task_perform_KLIP_PSF_subtraction_on_tiles(DF,filter,cell,mvs_ids_list,label_dict,hdul_dict,KLIP_label_dict,skip_flags,label,kmodes,overwrite,skipDQ)
 
 
 def KLIP_PSF_subtraction(DF, filter, label, unq_ids_list=[], kmodes=[], workers=None, parallel_runs=True,
-                         skip_flags=['rejected', 'known_double'],PSF_sub_flags='good|unresolved',overwrite=False, chunksize=None,fwhm={}):
+                         skip_flags=['rejected', 'known_double'],PSF_sub_flags='good|unresolved',overwrite=False, chunksize=None,skipDQ=False):
     '''
     This is a wrapper for KLIP PSF subtraction step
 
@@ -190,7 +217,7 @@ def KLIP_PSF_subtraction(DF, filter, label, unq_ids_list=[], kmodes=[], workers=
                                           skip_flags=skip_flags,
                                           chunksize=chunksize,
                                           overwrite=overwrite,
-                                          fwhm=fwhm)
+                                          skipDQ=skipDQ)
 
 def run(packet):
     dataset = packet['dataset']
@@ -218,5 +245,5 @@ def run(packet):
                              PSF_sub_flags=dataset.pipe_cfg.psfsubtraction['PSF_sub_flags'],
                              skip_flags=dataset.pipe_cfg.psfsubtraction['skip_flags'],
                              overwrite=dataset.pipe_cfg.psfsubtraction['redo'],
-                             fwhm=dataset.pipe_cfg.instrument['fwhm'])
+                             skipDQ=dataset.pipe_cfg.psfsubtraction['skipDQ'])
     DF.save_dataframes(__name__)

@@ -106,7 +106,6 @@ def task_perform_KLIP_PSF_subtraction_on_tiles(DF,filter,cell,mvs_ids_list,label
                     if id not in psf_ids_list:
                         psfnames.append(filename)
                         ref_tiles.append(targ_tiles)
-                        psfnames.append(path2ref)
 
 
                     residuals, psf_models = perform_PSF_subtraction(targ_tiles,

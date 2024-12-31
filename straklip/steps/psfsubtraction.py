@@ -86,7 +86,6 @@ def task_perform_KLIP_PSF_subtraction_on_tiles(DF,filter,cell,mvs_ids_list,label
                             DQREF.load_tile(path2ref,ext='dq',verbose=False,return_Datacube=False)
 
                         xref=REF.data.copy()
-                        psfnames.append(path2ref)
                         if skipDQ:
                             mask_ref=DQREF.data.copy()
                             for i in [i for i in DQ_list if i not in DF.dq2mask]:  mask_ref[(mask_ref==i)]=0
@@ -95,15 +94,20 @@ def task_perform_KLIP_PSF_subtraction_on_tiles(DF,filter,cell,mvs_ids_list,label
                             if len(mref[mref<=-9999])>10:
                                 pass
                             else:
+                                psfnames.append(path2ref)
                                 ref_tiles.append(np.array(mref.data))
                                 mref.data[mref.data<0]=0
                         else:
                             xref[xref<0]=0
                             ref_tiles.append(np.array(xref))
+                            psfnames.append(path2ref)
+
                         elno+=1
                     if id not in psf_ids_list:
                         psfnames.append(filename)
                         ref_tiles.append(targ_tiles)
+                        psfnames.append(path2ref)
+
 
                     residuals, psf_models = perform_PSF_subtraction(targ_tiles,
                                                                     np.array(ref_tiles),

@@ -55,13 +55,13 @@ def task_perform_KLIP_PSF_subtraction_on_tiles(DF,filter,cell,mvs_ids_list,label
                 getLogger(__name__).info(f'Working on tile: {path2tile}.')
                 DATA=Tile(x=(DF.tilebase-1)/2,y=(DF.tilebase-1)/2,tile_base=DF.tilebase,delta=0,inst=DF.inst,Python_origin=True)
                 Datacube=DATA.load_tile(path2tile,ext=label_dict[label],verbose=False,return_Datacube=True,hdul_max=hdul_dict[label],mode='update',raise_errors=True)
-                if skipDQ:
+                if not skipDQ:
                     DQ=Tile(x=int((DF.tilebase-1)/2),y=int((DF.tilebase-1)/2),tile_base=DF.tilebase,inst=DF.inst)
                     DQ.load_tile(path2tile,ext='dq',verbose=False,return_Datacube=False)
                     DQ_list=list(set(DQ.data.ravel()))
 
                 x = DATA.data.copy()
-                if skipDQ:
+                if not skipDQ:
                     mask_x=DQ.data.copy()
                     for i in [i for i in DQ_list if i not in DF.dq2mask]:
                         mask_x[(mask_x==i)]=0
@@ -81,12 +81,12 @@ def task_perform_KLIP_PSF_subtraction_on_tiles(DF,filter,cell,mvs_ids_list,label
                         path2ref = '%s/mvs_tiles/%s/tile_ID%i.fits' % (DF.path2out, filter, refid)
                         REF=Tile(x=(DF.tilebase-1)/2,y=(DF.tilebase-1)/2,tile_base=DF.tilebase,delta=0,inst=DF.inst,Python_origin=True)
                         REF.load_tile(path2ref,ext=label_dict[label],verbose=False,hdul_max=hdul_dict[label])
-                        if skipDQ:
+                        if not skipDQ:
                             DQREF=Tile(x=int((DF.tilebase-1)/2),y=int((DF.tilebase-1)/2),tile_base=DF.tilebase,inst=DF.inst)
                             DQREF.load_tile(path2ref,ext='dq',verbose=False,return_Datacube=False)
 
                         xref=REF.data.copy()
-                        if skipDQ:
+                        if not skipDQ:
                             mask_ref=DQREF.data.copy()
                             for i in [i for i in DQ_list if i not in DF.dq2mask]:  mask_ref[(mask_ref==i)]=0
                             mref = ma.masked_array(xref, mask=mask_ref)

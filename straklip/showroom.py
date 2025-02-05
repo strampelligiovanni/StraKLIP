@@ -20,7 +20,9 @@ import ipywidgets as widgets
 import tkinter as tk
 import functools
 import warnings
+from scipy.stats import sigmaclip
 warnings.filterwarnings('ignore', message='not allowed')
+
 class ShowRoom():
     def __init__(self,DF,DF_fk=None):
         self.DF=DF
@@ -140,7 +142,7 @@ class ShowRoom():
             readout_format='.1f',
         )
         self.show_mvs_check=widgets.Checkbox(
-            value=False,
+            value=True,
             description='show_mvs',
             disabled=False,
             indent=False,
@@ -175,7 +177,7 @@ class ShowRoom():
             layout=widgets.Layout(width='auto')
         )
         self.cbar_check=widgets.Checkbox(
-            value=False,
+            value=True,
             description='cbar',
             disabled=False,
             indent=False,
@@ -423,14 +425,10 @@ class ShowRoom():
         # box4=self.display_mvs_kmode(self.DF.crossmatch_ids_df.loc[self.DF.crossmatch_ids_df.unq_ids==id].mvs_ids.values,out1c)
         display(widgets.HBox([widgets.VBox([box1,box2]),box3]))
 
-    # def load_and_plot_tiles(self, mvs_ids_list, nrows, ncols, fig1, ax1, fig2, ax2, mvs_label_dict, unq_label_dict,
-    #                         id=0, unq_column_name='data', mvs_column_name='data', cmap='', simplenorm='',
-    #                         percent=[0, 100], power=1, log=1000, show_mvs=False, xy_m=True, xy_cen=False,
-    #                         legend=True, cbar=True):
     def load_and_plot_tiles(self, mvs_ids_list, nrows, ncols, fig1, ax1, fig2, ax2,unq_column_name,mvs_column_name,
                             id=0, cmap='', simplenorm='',
                             percent=[0, 100], power=1, log=1000, show_mvs=False, xy_m=True, xy_cen=False,
-                            legend=True, cbar=True):
+                            legend=True, cbar=True, SNR=False):
         elnoy=0
         for filter in self.DF.filters:
             elnox=0
@@ -443,17 +441,15 @@ class ShowRoom():
                         ax_in.grid(False)
 
                         DATA=Tile()
-                        # DATA.load_tile(f'{self.DF.path2out}/mvs_tiles/{filter}/tile_ID{mvs_ids}.fits',
-                        #                ext=mvs_label_dict[mvs_column_name],raise_errors=False)
                         Datacube=DATA.load_tile(f'{self.DF.path2out}/mvs_tiles/{filter}/tile_ID{mvs_ids}.fits',
                                        raise_errors=False,return_Datacube=True)
-
                         mvs_label_dict={Datacube[i].name:i for i in range(len(Datacube))}
-                        # print(Datacube.info())
-                        # print(mvs_label_dict, mvs_column_name)
-                        # print(mvs_label_dict[mvs_column_name])
 
                         image=Datacube[mvs_label_dict[mvs_column_name]].data
+                        if SNR:
+                            filtered_data, lower_bound, upper_bound = sigmaclip(image, low=5, high=5)
+                            STD = np.nanstd(filtered_data)
+                            image/=STD
                         PA_V3=self.DF.mvs_targets_df.loc[self.DF.mvs_targets_df.mvs_ids==mvs_ids,f'pav3_{filter}'].values[0]
                         ROTA=self.DF.mvs_targets_df.loc[self.DF.mvs_targets_df.mvs_ids==mvs_ids,f'rota_{filter}'].values[0]
                         if not np.isnan(image).all():
@@ -476,17 +472,15 @@ class ShowRoom():
                 ax_in.grid(False)
                 try:
                     DATA=Tile()
-                    # DATA.load_tile(f'{self.DF.path2out}/median_tiles/{filter}/tile_ID{id}.fits',
-                    #                ext=unq_label_dict[unq_column_name], raise_errors=False)
                     Datacube=DATA.load_tile(f'{self.DF.path2out}/median_tiles/{filter}/tile_ID{id}.fits',
                                     raise_errors=False,return_Datacube=True)
 
                     unq_label_dict={Datacube[i].name:i for i in range(len(Datacube))}
-                    # print(unq_label_dict, unq_column_name)
-                    # print(unq_label_dict[unq_column_name])
-                    # print(Datacube.info())
-
                     image=Datacube[unq_label_dict[unq_column_name]].data
+                    if SNR:
+                        filtered_data, lower_bound, upper_bound = sigmaclip(image, low=5, high=5)
+                        STD = np.nanstd(filtered_data)
+                        image /= STD
                     load_image(image,filter,fig=fig2,ax=ax_in,cmap=cmap,title='%s'%(filter),tile_base=self.DF.tilebase,
                                simplenorm=simplenorm,min_percent=percent[0],max_percent=percent[1],power=power,log=log,
                                xy_m=xy_m,xy_cen=xy_cen,legend=legend_in,cbar=cbar,showplot=False)
@@ -504,7 +498,6 @@ class ShowRoom():
         plt.show()
         plt.close('LL')
 
-    # def show_target_tiles_and_df(self,id=0,unq_column_name='data',mvs_column_name='_Kmode',cmap='',simplenorm='',percent=[0,100],power=1,log=1000,show_mvs=False,xy_m=True,xy_cen=False,legend=True,cbar=True):
     def show_target_tiles_and_df(self, id=0, cmap='',unq_column_name='data',mvs_column_name='_Kmode',
                                  simplenorm='', percent=[0, 100], power=1, log=1000, show_mvs=False, xy_m=True,
                                  xy_cen=False, legend=True, cbar=True):
@@ -517,8 +510,20 @@ class ShowRoom():
 
         nrows=len(mvs_ids_list_selected_global)
         ncols=len(self.DF.filters)
-        fig2,ax2=plt.subplots(1,ncols,figsize=(7*ncols+ncols,7))
-        if ncols==1: ax2=[ax2]
+        if not show_mvs:
+
+            fig2,ax2=plt.subplots(1,ncols,figsize=(7*ncols+ncols,7))
+            if ncols == 1: ax2 = [ax2]
+
+            box_layout = widgets.Layout(display='flex',
+                                        # flex_flow='row wrap',
+                                        width=width_global)
+            out_candidate_global = widgets.Output(layout=box_layout)
+            fig1, ax1 = [None, None]
+        else:
+            fig1,ax1=plt.subplots(ncols,nrows,figsize=(5*nrows+nrows,5*ncols),squeeze=False)
+            fig2, ax2 = [None, None]
+
         box_layout = widgets.Layout(display='flex',
                                     # flex_flow='row wrap',
                                     width=width_global)
@@ -526,13 +531,8 @@ class ShowRoom():
         out_target_global = widgets.Output(layout=box_layout)
         self.change_type.on_submit(functools.partial(self.upon_submitted_type_text,rs_=[id,out_target_global]))
 
-        if show_mvs: 
-            fig1,ax1=plt.subplots(ncols,nrows,figsize=(7*nrows+nrows,7*ncols),squeeze=False)
-        else: fig1,ax1=[None,None]
-        # self.load_and_plot_tiles(mvs_ids_list_selected_global,nrows,ncols,fig1,ax1,fig2,ax2,mvs_label_dict_global,unq_label_dict_global,id=id,unq_column_name=unq_column_name,mvs_column_name=mvs_column_name,cmap=cmap,simplenorm=simplenorm,percent=percent,power=power,log=log,show_mvs=show_mvs,xy_m=xy_m,xy_cen=xy_cen,legend=legend,cbar=cbar)
         self.load_and_plot_tiles(mvs_ids_list_selected_global,nrows,ncols,fig1,ax1,fig2,ax2,unq_column_name,mvs_column_name,id=id,cmap=cmap,simplenorm=simplenorm,percent=percent,power=power,log=log,show_mvs=show_mvs,xy_m=xy_m,xy_cen=xy_cen,legend=legend,cbar=cbar)
 
-    # def show_model_tiles_and_df(self,id=0,unq_column_name='data',mvs_column_name='_Kmode',cmap='',simplenorm='',percent=[0,100],power=1,log=1000,show_mvs=False,show_FP=False,xy_m=True,xy_cen=False,legend=True,cbar=True):
     def show_model_tiles_and_df(self, id=0, cmap='',unq_column_name='data',mvs_column_name='_Kmode',
                                 simplenorm='', percent=[0, 100], power=1, log=1000, show_mvs=False, show_FP=False,
                                 xy_m=True, xy_cen=False, legend=True, cbar=True):
@@ -545,24 +545,22 @@ class ShowRoom():
 
         nrows=len(mvs_ids_list_selected_global)
         ncols=len(self.DF.filters)
-        fig2,ax2=plt.subplots(1,ncols,figsize=(7*ncols+ncols,7))
-        if ncols==1: ax2=[ax2]
-
+        if not show_mvs:
+            fig2,ax2=plt.subplots(1,ncols,figsize=(7*ncols+ncols,7))
+            if ncols == 1: ax2 = [ax2]
+            fig1, ax1 = [None, None]
+        else:
+            fig1,ax1=plt.subplots(ncols,nrows,figsize=(5*nrows+nrows,5*ncols),squeeze=False)
+            fig2, ax2 = [None, None]
         box_layout = widgets.Layout(display='flex',
                                     # flex_flow='row wrap',
                                     width=width_global)
-        out_model_global = widgets.Output(layout=box_layout)
-        
-        if show_mvs:
-            fig1,ax1=plt.subplots(ncols,nrows,figsize=(7*nrows+nrows,7*ncols),squeeze=False)
-        else: fig1,ax1=[None,None]
+        out_candidate_global = widgets.Output(layout=box_layout)
         plt.close(fig2)
         fig2,ax2=[None,None]
-        # self.load_and_plot_tiles(mvs_ids_list_selected_global,nrows,ncols,fig1,ax1,fig2,ax2,model_mvs_label_dict_global,unq_label_dict_global,id=id,unq_column_name=unq_column_name,mvs_column_name=mvs_column_name,cmap=cmap,simplenorm=simplenorm,percent=percent,power=power,log=log,show_mvs=show_mvs,xy_m=xy_m,xy_cen=xy_cen,legend=legend,cbar=cbar)
         self.load_and_plot_tiles(mvs_ids_list_selected_global,nrows,ncols,fig1,ax1,fig2,ax2,unq_column_name,mvs_column_name,id=id,cmap=cmap,simplenorm=simplenorm,percent=percent,power=power,log=log,show_mvs=show_mvs,xy_m=xy_m,xy_cen=xy_cen,legend=legend,cbar=cbar)
 
 
-    # def show_candidate_tiles_and_df(self,id=0,unq_column_name='data',mvs_column_name='_Kmode',cmap='',simplenorm='',percent=[0,100],power=1,log=1000,show_mvs=False,show_FP=False,xy_m=True,xy_cen=False,legend=True,cbar=True):
     def show_candidate_tiles_and_df(self, id=0, cmap='',unq_column_name='data',mvs_column_name='_Kmode',
                                     simplenorm='', percent=[0, 100], power=1, log=1000, show_mvs=False,
                                     show_FP=False, xy_m=True, xy_cen=False, legend=True, cbar=True):
@@ -575,48 +573,74 @@ class ShowRoom():
 
         mvs_ids_list_selected_global=self.DF.crossmatch_ids_df.loc[self.DF.crossmatch_ids_df.unq_ids==id].mvs_ids.values
         filters_list_selected_global=self.DF.filters
-        nrows=len(mvs_ids_list_selected_global)
-        ncols=len(self.DF.filters)
-        fig2,ax2=plt.subplots(1,ncols,figsize=(7*ncols+ncols,7))
-        if ncols==1: ax2=[ax2]
+        nrows = len(mvs_ids_list_selected_global)
+        ncols = len(self.DF.filters)
+        if not show_mvs:
+            fig2,ax2=plt.subplots(1,ncols,figsize=(7*ncols+ncols,7))
+            if ncols == 1: ax2 = [ax2]
 
-        box_layout = widgets.Layout(display='flex',
-                                    # flex_flow='row wrap',
-                                    width=width_global)
-        out_candidate_global = widgets.Output(layout=box_layout)
-        # self.display_unq_df(id,out_candidate_global,candidate=True)
-        if show_mvs: 
-            # out2 = widgets.Output(layout=box_layout)
-            # self.display_mvs_df(mvs_ids_list_selected_global,out2,candidate=True)
+            box_layout = widgets.Layout(display='flex',
+                                        # flex_flow='row wrap',
+                                        width=width_global)
+            out_candidate_global = widgets.Output(layout=box_layout)
+            fig1, ax1 = [None, None]
+        else:
             fig1,ax1=plt.subplots(ncols,nrows,figsize=(5*nrows+nrows,5*ncols),squeeze=False)
-        else: fig1,ax1=[None,None]
+            fig2, ax2 = [None, None]
 
         if CRKmode_global:
             mvs_column_name = f'CRCLEAN_KMODE{mvs_column_name}'
         else:
             mvs_column_name = f'KMODE{mvs_column_name}'
 
-        # self.load_and_plot_tiles(mvs_ids_list_selected_global,nrows,ncols,fig1,ax1,fig2,ax2,klip_mvs_label_dict_global,klip_unq_label_dict_global,id=id,unq_column_name=unq_column_name,mvs_column_name=mvs_column_name,cmap=cmap,simplenorm=simplenorm,percent=percent,power=power,log=log,show_mvs=show_mvs,xy_m=xy_m,xy_cen=xy_cen,legend=legend,cbar=cbar)
         self.load_and_plot_tiles(mvs_ids_list_selected_global,nrows,ncols,fig1,ax1,fig2,ax2,unq_column_name,mvs_column_name,id=id,cmap=cmap,simplenorm=simplenorm,percent=percent,power=power,log=log,show_mvs=show_mvs,xy_m=xy_m,xy_cen=xy_cen,legend=legend,cbar=cbar)
 
         if id in self.DF.unq_candidates_df.unq_ids.unique() and show_FP and not self.DF.fk_completeness_df.empty:
             for filter in self.DF.filters:
                 FP_analysis(self.DF,id,filter,0.5,showplot=True,nbins=30)
 
+    def show_candidate_SNR_tiles_and_df(self, id=0, cmap='',unq_column_name='data',mvs_column_name='_Kmode',
+                                    simplenorm='', percent=[0, 100], power=1, log=1000, show_mvs=False,
+                                    show_FP=False, xy_m=True, xy_cen=False, legend=True, cbar=True):
+
+        global out_candidate_global,mvs_ids_list_selected_global,filters_list_selected_global,out_candidate_global
+        if CRKmode_global:
+            unq_column_name=f'CRCLEAN_KMODE{unq_column_name}'
+        else:
+            unq_column_name=f'KMODE{unq_column_name}'
+
+        mvs_ids_list_selected_global=self.DF.crossmatch_ids_df.loc[self.DF.crossmatch_ids_df.unq_ids==id].mvs_ids.values
+        filters_list_selected_global=self.DF.filters
+        nrows = len(mvs_ids_list_selected_global)
+        ncols = len(self.DF.filters)
+        if not show_mvs:
+            fig2,ax2=plt.subplots(1,ncols,figsize=(7*ncols+ncols,7))
+            if ncols == 1: ax2 = [ax2]
+            fig1, ax1 = [None, None]
+        else:
+            fig1,ax1=plt.subplots(ncols,nrows,figsize=(5*nrows+nrows,5*ncols),squeeze=False)
+            fig2, ax2 = [None, None]
+
+        box_layout = widgets.Layout(display='flex',
+                                        # flex_flow='row wrap',
+                                        width=width_global)
+        out_candidate_global = widgets.Output(layout=box_layout)
+
+        if CRKmode_global:
+            mvs_column_name = f'CRCLEAN_KMODE{mvs_column_name}'
+        else:
+            mvs_column_name = f'KMODE{mvs_column_name}'
+
+        self.load_and_plot_tiles(mvs_ids_list_selected_global,nrows,ncols,fig1,ax1,fig2,ax2,unq_column_name,mvs_column_name,id=id,cmap=cmap,simplenorm=simplenorm,percent=percent,power=power,log=log,show_mvs=show_mvs,xy_m=xy_m,xy_cen=xy_cen,legend=legend,cbar=cbar, SNR=True)
+
+        if id in self.DF.unq_candidates_df.unq_ids.unique() and show_FP and not self.DF.fk_completeness_df.empty:
+            for filter in self.DF.filters:
+                FP_analysis(self.DF,id,filter,0.5,showplot=True,nbins=30)
+
+
     def showroom(self,unq_ids_list=[],type=None,CRKmode=False,companion=False,flags=None,widht_range=1,w=None,h=None):
         global CRKmode_global,width_global#,unq_label_dict_global,mvs_label_dict_global,klip_unq_label_dict_global,klip_mvs_label_dict_global,model_mvs_label_dict_global
         CRKmode_global=CRKmode
-        # mvs_label_dict_global={'data':1,'edata':2,'dqdata':3,'crclean_data':4}
-        # unq_label_dict_global={'data':1,'crclean_data':2}
-        # if CRKmode:
-        #     klip_unq_label_dict_global={'crclean_Kmode%s' % self.DF.kmodes[i]: i + 3 for i in range(len(self.DF.kmodes))}
-        #     klip_mvs_label_dict_global={'crclean_Kmode%s'%self.DF.kmodes[i]:i+5 for i in range(len(self.DF.kmodes))}
-        #     model_mvs_label_dict_global={'Model %s'%self.DF.kmodes[i]:i+5+len(self.DF.kmodes) for i in range(len(self.DF.kmodes))}
-        # else:
-        #     klip_unq_label_dict_global={'Kmode%s'%self.DF.kmodes[i]:i+2 for i in range(len(self.DF.kmodes))}
-        #     klip_mvs_label_dict_global={'Kmode%s'%self.DF.kmodes[i]:i+4 for i in range(len(self.DF.kmodes))}
-        #     model_mvs_label_dict_global={'Model %s'%self.DF.kmodes[i]:i+4+len(self.DF.kmodes) for i in range(len(self.DF.kmodes))}
-
         self.new_id=self.DF.crossmatch_ids_df.unq_ids.unique()[0]
         root = tk.Tk()
         current_screen = get_monitor_from_coord(root.winfo_x(), root.winfo_y())
@@ -647,6 +671,7 @@ class ShowRoom():
         if hasattr(self.DF,'unq_candidates_df'):
             Model = widgets.interactive_output(self.show_model_tiles_and_df,{'id':self.ids_dropdown,'unq_column_name':self.orig_column_dropdown,'mvs_column_name':self.MODEL_column_dropdown,'cmap':self.cmap_column_dropdown,'simplenorm':self.simplenorm_column_dropdown,'power':self.power_textbox,'log':self.log_textbox,'percent':self.crange_slider,'show_mvs':self.show_mvs_check,'show_FP':self.show_FP_check,'xy_m':self.xy_m_check,'xy_cen':self.xy_cen_check,'legend':self.legend_check,'cbar':self.cbar_check})
             Candidate = widgets.interactive_output(self.show_candidate_tiles_and_df,{'id':self.ids_dropdown,'unq_column_name':self.KLIP_column_dropdown,'mvs_column_name':self.KLIP_column_dropdown,'cmap':self.cmap_column_dropdown,'simplenorm':self.simplenorm_column_dropdown,'power':self.power_textbox,'log':self.log_textbox,'percent':self.crange_slider,'show_mvs':self.show_mvs_check,'show_FP':self.show_FP_check,'xy_m':self.xy_m_check,'xy_cen':self.xy_cen_check,'legend':self.legend_check,'cbar':self.cbar_check})
+            Candidate_SNR = widgets.interactive_output(self.show_candidate_SNR_tiles_and_df,{'id':self.ids_dropdown,'unq_column_name':self.KLIP_column_dropdown,'mvs_column_name':self.KLIP_column_dropdown,'cmap':self.cmap_column_dropdown,'simplenorm':self.simplenorm_column_dropdown,'power':self.power_textbox,'log':self.log_textbox,'percent':self.crange_slider,'show_mvs':self.show_mvs_check,'show_FP':self.show_FP_check,'xy_m':self.xy_m_check,'xy_cen':self.xy_cen_check,'legend':self.legend_check,'cbar':self.cbar_check})
             CFlags = widgets.interactive_output(self.build_candidates_box,{'id':self.ids_dropdown})
         else:
             CFlags= widgets.Output()
@@ -662,24 +687,28 @@ class ShowRoom():
         target_box=widgets.VBox([self.ids_progress,self.ids_dropdown,self.orig_column_dropdown])
         model_box=widgets.VBox([self.ids_progress,self.ids_dropdown,self.MODEL_column_dropdown])
         companion_box=widgets.VBox([self.ids_progress,self.ids_dropdown,self.KLIP_column_dropdown])
+        companion_SNR_box=widgets.VBox([self.ids_progress,self.ids_dropdown,self.KLIP_column_dropdown])
         box1=widgets.HBox([self.show_mvs_check,self.show_FP_check,self.xy_m_check,self.xy_cen_check,self.legend_check,self.cbar_check],layout=box_layout)
         box2=widgets.VBox([self.cmap_column_dropdown,self.simplenorm_column_dropdown,self.power_textbox,self.log_textbox,self.crange_slider])
         
         target_hbox=widgets.HBox([target_box,box2,TFlags],layout=box_layout2)
         model_hbox=widgets.HBox([model_box,box2,CFlags],layout=box_layout2)
         companion_hbox=widgets.HBox([companion_box,box2,CFlags],layout=box_layout2)
+        companion_SNR_hbox=widgets.HBox([companion_SNR_box,box2,CFlags],layout=box_layout2)
 
         #create tabs
-        tab_nest = widgets.Tab(titles=['Target','Model','Candidate'])
-        # tab_nest.set_title(0, 'Target')
-        # tab_nest.set_title(1, 'Model')
-        # tab_nest.set_title(2, 'Candidate')
-        
+        tab_nest = widgets.Tab(children=[target_hbox, model_hbox, companion_hbox, companion_SNR_hbox])
+        tab_nest.set_title(0, 'Target')
+        tab_nest.set_title(1, 'Model')
+        tab_nest.set_title(2, 'Candidate')
+        tab_nest.set_title(3, 'Candidate SNR')
+
         VBox1=widgets.VBox([box1,target_hbox,Target],layout=box_layout)
         if hasattr(self.DF,'unq_candidates_df'):
             VBox2=widgets.VBox([box1,model_hbox,Model],layout=box_layout)
             VBox3=widgets.VBox([box1,companion_hbox,Candidate],layout=box_layout)
-            tab_nest.children=[VBox1,VBox2,VBox3]
+            VBox4=widgets.VBox([box1,companion_SNR_hbox,Candidate_SNR],layout=box_layout)
+            tab_nest.children=[VBox1,VBox2,VBox3,VBox4]
         else:
             tab_nest.children=[VBox1]
         display(tab_nest)

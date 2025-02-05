@@ -18,6 +18,7 @@ from utils_tile import allign_images
 from scipy.spatial import distance_matrix
 from utils_dataframe import create_empty_df
 from buildhdf import make_candidates_dataframes
+from scipy.stats import sigmaclip
 
 def task_mvs_tiles_and_photometry(DF, fitsname, ids_list, filter, use_xy_SN, use_xy_m, use_xy_cen, xy_shift_list,
                                   xy_dmax, bpx_list, spx_list, legend, showplot, overwrite, verbose, Python_origin,
@@ -450,6 +451,7 @@ def task_mvs_targets_infos(DF,avg_id,skip_filters,aptype,verbose,noBGsub,sigma,k
     None.
 
     '''
+
     label_dict={'data':1,'crclean_data':4}
 
     # if verbose: getLogger(__name__).info('Verbose mode: ',verbose)
@@ -546,11 +548,6 @@ def task_median_candidate_infos(DF,id,filter,column_name,zfactor,alignment_box,l
 
             if len(target_images)>0:
                 target_tile,shift_list=allign_images(target_images,ROTAs,PAV_3s,filter,zfactor=zfactor,alignment_box=alignment_box,tile_base=DF.tilebase)
-
-                # if not DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids==id].mvs_ids)].empty and (DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,f'flag_{filter}'].values[0]!='rejected'):
-                #     Kmode=int(DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_ids,f'Kmode_{filter}'].values[0])
-                # else:
-                #     Kmode=int(max(DF.kmodes))
                 CANDIDATE=Tile(x=(DF.tilebase-1)/2,y=(DF.tilebase-1)/2,tile_base=DF.tilebase,delta=0,inst=DF.inst,Python_origin=True)
                 CANDIDATE.load_tile('%s/mvs_tiles/%s/tile_ID%i.fits'%(DF.path2out,filter,mvs_ids),ext='%s%s'%(KLIP_label_dict[label],Kmode),raise_errors=False)
                 image=np.array(CANDIDATE.data)
@@ -563,7 +560,7 @@ def task_median_candidate_infos(DF,id,filter,column_name,zfactor,alignment_box,l
             if Datacube!=None:
                 candidate_tile.append_tile(path2tile,Datacube=Datacube,verbose=False,name=f'{(KLIP_label_dict[label])}{Kmode}',return_Datacube=False,write=False)
 
-def task_mvs_candidates_infos(DF,avg_id,d,skip_filters,aptype,verbose,noBGsub,sigma,DF_fk,label,kill_plots,delta,radius,sat_thr,mfk,mdf,mad):
+def task_mvs_candidates_infos(DF,avg_id,d,skip_filters,needs_filters,aptype,verbose,noBGsub,sigma,DF_fk,label,kill_plots,delta,radius,sat_thr,mfk,mdf,mad,mak):
     '''
     parallelized task for the update_mvs_candidates.
 
@@ -591,7 +588,8 @@ def task_mvs_candidates_infos(DF,avg_id,d,skip_filters,aptype,verbose,noBGsub,si
         minimum detections per filter to accept a candidate
     mad: int, optional
         minimum arecsecond distance from center to accept a candidate
-
+    mak: int, optional
+        minimum acceptable klipmmode to accept a  candidate
     Returns
     -------
     None.
@@ -620,9 +618,8 @@ def task_mvs_candidates_infos(DF,avg_id,d,skip_filters,aptype,verbose,noBGsub,si
                 if verbose: fig,ax=plt.subplots(1,len(sub_ids),figsize=(5*len(sub_ids),5))
                 else: fig,ax=[None,None]
 
-
                 for mvs_ids in sub_ids:
-                    if not DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==mvs_ids,f'flag_{filter}'].str.contains('rejected').values[0]:
+                    if not DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==mvs_ids,f'flag_{filter}'].str.contains('rejected').values[0] and Kmode >= mak:
                         PA_V3=DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==mvs_ids,f'pav3_{filter}'].values[0]
                         ROTA=DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==mvs_ids,f'rota_{filter}'].values[0]
                         path2tile=DF.path2out+f'/mvs_tiles/{filter}/tile_ID{mvs_ids}.fits'
@@ -647,7 +644,13 @@ def task_mvs_candidates_infos(DF,avg_id,d,skip_filters,aptype,verbose,noBGsub,si
                                 if not np.all(np.isnan(KDATA.data)) and Xrot>=0 and Xrot<=DF.tilebase and Yrot>=0 and Yrot<=DF.tilebase:
                                     if not kill_plots:getLogger(__name__).debug('Kmode %s, %s, mvs_id %s'%(Kmode, filter,mvs_ids))
                                     counts,ecounts,Nsigma,Nap,mag,emag,spx,bpx,Sky,eSky,nSky,grow_corr=KLIP_aperture_photometry_handler(DF,mvs_ids,filter,x=x,y=y,data=KDATA.data,zpt=zpt,ezpt=ezpt,aptype=aptype,noBGsub=False,sigma=sigma,kill_plots=kill_plots,Python_origin=True,delta=delta,radius_a=radius,sat_thr=sat_thr,exptime=exptime)#,multiply_by_exptime=multiply_by_exptime,multiply_by_gain=multiply_by_gain,multiply_by_PAM=multiply_by_PAM)
-                                    if Nsigma>0 :#and dist>= minimum_dist:
+                                    counts,ecounts,_,Nap,mag,emag,spx,bpx,Sky,eSky,nSky,grow_corr=KLIP_aperture_photometry_handler(DF,mvs_ids,filter,x=x,y=y,data=KDATA.data,zpt=zpt,ezpt=ezpt,aptype=aptype,noBGsub=False,sigma=sigma,kill_plots=kill_plots,Python_origin=True,delta=delta,radius_a=radius,sat_thr=sat_thr,exptime=exptime)#,multiply_by_exptime=multiply_by_exptime,multiply_by_gain=multiply_by_gain,multiply_by_PAM=multiply_by_PAM)
+
+                                    filtered_data, lower_bound, upper_bound = sigmaclip(KDATA.data, low=5, high=5)
+                                    STD = np.nanstd(filtered_data)
+                                    Nsigma = KDATA.data[y][x] / STD
+
+                                    if Nsigma> 0 and not np.isnan(mag):
                                         temporary_candidate_df.loc[(Kmode,filter,mvs_ids),['counts','ecounts','Nsigma','mag','emag']]=[counts,ecounts,Nsigma,mag[0],emag[0]]
                                         temporary_candidate_df.loc[(Kmode,filter,mvs_ids),['sep']]=dist
                                         temporary_candidate_df.loc[(Kmode,filter,mvs_ids),['x_tile','y_tile','x_rot','y_rot','pdc','ROTA','PA_V3','flag']]=[KDATA.x_m,KDATA.y_m,Xrot,Yrot,pdc,ROTA,PA_V3,'good_candidate']
@@ -675,10 +678,12 @@ def task_mvs_candidates_infos(DF,avg_id,d,skip_filters,aptype,verbose,noBGsub,si
                         temporary_candidate_df.loc[(Kmode,filter,mvs_ids),['x_tile','y_tile','x_rot','y_rot','ROTA','pdc','PA_V3','Nsigma','flag']]=[np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,'rejected']
                         getLogger(__name__).info(f'Candidate avg_id {avg_id}, mvs_ids {mvs_ids}, filter {filter}, kmode {Kmode}, rejected')
                         plt.close()
+
+
     Nsigma_score=[]
     Kmode_idx_list=[]
     for Kmode in DF.kmodes:
-        if (temporary_candidate_df.loc[(Kmode)].flag!='rejected').astype(int).sum(axis=0)>=mdf*mfk:
+        if (temporary_candidate_df.loc[(Kmode)].flag != 'rejected').astype(int).sum(axis=0) >= 1:
             pos=temporary_candidate_df.loc[temporary_candidate_df.flag!='rejected'].loc[(Kmode),['y_rot','x_rot']].values
             pair_dist = np.round(distance_matrix(pos, pos).astype(float),3)
             num=pos.shape[0]
@@ -689,7 +694,7 @@ def task_mvs_candidates_infos(DF,avg_id,d,skip_filters,aptype,verbose,noBGsub,si
             sel_flag=(temporary_candidate_df.loc[(Kmode)].flag!='rejected')
             distance_matrix_df['mvs_ids']=temporary_candidate_df.loc[(Kmode)].loc[sel_flag].index.get_level_values('mvs_ids').values
             columns=distance_matrix_df.columns[:-1].unique()
-            minimum_filters_detections=np.max([int((len(distance_matrix_df[columns].columns))/2)+1,2])
+            minimum_filters_detections=np.max([int((len(distance_matrix_df[columns].columns))/2)+1,1])
             for filter in distance_matrix_df.index.get_level_values(0).unique():
                 try:
                     selected_distance_matrix_df=(((distance_matrix_df.loc[filter,columns].to_frame().T<=1.5)&(distance_matrix_df.loc[filter,columns].to_frame().T>=0))|(distance_matrix_df.loc[filter,columns].to_frame().T.isna()))
@@ -713,14 +718,22 @@ def task_mvs_candidates_infos(DF,avg_id,d,skip_filters,aptype,verbose,noBGsub,si
                     temporary_candidate_df.loc[(Kmode,filter)]=np.nan
                     temporary_candidate_df.loc[(Kmode,filter),'flag']='rejected'
 
-            # if np.any(temporary_candidate_df.loc[(Kmode),'flag'].values!='rejected'):
-            if len(temporary_candidate_df.loc[(Kmode),'flag'].loc[temporary_candidate_df.loc[(Kmode),'flag']!='rejected'].index.unique(level='filter')) >= mfk:
+            # if len(temporary_candidate_df.loc[(Kmode),'flag'].loc[temporary_candidate_df.loc[(Kmode),'flag']!='rejected'].index.unique(level='filter')) >= mfk:
+            if np.all((temporary_candidate_df.loc[(Kmode),'flag'] != 'rejected').values):
                 Nsigma_score.append(np.nanmean(temporary_candidate_df.loc[(Kmode),'Nsigma'].values))
                 Kmode_idx_list.append(True)
                 if verbose:
                     getLogger(__name__).debug('Selected candidate df:')
                     getLogger(__name__).debug(temporary_candidate_df.loc[Kmode])
+            elif len(temporary_candidate_df.loc[(Kmode, needs_filters),'flag'].loc[temporary_candidate_df.loc[(Kmode, needs_filters),'flag']!='rejected'].index.unique(level='filter')) >= mfk:
+                Nsigma_score.append(np.nanmean(temporary_candidate_df.loc[((Kmode, needs_filters)),'Nsigma'].values))
+                Kmode_idx_list.append(True)
+                if verbose:
+                    getLogger(__name__).debug('Selected candidate df only in filters: ', needs_filters)
+                    getLogger(__name__).debug(temporary_candidate_df.loc[Kmode])
             else:
+                temporary_candidate_df.loc[Kmode] = np.nan
+                temporary_candidate_df.loc[Kmode, 'flag'] = 'rejected'
                 Nsigma_score.append(0)
                 Kmode_idx_list.append(False)
         else:
@@ -730,20 +743,50 @@ def task_mvs_candidates_infos(DF,avg_id,d,skip_filters,aptype,verbose,noBGsub,si
             Kmode_idx_list.append(False)
 
     Nsigma_score=np.array(Nsigma_score)
-    Nsigma_sel_score=np.array(Nsigma_score)[Kmode_idx_list]
-    if len(Nsigma_sel_score[Nsigma_sel_score>0])>=1:
-        q=np.where(Nsigma_score==np.nanmax(Nsigma_sel_score))[0][-1]
-        Kmode_final=DF.kmodes[q]
-        candidate_df=temporary_candidate_df.loc[(Kmode_final)]
-        candidate_df.loc[candidate_df.flag=='rejected',['x_tile','y_tile','x_rot','y_rot','ROTA','PA_V3','Nsigma','counts','ecounts','mag','emag']]=np.nan
+    # Nsigma_sel_score=np.array(Nsigma_score)[Kmode_idx_list]
 
-        getLogger(__name__).info(f'EUREKA!!!!! We have a Candidate for id {avg_id}. Kmode selected # {Kmode_final}')
-        if verbose:
-            getLogger(__name__).debug(candidate_df)
-    else:
-        Kmode_final=None
-        candidate_df=None
+    def is_part_of_three_contiguous_true(lst, index):
+        """
+        Check if the value at a given index is part of three contiguous True values.
+
+        :param lst: List of booleans (True/False).
+        :param index: The index to check.
+        :return: True if the value at the index is part of three contiguous True values, False otherwise.
+        """
+        # Determine the start and end of the window
+        start = max(0, index - 2)  # Ensure start does not go below 0
+        end = min(len(lst) - 1, index + 2)  # Ensure end does not exceed the list length
+
+        # Check for three contiguous True values within the valid window
+        for i in range(start, end - 1):  # Check all possible windows of size 3
+            if lst[i] and lst[i + 1] and lst[i + 2]:
+                return True
+        return False
+
+    Kmode_final = None
+    candidate_df = None
+    # if len(Nsigma_sel_score)>0:
+    if len(Nsigma_score) > 0:
+        # q = np.where(Nsigma_score == np.nanmax(Nsigma_sel_score))[0][-1]
+        # q = np.where(Nsigma_score == np.nanmax(Nsigma_score))[0][-1]
+        for q in np.argsort(Nsigma_score)[::-1]:
+            if is_part_of_three_contiguous_true([True if i>=5 else False for i in Nsigma_score],q):# and Nsigma >= 5:
+                Kmode_final=DF.kmodes[q]
+                candidate_df=temporary_candidate_df.loc[(Kmode_final)]
+                candidate_df.loc[candidate_df.flag=='rejected',['x_tile','y_tile','x_rot','y_rot','ROTA','PA_V3','Nsigma','counts','ecounts','mag','emag']]=np.nan
+
+                getLogger(__name__).info(f'EUREKA!!!!! We have a Candidate for id {avg_id}. Kmode selected # {Kmode_final}')
+                if verbose:
+                    getLogger(__name__).debug(candidate_df)
+                break
+
+    if Kmode_final is None:
         getLogger(__name__).info(f'BOOMER!!!!! No Candidate found for id {avg_id}')
+    # else:
+    #     Kmode_final=None
+    #     candidate_df=None
+    #     getLogger(__name__).info(f'BOOMER!!!!! No Candidate found for id {avg_id}')
+
     return(Kmode_final,candidate_df)
 
 def update_median_candidates_tile(DF, unq_ids_list, column_name='Kmode', workers=None, zfactor=10, alignment_box=3,
@@ -891,10 +934,10 @@ def update_companion_ZPT(DF,suffix='',skip_filters='',aptype='4pixels',verbose=F
     return (DF)
 
 
-def update_candidates(DF, unq_ids_list=[], suffix='', d=1., skip_filters='F658N', aptype='4pixels', verbose=False,
+def update_candidates(DF, unq_ids_list=[], suffix='', d=1., skip_filters=['F658N'], needs_filters=[], aptype='4pixels', verbose=False,
                       workers=None, noBGsub=False, sigma=2.5, min_mag_list=[], max_mag_list=[], DF_fk=None,
                       parallel_runs=True, chunksize=None, label='data', kill_plots=True, delta=3,
-                      radius=3, sat_thr=np.inf, mfk=1, mdf=2, mad=0.1):
+                      radius=3, sat_thr=np.inf, mfk=1, mdf=2, mad=0.1, mak=1):
     '''
     update the multivisits candidates dataframe with candidates infos
 
@@ -954,20 +997,20 @@ def update_candidates(DF, unq_ids_list=[], suffix='', d=1., skip_filters='F658N'
         workers, chunksize, ntarget = parallelization_package(workers, len(unq_ids_list), chunksize=chunksize)
         with ProcessPoolExecutor(max_workers=workers) as executor:
             for Kmode_final, candidate_df in executor.map(task_mvs_candidates_infos, repeat(DF), unq_ids_list, repeat(d), repeat(skip_filters),
-                                 repeat(aptype), repeat(verbose), repeat(False), repeat(3), repeat(DF_fk),
+                                 repeat(needs_filters), repeat(aptype), repeat(verbose), repeat(False), repeat(3), repeat(DF_fk),
                                  repeat(label), repeat(kill_plots), repeat(delta), repeat(radius), repeat(sat_thr), repeat(mfk),
-                                 repeat(mdf), repeat(mad), chunksize=chunksize):
+                                 repeat(mdf), repeat(mad), repeat(mak), chunksize=chunksize):
                 if Kmode_final != None: update_candidates_with_detection(DF, candidate_df, Kmode_final, verbose)
 
     else:
         for avg_id in unq_ids_list:
-            try:
-                Kmode_final, candidate_df = task_mvs_candidates_infos(DF, avg_id, d, skip_filters, aptype, verbose,
-                                                                      False, 3, DF_fk, label, kill_plots, delta, radius,
-                                                                      sat_thr, mfk, mdf, mad)
-                if Kmode_final != None: DF=update_candidates_with_detection(DF, candidate_df, Kmode_final, verbose)
-            except:
-                raise ValueError('Something wrong with avg_id %s, Please check' % avg_id)
+            # try:
+            Kmode_final, candidate_df = task_mvs_candidates_infos(DF, avg_id, d, skip_filters, needs_filters, aptype, verbose,
+                                                                  False, 3, DF_fk, label, kill_plots, delta, radius,
+                                                                  sat_thr, mfk, mdf, mad,mak)
+            if Kmode_final != None: DF=update_candidates_with_detection(DF, candidate_df, Kmode_final, verbose)
+            # except:
+            #     raise ValueError('Something wrong with avg_id %s, Please check' % avg_id)
 
     selected_unq_ids = DF.crossmatch_ids_df.loc[
         DF.crossmatch_ids_df.mvs_ids.isin(DF.mvs_candidates_df.mvs_ids)].unq_ids.unique()
@@ -1082,7 +1125,7 @@ def update_candidates_with_detection(DF,candidate_df,Kmode_final,verbose):
 def update_candidate_dataframe(DF, unq_ids_list=[], suffix='', verbose=False, workers=None, min_mag_list=[],
                                max_mag_list=[], aptype='4pixels', no_median_tile_update=False, zfactor=10,
                                alignment_box=3, parallel_runs=True, chunksize=None, label='data',
-                               kill_plots=True, delta=3, radius=3, skip_filters=[], sat_thr=np.inf, mfk=1, mdf=2, mad=0.2,
+                               kill_plots=True, delta=3, radius=3, skip_filters=[], needs_filters=[], sat_thr=np.inf, mfk=1, mdf=2, mad=0.2, mak=1,
                                PSF_sub_flags='good|unresolved',pruning=False):
     '''
     This is a wrapper for the updating of candidates dataframe and the median tile candidate dataframe
@@ -1154,7 +1197,7 @@ def update_candidate_dataframe(DF, unq_ids_list=[], suffix='', verbose=False, wo
     DF=update_candidates(DF, unq_ids_list=unq_ids_list_in, suffix=suffix, verbose=verbose, aptype=aptype,
                       min_mag_list=min_mag_list, max_mag_list=max_mag_list, workers=workers,
                       parallel_runs=parallel_runs, label=label, kill_plots=kill_plots,
-                      delta=delta, radius=radius, skip_filters=skip_filters, sat_thr=sat_thr, mfk=mfk, mdf=mdf, mad=mad)
+                      delta=delta, radius=radius, skip_filters=skip_filters , needs_filters=needs_filters, sat_thr=sat_thr, mfk=mfk, mdf=mdf, mad=mad, mak=mak)
 
     if not no_median_tile_update:
         getLogger(__name__).info('Updating the median tiles for the candidates')
@@ -1174,7 +1217,7 @@ def run(packet):
     if dataset.pipe_cfg.klipphotometry['redo']: make_candidates_dataframes(DF)
 
     DF=update_candidate_dataframe(DF,
-                               unq_ids_list=dataset.pipe_cfg.klipphotometry['unq_ids_list'],
+                               unq_ids_list=dataset.pipe_cfg.unq_ids_list,
                                suffix=dataset.pipe_cfg.klipphotometry['suffix'],
                                verbose=dataset.pipe_cfg.klipphotometry['verbose'],
                                workers=dataset.pipe_cfg.ncpu,
@@ -1190,10 +1233,12 @@ def run(packet):
                                delta=dataset.pipe_cfg.klipphotometry['delta'],
                                radius=dataset.pipe_cfg.klipphotometry['radius'],
                                skip_filters=dataset.pipe_cfg.klipphotometry['skip_filters'],
+                               needs_filters=dataset.pipe_cfg.klipphotometry['needs_filters'],
                                sat_thr=dataset.pipe_cfg.klipphotometry['sat_thr'],
                                mfk=dataset.pipe_cfg.klipphotometry['mfk'],
                                mdf=dataset.pipe_cfg.klipphotometry['mdf'],
                                mad=dataset.pipe_cfg.klipphotometry['mad'],
+                               mak=dataset.pipe_cfg.klipphotometry['mak'],
                                PSF_sub_flags=dataset.pipe_cfg.psfsubtraction['PSF_sub_flags'],
                                pruning=dataset.pipe_cfg.klipphotometry['pruning'])
 

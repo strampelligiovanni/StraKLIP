@@ -93,6 +93,10 @@ class DataFrame():
     ######################
     # Ancillary routines #
     ######################
+    def print_all(self,max_rows=500,max_columns=500,width=1000):
+        pd.set_option('display.max_rows', max_rows)
+        pd.set_option('display.max_columns', max_columns)
+        pd.set_option('display.width', width)
 
     def save_dataframes(self,step):
         '''

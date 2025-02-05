@@ -105,17 +105,23 @@ def allign_images(target_images,rot_angles,PAV_3s,filter,fig=None,ax=None,shift_
 
     '''
     if xy_dmax!=None: xy_dmax=xy_dmax*zfactor
+
     if len(target_images)>1:
         rotated_images,rotated_angles=rotate_images(target_images,rot_angles=rot_angles,zfactor=zfactor)
         shifted_images,shift_list=shift_images(rotated_images,zfactor=zfactor,alignment_box=alignment_box,shift_list_in=shift_list)
-        for elno in range(len(shifted_images)):
-            shifted_images[elno][shifted_images[elno]==0]=np.nan
-
-        if method=='median': image=np.nanmedian(shifted_images,axis=0)
-        elif method == 'mean':image=np.nanmean(shifted_images,axis=0)
-        else: raise ValueError('method MUST be either median or mean.')
     else:
-        image=target_images[0]
+        rotated_images, rotated_angles = rotate_images(target_images, rot_angles=rot_angles, zfactor=1)
+        shifted_images = rotated_images.copy()
+
+    for elno in range(len(shifted_images)):
+        shifted_images[elno][shifted_images[elno] == 0] = np.nan
+
+    if method == 'median':
+        image = np.nanmedian(shifted_images, axis=0)
+    elif method == 'mean':
+        image = np.nanmean(shifted_images, axis=0)
+    else:
+        raise ValueError('method MUST be either median or mean.')
 
     x=int((image.shape[1]-1)/2)
     y=int((image.shape[0]-1)/2)
@@ -256,7 +262,7 @@ def setup_DATASET(DF, id, filter, d):
 
     return(dataset)
 
-def perform_PSF_subtraction(targ_tiles,ref_tiles,filename,psfnames,kmodes=[],outputdir='./'):
+def perform_PSF_subtraction(targ_tiles,ref_tiles,filename,psfnames='',psflib=None,kmodes=[],maxnumbasis=None,outputdir='./',prefix='parallel'):
     '''
     Perform KLIP subtraction on all the stamps for one star. Since stamps
     of the same star share the same references, this computes the Z_k's for
@@ -282,34 +288,39 @@ def perform_PSF_subtraction(targ_tiles,ref_tiles,filename,psfnames,kmodes=[],out
     centers = [int((targ_tiles.shape[1] - 1) / 2), int((targ_tiles.shape[0] - 1) / 2)]
     # now let's generate a dataset to reduce for KLIP. This contains data at both roll angles
     dataset = GenericData([targ_tiles], [centers], filenames=[filename])
-    # make the PSF library
-    # we need to compute the correlation matrix of all images vs each other since we haven't computed it before
-    psflib = rdi.PSFLibrary(ref_tiles, centers, np.array(psfnames), compute_correlation=True)
+
+    if psflib is None:
+        # make the PSF library
+        # we need to compute the correlation matrix of all images vs each other since we haven't computed it before
+        psflib = rdi.PSFLibrary(ref_tiles, centers, np.array(psfnames), compute_correlation=True)
 
     # now we need to prepare the PSF library to reduce this dataset
     # what this does is tell the PSF library to not use files from this star in the PSF library for RDI
     psflib.prepare_library(dataset)
 
+    if maxnumbasis is None:
+        maxnumbasis = len(ref_tiles)
+
     parallelized.klip_dataset(dataset,
                               mode='RDI',
                               outputdir=outputdir,
-                              fileprefix="parallel",
+                              fileprefix=prefix,
                               annuli=1,
                               subsections=1,
                               movement=0.,
                               numbasis=kmodes,
-                              maxnumbasis=np.nanmax(kmodes),
+                              maxnumbasis=maxnumbasis,
                               aligned_center=dataset._centers[0],
                               psf_library=psflib,
                               corr_smooth=0,
                               verbose=False)
 
-    hdulist = fits.open(f'{outputdir}/parallel-KLmodes-all.fits')
+    hdulist = fits.open(f'{outputdir}/{prefix}-KLmodes-all.fits')
     residuals = hdulist[0].data
     hdulist.close()
     psf_models = np.array([targ_tiles - res for res in residuals])
-    if os.path.exists(f'{outputdir}/parallel-KLmodes-all.fits'):
-        os.remove(f'{outputdir}/parallel-KLmodes-all.fits')
+    if os.path.exists(f'{outputdir}/{prefix}-KLmodes-all.fits'):
+        os.remove(f'{outputdir}/{prefix}-KLmodes-all.fits')
 
     return(residuals,psf_models)
 

@@ -7,7 +7,9 @@ from datetime import datetime
 import numpy as np
 import matplotlib.pyplot as plt
 import pyklip.klip as klip
+import pyklip.parallelized as parallelized
 import pickle
+import copy
 from scipy.interpolate import interp1d
 
 def uniform_list(a, b, n):
@@ -117,6 +119,10 @@ if __name__ == "__main__":
     data_cfg = '/Users/gstrampelli/PycharmProjects/FFP_binaries/pipeline_logs/data.yaml'
     pipe_cfg = config.configure_pipeline(pipe_cfg, pipe_cfg=pipe_cfg, data_cfg=data_cfg,
                                          dt_string=datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+
+    with open(outputdir+f"/{filter}_contrast curve_dict.pkl", 'rb') as f:
+        cor_cc_dict = pickle.load(f)
+
     dataset_fwhm = pipe_cfg.instrument['fwhm'][filter]
 
     data_cfg = config.configure_data(data_cfg, pipe_cfg)
@@ -135,39 +141,39 @@ if __name__ == "__main__":
     low_pass_size = 1.  # pixel, corresponds to the sigma of the Gaussian
 
     # three sets, planets get fainter as contrast gets better further out
-    # pa_list = [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330]
-    seps = [2, 3, 4, 5, 6, 7, 8, 9, 10, 15]
+    pa_list = [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330]
+    seps = cor_cc_dict['seps']
 
     # input_planet_fluxes = np.sort(np.random.uniform(np.nanmax(dataset.input[0])*1e-1, np.nanmax(dataset.input[0]), len(seps)))[::-1]
     # input_planet_fluxes = uniform_list(np.nanmax(dataset.input[0]) * 0.5e-1, np.nanmax(dataset.input[0])*0.9, len(seps))[::-1]
 
     # if inject_fake:
-    #     elno=1
-    #     for input_planet_flux, sep in zip(input_planet_fluxes, seps):
-    #         for pa in pa_list:
-    #             print(f'Injecting fake {elno} at pa: {pa}, sep: {sep}, flux: {input_planet_flux}')
-    #
-    #             dataset_with_companion = copy.deepcopy(dataset)
-    #             fakes.inject_planet(dataset_with_companion.input,dataset_with_companion.centers, [PSF*input_planet_flux], dataset.wcs, sep, pa,
-    #                                 fwhm=dataset_fwhm)
-    #             psflib.prepare_library(dataset_with_companion)
-    #
-    #             parallelized.klip_dataset(dataset_with_companion,
-    #                                       mode='RDI',
-    #                                       outputdir=outputdir,
-    #                                       fileprefix=f"{filter}-withfakes_{elno}",
-    #                                       annuli=1,
-    #                                       subsections=1,
-    #                                       movement=0.,
-    #                                       numbasis=numbases,
-    #                                       maxnumbasis=np.nanmax(numbases),
-    #                                       calibrate_flux=False,
-    #                                       aligned_center=dataset_with_companion._centers[0],
-    #                                       psf_library=psflib,
-    #                                       corr_smooth=0,
-    #                                       verbose=False)
-    #
-    #             elno+=1
+    elno=1
+    for input_planet_flux, sep in zip(input_planet_fluxes, seps):
+        for pa in pa_list:
+            print(f'Injecting fake {elno} at pa: {pa}, sep: {sep}, flux: {input_planet_flux}')
+
+            dataset_with_companion = copy.deepcopy(dataset)
+            fakes.inject_planet(dataset_with_companion.input,dataset_with_companion.centers, [PSF*input_planet_flux], dataset.wcs, sep, pa,
+                                fwhm=dataset_fwhm)
+            psflib.prepare_library(dataset_with_companion)
+
+            parallelized.klip_dataset(dataset_with_companion,
+                                      mode='RDI',
+                                      outputdir=outputdir,
+                                      fileprefix=f"{filter}-withfakes_{elno}",
+                                      annuli=1,
+                                      subsections=1,
+                                      movement=0.,
+                                      numbasis=numbases,
+                                      maxnumbasis=np.nanmax(numbases),
+                                      calibrate_flux=False,
+                                      aligned_center=dataset_with_companion._centers[0],
+                                      psf_library=psflib,
+                                      corr_smooth=0,
+                                      verbose=False)
+
+            elno+=1
 
     fig1, ax1 = plt.subplots(figsize=(12,6))
     # fig2, ax2 = plt.subplots(figsize=(12, 6))

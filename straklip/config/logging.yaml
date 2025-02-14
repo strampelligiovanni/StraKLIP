@@ -47,6 +47,10 @@ loggers:
     handlers: [ default, file ]
     level: DEBUG
     propagate: False
+  step.analysis:
+    handlers: [ default, file ]
+    level: DEBUG
+    propagate: False
   steps.buildfphdf:
     handlers: [ default, file ]
     level: DEBUG

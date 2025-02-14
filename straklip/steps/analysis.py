@@ -7,8 +7,6 @@ import copy
 
 from numpy.core.defchararray import lower
 from scipy.interpolate import interp1d
-from datetime import datetime
-import config, input_tables
 import matplotlib.pylab as plt
 from astropy.io import fits
 import astropy.io.fits as pyfits
@@ -19,7 +17,7 @@ import pyklip.fmlib.fmpsf as fmpsf
 import pyklip.fm as fm
 import pyklip.fitpsf as fitpsf
 import corner,pickle
-
+from stralog import getLogger
 
 def get_MODEL_from_data(psf, centers, d):
     psf[psf < 0] = 0
@@ -29,6 +27,7 @@ def get_MODEL_from_data(psf, centers, d):
 
 
 def setup_DATASET(DF, id, filter, numbasis):  # , remove_companion=False):
+    getLogger(__name__).info(f'Setting up Dataset for observation')
     filename = DF.path2out + f'/mvs_tiles/{filter}/tile_ID{id}.fits'
     hdulist = pyfits.open(filename)
     data = hdulist['SCI'].data
@@ -41,6 +40,7 @@ def setup_DATASET(DF, id, filter, numbasis):  # , remove_companion=False):
 
 
 def generate_psflib(DF, id, dataset, filter, d=3, KL=1, dir='./', min_corr=None, badfiles=None):
+    getLogger(__name__).info(f'Generating PSF library')
     data = dataset.input[0]
     centers = dataset._centers[0]
     psf_list = [data]
@@ -99,6 +99,7 @@ class AnalysisTools():
 
 
     def run_FMAstrometry(self,filter,chaindir,boxsize,dr,fileprefix,outputdir,fitkernel,corr_len_guess,corr_len_range,xrange,yrange,frange,delta_x,delta_y,nwalkers,nburn,nsteps,nthreads,wkl):
+        getLogger(__name__).info(f'Running forward modeling')
         # ####################################################################################################
         # setup FM guesses
         # initialize the FM Planet PSF class
@@ -171,7 +172,7 @@ class AnalysisTools():
         self.econ = np.round(fma.fit_flux.error_2sided * self.guess_contrast,3)
         xshift = -(fma.raw_RA_offset.bestfit - delta_x)
         yshift = fma.raw_Dec_offset.bestfit - delta_y
-        print(f'dx: {xshift}, dy: {yshift}, contrast: {self.con}, error: {self.econ}')
+        getLogger(__name__).info(f'dx: {xshift}, dy: {yshift}, contrast: {self.con}, error: {self.econ}')
         self.fma = fma
         # return(fma,con,econ)
 
@@ -191,12 +192,16 @@ class AnalysisTools():
         self.delta_y = self.ycomp - y1
         self.position_angle = np.degrees(np.arctan2(self.delta_x, self.delta_y))# % 360
 
+        getLogger(__name__).info(f"Separation: {self.separation_arcsec:.2f} arcsec")
+        getLogger(__name__).info(f"Position Angle: {self.position_angle:.2f} degrees")
+
         print(f"Separation: {self.separation_arcsec:.2f} arcsec")
         print(f"Position Angle: {self.position_angle:.2f} degrees")
         # return(separation_pixels, separation_arcsec, position_angle, delta_x, delta_x)
 
 
     def companion_extraction(self, filter, outputdir):
+        getLogger(__name__).info(f'Extracting companion from: {self.obsdataset.filenames}')
         chaindir = f'{outputdir}/extracted_companion/chains'
         os.makedirs(chaindir, exist_ok=True)
         self.get_sep_and_posang()
@@ -210,6 +215,8 @@ class AnalysisTools():
                               wkl=np.where(self.KLdetect == np.array(self.numbasis))[0])
 
         self.fma.sampler.flatchain[:, 2] *= self.guess_contrast
+
+        getLogger(__name__).info(f'Saving MCMC plots in: {outputdir}'+'/extracted_companion')
         # Plot the MCMC fit results.
         all_labels = [r"x", r"y", r"$\alpha$"]
         all_labels = np.append(all_labels, self.fma.covar_param_labels)
@@ -230,6 +237,7 @@ class AnalysisTools():
         comp_extracted['x'] = self.fma.fit_x.bestfit
         comp_extracted['y'] = self.fma.fit_y.bestfit
 
+        getLogger(__name__).info(f'Saving companion dictionary to file: {outputdir}/extracted_companion/{filter}_comp_extracted.pkl')
         with open(outputdir + f"/extracted_companion/{filter}_comp_extracted.pkl", "wb") as f:
             pickle.dump(comp_extracted, f)
 
@@ -273,9 +281,11 @@ class AnalysisTools():
                                   verbose=False)
 
     def mk_contrast_curves(self, filter, outputdir, seps, mask_companion, klstep, min_corr=None):
+        getLogger(__name__).info(f'Making contrast curves.')
         if mask_companion:
             self.companion_masked(filter, outputdir, min_corr=min_corr)
 
+        getLogger(__name__).info(f'Loading residuas from file: {outputdir}/masked_companions/{filter}-res_masked-KLmodes-all.fits')
         with fits.open(f"{outputdir}/masked_companions/{filter}-res_masked-KLmodes-all.fits") as kl_hdulist:
             residuals =  kl_hdulist[0].data
 
@@ -304,6 +314,7 @@ class AnalysisTools():
 
             cc_dict[KL] = med_interp(seps)
 
+        getLogger(__name__).info(f'Saving contrast curves plot in: {outputdir}')
         ax1.set_yscale('log')
         ax1.set_ylabel('5$\sigma$ Contrast')
         ax1.set_xlabel('Separation [pix]')
@@ -312,12 +323,16 @@ class AnalysisTools():
         ax1.set_ylim(1e-2, 1)
         fig1.legend(ncols=3, loc=1)
         fig1.savefig(outputdir + f'/{filter}-raw.png', bbox_inches='tight')
+        plt.close()
 
+        getLogger(__name__).info(f'Saving contrast curves dictionary to file: {outputdir}/extracted_companion/{filter}_contrast_curves.pkl')
         with open(outputdir + f"/extracted_companion/{filter}_contrast_curves.pkl", "wb") as f:
             pickle.dump(cc_dict, f)
 
     def mk_cal_contrast_curves(self, filter, outputdir, inject_fake, mask_companion, pa_list, klstep, min_corr=None):
+        getLogger(__name__).info(f'Making corrected contrast curves.')
         if mask_companion:
+            getLogger(__name__).info(f'Loading masked companion data.')
             hdul = fits.open(outputdir + f'/masked_companions/{filter}-masked.fits')
             data = hdul[0].data
             self.fkdataset = copy.deepcopy(self.obsdataset)
@@ -326,6 +341,7 @@ class AnalysisTools():
             self.fkdataset = copy.deepcopy(self.obsdataset)
         self.fkpsflib = copy.deepcopy(self.obspsflib)
 
+        getLogger(__name__).info(f'Loading contrast curves dictionary from file: {outputdir}/extracted_companion/{filter}_contrast_curves.pkl')
         with open(outputdir + f"/extracted_companion/{filter}_contrast_curves.pkl", "rb") as f:
             cc_dict = pickle.load(f)
 
@@ -414,6 +430,7 @@ class AnalysisTools():
                 ax2.plot(ccc_dict['sep'], ccc_dict[KL], '-.',label=f'KL = {KL}',linewidth=3.0)
 
 
+        getLogger(__name__).info(f'Saving corrected contrast curves plot in: {outputdir}')
         ax2.set_yscale('log')
         ax2.set_ylabel('5$\sigma$ Contrast')
         ax2.set_xlabel('Separation [pix]')
@@ -423,6 +440,7 @@ class AnalysisTools():
         fig2.legend(ncols=3, loc=1)
         fig2.savefig(outputdir+f'/{filter}-calcc.png',bbox_inches='tight')
 
+        getLogger(__name__).info(f'Saving throughput correction curves plot in: {outputdir}')
         ax3.set_ylabel('Throughput')
         ax3.set_xlabel('Separation [pix]')
         ax3.set_xlim(1, int(np.nanmax(seps)))
@@ -430,8 +448,9 @@ class AnalysisTools():
         fig3.legend(ncols=3, loc=1)
         fig3.savefig(outputdir+f'/{filter}-throughput.png',bbox_inches='tight')
 
-        plt.show()
+        plt.close()
 
+        getLogger(__name__).info(f'Saving corrected contrast curves dictionary to file: {outputdir}/extracted_companion/{filter}_corr_contrast_curves.pkl')
         with open(outputdir + f"/extracted_companion/{filter}_corr_contrast_curves.pkl", "wb") as f:
             pickle.dump(ccc_dict, f)
 
@@ -473,6 +492,7 @@ def analysis(filter, numbasis, fwhm, dataset, residuals, psflib, PSF, outputdir,
         analysistools.mk_cal_contrast_curves(filter, outputdir, inject_fake, mask_companion, pa_list, klstep, min_corr=min_corr)
 
 def run(packet):
+    getLogger(__name__).info(f'Running Analysis step')
     DF = packet['DF']
     dataset = packet['dataset']
     numbasis = np.array(DF.kmodes)

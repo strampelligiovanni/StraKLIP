@@ -6,7 +6,7 @@ import argparse
 from datetime import datetime
 import steps
 from straklip import config, input_tables
-from steps import buildhdf, mktiles, mkphotometry,fow2cells,psfsubtraction,klipphotometry,buildfphdf,mkcompleteness,fpanalysis
+from steps import buildhdf, mktiles, mkphotometry,fow2cells,psfsubtraction,klipphotometry,analysis,buildfphdf,mkcompleteness,fpanalysis
 
 def parse():
     # read in command line arguments

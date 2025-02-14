@@ -13,7 +13,7 @@ import pyklip.fmlib.fmpsf as fmpsf
 import pyklip.fm as fm
 import pyklip.fitpsf as fitpsf
 import corner
-
+import pickle
 
 def get_MODEL_from_data(psf,centers, d):
     psf[psf < 0] = 0
@@ -32,12 +32,13 @@ def setup_DATASET(DF, id, filter, numbasis):  # , remove_companion=False):
     dataset = GenericData([data], [centers], filenames=[filename])
     return(dataset, residuals)
 
-def generate_psflib(DF,id,dataset,filter,d,KL=1,dir='./'):
+def generate_psflib(DF,id,dataset,filter,d=3,KL=1,dir='./'):
     data = dataset.input[0]
     centers = dataset._centers[0]
     psf_list = [data]
     psf_names = [DF.path2out + f'/mvs_tiles/{filter}/tile_ID{id}.fits']
     models_list = []
+
     for psfid in DF.mvs_targets_df.loc[(DF.mvs_targets_df[f'flag_{filter}'] == 'good_psf')&(DF.mvs_targets_df.mvs_ids != id)].mvs_ids.unique():
         hdul = fits.open(DF.path2out + f'/mvs_tiles/{filter}/tile_ID{psfid}.fits')
         data = hdul['SCI'].data
@@ -48,7 +49,6 @@ def generate_psflib(DF,id,dataset,filter,d,KL=1,dir='./'):
         models_list.append(model/model_peak)
         psf_list.append(data)
         psf_names.append(DF.path2out + f'/mvs_tiles/{filter}/tile_ID{psfid}.fits')
-        # pa_v3.append(DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids == psfid, f'pav3_{filter}'].values[0])
 
 
     PSF = get_MODEL_from_data(np.median(models_list,axis=0), centers, d)
@@ -67,7 +67,7 @@ def generate_psflib(DF,id,dataset,filter,d,KL=1,dir='./'):
     # return(psflib,psf_list)
     return(psflib,psf_list,PSF)
 
-def run_FMAstrometry(dataset,PSF,psflib,filter,separation_pixels,position_angle,guess_flux,guess_contrast,numbasis,chaindir,boxsize,dr,fileprefix,outputdir,fitkernel,corr_len_guess,corr_len_range,xrange,yrange,frange,nwalkers,nburn,nsteps,nthreads,wkl):
+def run_FMAstrometry(dataset,PSF,psflib,filter,separation_pixels,position_angle,guess_flux,guess_contrast,numbasis,chaindir,boxsize,dr,fileprefix,outputdir,fitkernel,corr_len_guess,corr_len_range,xrange,yrange,frange,delta_x,delta_y,nwalkers,nburn,nsteps,nthreads,wkl):
     # ####################################################################################################
     # setup FM guesses
     # initialize the FM Planet PSF class
@@ -97,11 +97,11 @@ def run_FMAstrometry(dataset,PSF,psflib,filter,separation_pixels,position_angle,
                     corr_smooth=0)
 
     # Open the FM dataset.
-    with fits.open(outputdir + f"{fileprefix}-fmpsf-KLmodes-all.fits") as hdul:
+    with fits.open(outputdir + f"/{fileprefix}-fmpsf-KLmodes-all.fits") as hdul:
         fm_frame = hdul[0].data[wkl]
         fm_centx = hdul[0].header['PSFCENTX']
         fm_centy = hdul[0].header['PSFCENTY']
-    with fits.open(outputdir + f"{fileprefix}-klipped-KLmodes-all.fits") as hdul:
+    with fits.open(outputdir + f"/{fileprefix}-klipped-KLmodes-all.fits") as hdul:
         data_frame = hdul[0].data[wkl]
         data_centx = hdul[0].header['PSFCENTX']
         data_centy = hdul[0].header['PSFCENTY']
@@ -164,7 +164,7 @@ def get_sep_and_posang(dataset,x2,y2,pxsc_arcsec):
     return(separation_pixels, separation_arcsec, position_angle, delta_x, delta_x)
 
 if __name__ == "__main__":
-    id = 16
+    id = 52
     # xycomp_list= [[None, None],[None, None]]
     xycomp_list= [[None, None]]
 
@@ -193,7 +193,7 @@ if __name__ == "__main__":
         filter=filters[elno]
         xcomp, ycomp = xycomp_list[elno]
         dataset, residuals = setup_DATASET(DF, id, filter, numbasis)
-        psflib, psf_list, PSF = generate_psflib(DF, id, dataset, filter, d=7, KL=50 , dir = outputdir+f"{filter}_corr_matrix.fits")
+        psflib, psf_list, PSF = generate_psflib(DF, id, dataset, filter, KL=KL , dir = outputdir+f"{filter}_corr_matrix.fits")
 
         if np.all([x is None for x in [xcomp, ycomp]]):
             max_value = np.nanmax(np.median(residuals, axis=0))
@@ -208,7 +208,7 @@ if __name__ == "__main__":
                                           numbasis,chaindir,boxsize=7,dr=5,
                                           fileprefix=f"{filter}",outputdir=outputdir,
                                           fitkernel='diag',corr_len_guess=3, corr_len_range=2,
-                                          xrange=3,yrange=3,frange=1,nwalkers=100,
+                                          xrange=1,yrange=1, delta_x=delta_x, delta_y=delta_y ,frange=1,nwalkers=100,
                                           nburn=500,nsteps=1000,nthreads=4,
                                           wkl=np.where(KL == np.array(numbasis))[0])
 
@@ -225,3 +225,12 @@ if __name__ == "__main__":
         path = os.path.join(outputdir,f'{filter}-residuals.png')
         fig.savefig(path)
         plt.close(fig)
+
+        comp_extracted={}
+        comp_extracted['con'] = con
+        comp_extracted['econ'] = list(econ)
+        comp_extracted['x'] = fma.fit_x.bestfit
+        comp_extracted['y'] = fma.fit_y.bestfit
+        with open(outputdir+f"/{filter}_comp_extracted.pkl", "wb") as f:
+            pickle.dump(comp_extracted, f)
+        print()

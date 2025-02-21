@@ -1,11 +1,10 @@
-import os
+import os, copy, sys, corner,yaml,shutil,warnings
+from copy import deepcopy
+
 import pyklip.fakes as fakes
 import matplotlib.pyplot as plt
 import pyklip.klip as klip
 import pyklip.parallelized as parallelized
-import copy
-
-from numpy.core.defchararray import lower
 from scipy.interpolate import interp1d
 import matplotlib.pylab as plt
 from astropy.io import fits
@@ -16,17 +15,18 @@ import pyklip.rdi as rdi
 import pyklip.fmlib.fmpsf as fmpsf
 import pyklip.fm as fm
 import pyklip.fitpsf as fitpsf
-import corner,pickle
 from stralog import getLogger
+from io import StringIO
+import scipy.ndimage.interpolation as sinterp
 
-def get_MODEL_from_data(psf, centers, d):
+def get_MODEL_from_data(psf, centers, d=3):
     psf[psf < 0] = 0
     PSF = psf[centers[0] - d:centers[0] + d + 1, centers[1] - d:centers[1] + d + 1].copy()
     PSF = np.tile(PSF, (1, 1))
     return (PSF)
 
 
-def setup_DATASET(DF, id, filter, numbasis):  # , remove_companion=False):
+def setup_DATASET(DF, id, filter, numbasis):  # , remove_candidate=False):
     getLogger(__name__).info(f'Setting up Dataset for observation')
     filename = DF.path2out + f'/mvs_tiles/{filter}/tile_ID{id}.fits'
     hdulist = pyfits.open(filename)
@@ -37,7 +37,6 @@ def setup_DATASET(DF, id, filter, numbasis):  # , remove_companion=False):
     residuals = np.array([hdulist[f'KMODE{nb}'].data for nb in numbasis])
     dataset = GenericData([data], [centers], filenames=[filename])
     return (dataset, residuals)
-
 
 def generate_psflib(DF, id, dataset, filter, d=3, KL=1, dir='./', min_corr=None, badfiles=None):
     getLogger(__name__).info(f'Generating PSF library')
@@ -58,6 +57,7 @@ def generate_psflib(DF, id, dataset, filter, d=3, KL=1, dir='./', min_corr=None,
         models_list.append(model / model_peak)
         psf_list.append(data)
         psf_names.append(DF.path2out + f'/mvs_tiles/{filter}/tile_ID{psfid}.fits')
+        hdul.close()
 
     PSF = get_MODEL_from_data(np.median(models_list, axis=0), centers, d)
 
@@ -78,8 +78,8 @@ def generate_psflib(DF, id, dataset, filter, d=3, KL=1, dir='./', min_corr=None,
 
 class AnalysisTools():
     def __init__(self,dataset=None,resdataset=None,maskeddataset=None, KLdetect=None, obspsflib = None, obsPSF = None,
-                 xcomp=None, ycomp=None, guess_contrast=None, pxsc_arcsec = None, numbasis = None, extract_companion = None,
-                 mask_companion = None, contrast_curves = None, cal_contrast_curves = None, fwhm=None):
+                 xcomp=None, ycomp=None, guess_contrast=None, pxsc_arcsec = None, numbasis = None, extract_candidate = None,
+                 mask_candidate = None, contrast_curves = None, cal_contrast_curves = None, fwhm=None):
         self.obsdataset = dataset
         self.obspsflib = obspsflib
         self.obsPSF = obsPSF
@@ -91,15 +91,21 @@ class AnalysisTools():
         self.guess_contrast = guess_contrast
         self.pxsc_arcsec = pxsc_arcsec
         self.numbasis = numbasis
-        self.extract_companion = extract_companion
-        self.mask_companion = mask_companion
+        self.extract_candidate = extract_candidate
+        self.mask_candidate = mask_candidate
         self.contrast_curves = contrast_curves
         self.cal_contrast_curves = cal_contrast_curves
         self.fwhm = fwhm
 
 
-    def run_FMAstrometry(self,filter,chaindir,boxsize,dr,fileprefix,outputdir,fitkernel,corr_len_guess,corr_len_range,xrange,yrange,frange,delta_x,delta_y,nwalkers,nburn,nsteps,nthreads,wkl):
+    def run_FMAstrometry(self,filter,PSF,chaindir,boxsize,dr,fileprefix,outputdir,fitkernel,corr_len_guess,corr_len_range,xrange,yrange,frange,delta_x,delta_y,nwalkers,nburn,nsteps,nthreads,wkl):
         getLogger(__name__).info(f'Running forward modeling')
+        # Reroute KLIP printing for our own progress bar
+        original_stdout = sys.stdout
+        original_stderr = sys.stderr
+        sys.stdout = StringIO()
+        sys.stderr = StringIO()
+
         # ####################################################################################################
         # setup FM guesses
         # initialize the FM Planet PSF class
@@ -109,7 +115,7 @@ class AnalysisTools():
                                      sep=self.separation_pixels,
                                      pa=self.position_angle,
                                      dflux=self.guess_flux,
-                                     input_psfs=np.array([self.obsPSF]))
+                                     input_psfs=np.array([PSF]))
 
         # PSF subtraction parameters
         # run KLIP-FM
@@ -168,16 +174,19 @@ class AnalysisTools():
                            numthreads=nthreads,
                            chain_output=chain_output)
 
+        # Restore printing
+        sys.stdout = original_stdout
+        sys.stderr = original_stderr
+
         self.con = np.round(fma.fit_flux.bestfit * self.guess_contrast,3)
         self.econ = np.round(fma.fit_flux.error_2sided * self.guess_contrast,3)
         xshift = -(fma.raw_RA_offset.bestfit - delta_x)
         yshift = fma.raw_Dec_offset.bestfit - delta_y
         getLogger(__name__).info(f'dx: {xshift}, dy: {yshift}, contrast: {self.con}, error: {self.econ}')
         self.fma = fma
-        # return(fma,con,econ)
 
     def get_sep_and_posang(self):
-        # Coordinates of the primary and companion in pixels
+        # Coordinates of the primary and candidate in pixels
         x1, y1 = self.obsdataset._centers[0][0], self.obsdataset._centers[0][1]  # Primary star's coordinates
 
         # Calculate separation in pixels
@@ -195,56 +204,72 @@ class AnalysisTools():
         getLogger(__name__).info(f"Separation: {self.separation_arcsec:.2f} arcsec")
         getLogger(__name__).info(f"Position Angle: {self.position_angle:.2f} degrees")
 
-        print(f"Separation: {self.separation_arcsec:.2f} arcsec")
-        print(f"Position Angle: {self.position_angle:.2f} degrees")
-        # return(separation_pixels, separation_arcsec, position_angle, delta_x, delta_x)
-
-
-    def companion_extraction(self, filter, outputdir):
-        getLogger(__name__).info(f'Extracting companion from: {self.obsdataset.filenames}')
-        chaindir = f'{outputdir}/extracted_companion/chains'
+    def candidate_extraction(self, filter, outputdir):
+        getLogger(__name__).info(f'Extracting candidate from: {self.obsdataset.filenames}')
+        os.makedirs(outputdir, exist_ok=True)
+        chaindir = f'{outputdir}/extracted_candidate/chains'
         os.makedirs(chaindir, exist_ok=True)
         self.get_sep_and_posang()
         self.guess_flux = np.nanmax(self.obsdataset.input[0]) * self.guess_contrast
+        self.chi2=[]
+        for elno in range(len(self.obspsflib.master_library)):
+            test_outputdir=f'{outputdir}/extracted_candidate/testPSF4extraction/'
+            os.makedirs(test_outputdir, exist_ok=True)
+            PSF = get_MODEL_from_data(self.obspsflib.master_library[elno]/np.nanmax(self.obspsflib.master_library[elno]), self.obsdataset._centers[0])
+            self.run_FMAstrometry(filter, PSF, chaindir, boxsize=7, dr=5,
+                                  fileprefix=f"{filter}", outputdir=test_outputdir,
+                                  fitkernel='diag', corr_len_guess=3, corr_len_range=2,
+                                  xrange=1, yrange=1, delta_x=self.delta_x, delta_y=self.delta_y, frange=1, nwalkers=100,
+                                  nburn=500, nsteps=1000, nthreads=4,
+                                  wkl=np.where(self.KLdetect == np.array(self.numbasis))[0])
 
-        self.run_FMAstrometry(filter, chaindir, boxsize=7, dr=5,
-                              fileprefix=f"{filter}", outputdir=outputdir + '/extracted_companion',
-                              fitkernel='diag', corr_len_guess=3, corr_len_range=2,
-                              xrange=1, yrange=1, delta_x=self.delta_x, delta_y=self.delta_y, frange=1, nwalkers=100,
-                              nburn=500, nsteps=1000, nthreads=4,
-                              wkl=np.where(self.KLdetect == np.array(self.numbasis))[0])
+            self.fma.sampler.flatchain[:, 2] *= self.guess_contrast
 
-        self.fma.sampler.flatchain[:, 2] *= self.guess_contrast
+            getLogger(__name__).info(f'Saving MCMC plots in: {test_outputdir}')
+            # Plot the MCMC fit results.
+            all_labels = [r"x", r"y", r"$\alpha$"]
+            all_labels = np.append(all_labels, self.fma.covar_param_labels)
+            fig = corner.corner(self.fma.sampler.flatchain, labels=all_labels, quantiles=[0.16, 0.5, 0.84], show_titles=True,
+                                title_fmt='.4f')
+            path = os.path.join(test_outputdir, f'{filter}-corner-{elno}.png')
+            fig.savefig(path)
+            plt.close(fig)
 
-        getLogger(__name__).info(f'Saving MCMC plots in: {outputdir}'+'/extracted_companion')
-        # Plot the MCMC fit results.
-        all_labels = [r"x", r"y", r"$\alpha$"]
-        all_labels = np.append(all_labels, self.fma.covar_param_labels)
-        fig = corner.corner(self.fma.sampler.flatchain, labels=all_labels, quantiles=[0.16, 0.5, 0.84], show_titles=True,
-                            title_fmt='.4f')
-        path = os.path.join(outputdir + '/extracted_companion', f'{filter}-corner.png')
-        fig.savefig(path)
-        plt.close(fig)
+            fig = self.fma.best_fit_and_residuals()
+            path = os.path.join(test_outputdir, f'{filter}-residuals-{elno}.png')
+            fig.savefig(path)
+            plt.close(fig)
 
-        fig = self.fma.best_fit_and_residuals()
-        path = os.path.join(outputdir + '/extracted_companion', f'{filter}-residuals.png')
-        fig.savefig(path)
-        plt.close(fig)
+            dx = self.fma.fit_x.bestfit - self.fma.data_stamp_x_center
+            dy = self.fma.fit_y.bestfit - self.fma.data_stamp_y_center
 
-        comp_extracted = {}
-        comp_extracted['con'] = self.con
-        comp_extracted['econ'] = list(self.econ)
-        comp_extracted['x'] = self.fma.fit_x.bestfit
-        comp_extracted['y'] = self.fma.fit_y.bestfit
+            fm_bestfit = self.fma.fit_flux.bestfit * sinterp.shift(self.fma.fm_stamp, [dy, dx])
+            if self.fma.padding > 0:
+                fm_bestfit = fm_bestfit[self.fma.padding:-self.fma.padding, self.fma.padding:-self.fma.padding]
 
-        getLogger(__name__).info(f'Saving companion dictionary to file: {outputdir}/extracted_companion/{filter}_comp_extracted.pkl')
-        with open(outputdir + f"/extracted_companion/{filter}_comp_extracted.pkl", "wb") as f:
-            pickle.dump(comp_extracted, f)
+            # make residual map
+            residual_map = self.fma.data_stamp - fm_bestfit
+            self.chi2.append(np.nansum(residual_map)**2)
+            comp_extracted = {}
+            comp_extracted['con'] = self.con
+            comp_extracted['econ'] = list(self.econ)
+            comp_extracted['x'] = self.fma.fit_x.bestfit
+            comp_extracted['y'] = self.fma.fit_y.bestfit
+            comp_extracted['PSFref'] = self.obspsflib.master_filenames[elno]
 
-    def companion_masked(self, filter, outputdir, min_corr=None):
-        os.makedirs(outputdir + '/masked_companions', exist_ok=True)
-        with open(outputdir+f"/extracted_companion/{filter}_comp_extracted.pkl", "rb") as f:
-            comp_extracted = pickle.load(f)
+            getLogger(__name__).info(f'Saving candidate dictionary to file: {test_outputdir}/{filter}_comp_extracted_{elno}.pkl')
+            with open(test_outputdir + f"{filter}_comp_extracted_{elno}.yaml", "w") as f:
+                yaml.dump(comp_extracted, f)
+
+        q=np.where(self.chi2 == np.nanmin(self.chi2))[0][0]
+        shutil.copy(test_outputdir + f"{filter}_comp_extracted_{q}.pkl", outputdir + f"/extracted_candidate/{filter}_comp_extracted.pkl")
+        shutil.copy(test_outputdir + f'{filter}-residuals-{q}.png',outputdir + f'/extracted_candidate/{filter}-residuals.png')
+        shutil.copy(test_outputdir + f'{filter}-corner-{q}.png',outputdir + f'/extracted_candidate/{filter}-corner.png')
+
+    def candidate_masked(self, filter, outputdir, min_corr=None):
+        os.makedirs(outputdir + '/masked_candidates', exist_ok=True)
+        with open(outputdir+f"/extracted_candidate/{filter}_comp_extracted.yaml", "r") as f:
+            comp_extracted = yaml.safe_load(f)
             self.xcomp = comp_extracted['x']
             self.ycomp = comp_extracted['y']
 
@@ -258,16 +283,16 @@ class AnalysisTools():
         # Save the FITS file
         hdu = fits.PrimaryHDU(self.maskeddataset.input[0])
         hdul = fits.HDUList([hdu])
-        hdul.writeto(outputdir + f'/masked_companions/{filter}-masked.fits', overwrite=True)
+        hdul.writeto(outputdir + f'/masked_candidates/{filter}-masked.fits', overwrite=True)
         hdul.close()
 
-        self.maskedpsflib.save_correlation(outputdir + f'/masked_companions//{filter}_masked_corr_matrix.fits', overwrite=True)
+        # self.maskedpsflib.save_correlation(outputdir + f'/masked_candidates//{filter}_masked_corr_matrix.fits', overwrite=True)
         self.maskedpsflib.prepare_library(self.maskeddataset)
         self.maskedpsflib.isgoodpsf = self.maskedpsflib.isgoodpsf[self.maskedpsflib.correlation[0][1:] > min_corr]
 
         parallelized.klip_dataset(self.maskeddataset,
                                   mode='RDI',
-                                  outputdir=outputdir + '/masked_companions',
+                                  outputdir=outputdir + '/masked_candidates',
                                   fileprefix=f"{filter}-res_masked",
                                   annuli=1,
                                   subsections=1,
@@ -280,14 +305,25 @@ class AnalysisTools():
                                   corr_smooth=0,
                                   verbose=False)
 
-    def mk_contrast_curves(self, filter, outputdir, seps, mask_companion, klstep, min_corr=None):
+    def mk_contrast_curves(self, filter, residuals, outputdir, seps, mask_candidate, klstep, min_corr=None, KLdetect=1):
         getLogger(__name__).info(f'Making contrast curves.')
-        if mask_companion:
-            self.companion_masked(filter, outputdir, min_corr=min_corr)
+        os.makedirs(outputdir, exist_ok=True)
 
-        getLogger(__name__).info(f'Loading residuas from file: {outputdir}/masked_companions/{filter}-res_masked-KLmodes-all.fits')
-        with fits.open(f"{outputdir}/masked_companions/{filter}-res_masked-KLmodes-all.fits") as kl_hdulist:
-            residuals =  kl_hdulist[0].data
+        if mask_candidate:
+            getLogger(__name__).info(f'Loading candidate dictionary from file: {outputdir}/extracted_candidate/{filter}_comp_extracted.pkl')
+            with open(outputdir + f"/extracted_candidate/{filter}_comp_extracted.yaml", "r") as f:
+                comp_extracted = yaml.safe_load(f)
+            getLogger(__name__).info(f'Loading file: {comp_extracted["PSFref"]} as best PSF model')
+            with fits.open(comp_extracted['PSFref']) as kl_hdulist:
+                ref = kl_hdulist[f'MODEL{KLdetect}'].data
+            self.obsPSF = get_MODEL_from_data(ref/np.nanmax(ref), self.obsdataset._centers[0])
+            self.candidate_masked(filter, outputdir, min_corr=min_corr)
+
+            getLogger(__name__).info(f'Loading residuas from file: {outputdir}/masked_candidates/{filter}-res_masked-KLmodes-all.fits')
+            with fits.open(f"{outputdir}/masked_candidates/{filter}-res_masked-KLmodes-all.fits") as kl_hdulist:
+                residuals =  kl_hdulist[0].data
+        else:
+            self.maskeddataset=deepcopy(self.obsdataset)
 
         fig1, ax1 = plt.subplots(figsize=(12,6))
         cc_dict={}
@@ -325,45 +361,58 @@ class AnalysisTools():
         fig1.savefig(outputdir + f'/{filter}-raw.png', bbox_inches='tight')
         plt.close()
 
-        getLogger(__name__).info(f'Saving contrast curves dictionary to file: {outputdir}/extracted_companion/{filter}_contrast_curves.pkl')
-        with open(outputdir + f"/extracted_companion/{filter}_contrast_curves.pkl", "wb") as f:
-            pickle.dump(cc_dict, f)
+        getLogger(__name__).info(f'Saving contrast curves dictionary to file: {outputdir}/{filter}_contrast_curves.pkl')
+        with open(outputdir + f"/{filter}_contrast_curves.yaml", "w") as f:
+            yaml.dump(cc_dict, f)
 
-    def mk_cal_contrast_curves(self, filter, outputdir, inject_fake, mask_companion, pa_list, klstep, min_corr=None):
+    def mk_cal_contrast_curves(self, filter, outputdir, inject_fake, mask_candidate, pa_list, klstep, min_corr=None, KLdetect=1):
         getLogger(__name__).info(f'Making corrected contrast curves.')
-        if mask_companion:
-            getLogger(__name__).info(f'Loading masked companion data.')
-            hdul = fits.open(outputdir + f'/masked_companions/{filter}-masked.fits')
+        os.makedirs(outputdir, exist_ok=True)
+        if mask_candidate:
+            getLogger(__name__).info(f'Loading masked candidate data.')
+            hdul = fits.open(outputdir + f'/masked_candidates/{filter}-masked.fits')
             data = hdul[0].data
             self.fkdataset = copy.deepcopy(self.obsdataset)
-            self.fkdataset.input[0] = data
         else:
             self.fkdataset = copy.deepcopy(self.obsdataset)
+            data = self.fkdataset.input[0].copy()
         self.fkpsflib = copy.deepcopy(self.obspsflib)
 
-        getLogger(__name__).info(f'Loading contrast curves dictionary from file: {outputdir}/extracted_companion/{filter}_contrast_curves.pkl')
-        with open(outputdir + f"/extracted_companion/{filter}_contrast_curves.pkl", "rb") as f:
-            cc_dict = pickle.load(f)
+        getLogger(__name__).info(f'Loading contrast curves dictionary from file: {outputdir}/{filter}_contrast_curves.pkl')
+        with open(outputdir + f"/{filter}_contrast_curves.yaml", "r") as f:
+            cc_dict = yaml.safe_load(f)
 
         seps = cc_dict['sep']
         input_contrast_list = [cc_dict[KL] for KL in self.numbasis]
         input_planet_fluxes =  np.median(input_contrast_list, axis=0)*np.nanmax(self.fkdataset.input[0])
         if inject_fake:
-            os.makedirs(outputdir + '/inj_companions', exist_ok=True)
+            if mask_candidate:
+                getLogger(__name__).info(f'Loading candidate dictionary from file: {outputdir}/{filter}_comp_extracted.pkl')
+                with open(outputdir + f"/{filter}_comp_extracted.yaml", "r") as f:
+                    comp_extracted = yaml.safe_load(f)
+                getLogger(__name__).info(f'Loading file: {comp_extracted["PSFref"]} as best PSF model')
+                with fits.open(comp_extracted['PSFref']) as kl_hdulist:
+                    ref = kl_hdulist[f'MODEL{KLdetect}'].data
+                self.obsPSF = get_MODEL_from_data(ref / np.nanmax(ref), self.obsdataset._centers[0])
+
+            os.makedirs(outputdir + '/inj_candidates', exist_ok=True)
+            os.makedirs(outputdir + '/inj_candidates/with_fakes', exist_ok=True)
+            os.makedirs(outputdir + '/inj_candidates/residuals_with_fakes', exist_ok=True)
             elno=1
             for input_planet_flux, sep in zip(input_planet_fluxes, seps):
                 for pa in pa_list:
-                    print(f'Injecting fake {elno} at pa: {pa}, sep: {sep}, flux: {input_planet_flux}')
+                    getLogger(__name__).info(f'Injecting fake {elno} at pa: {pa}, sep: {sep}, flux: {input_planet_flux}')
+                    self.fkdataset.input[0] = data.copy()
                     fakes.inject_planet(self.fkdataset.input,self.fkdataset.centers, [self.obsPSF*input_planet_flux], self.fkdataset.wcs, sep, pa,
                                         fwhm=self.fwhm)
 
-                    self.fkpsflib.save_correlation(outputdir + f'/inj_companions/{filter}_fake_corr_matrix-withfakes_{elno}.fits', overwrite=True)
+                    # self.fkpsflib.save_correlation(outputdir + f'/inj_candidates/{filter}_fake_corr_matrix-withfakes.fits', overwrite=True)
                     self.fkpsflib.prepare_library(self.fkdataset)
                     self.fkpsflib.isgoodpsf = self.fkpsflib.isgoodpsf[self.fkpsflib.correlation[0][1:] > min_corr]
 
                     parallelized.klip_dataset(self.fkdataset,
                                               mode='RDI',
-                                              outputdir=outputdir+'/inj_companions',
+                                              outputdir=outputdir+'/inj_candidates',
                                               fileprefix=f"{filter}-withfakes_{elno}",
                                               annuli=1,
                                               subsections=1,
@@ -371,7 +420,7 @@ class AnalysisTools():
                                               numbasis=self.numbasis,
                                               maxnumbasis=np.nanmax(self.numbasis),
                                               calibrate_flux=False,
-                                              aligned_center=self.fkdataset._centers[0],
+                                              aligned_center=self.fkdataset.centers[0],
                                               psf_library=self.fkpsflib,
                                               corr_smooth=0,
                                               verbose=False)
@@ -390,7 +439,7 @@ class AnalysisTools():
             for input_planet_flux, sep in zip(input_planet_fluxes, seps):
                 fake_planet_fluxes = []
                 for pa in pa_list:
-                    kl_hdulist = fits.open(f"{outputdir}/inj_companions/{filter}-withfakes_{elno2}-KLmodes-all.fits")
+                    kl_hdulist = fits.open(f"{outputdir}/inj_candidates/{filter}-withfakes_{elno2}-KLmodes-all.fits")
                     dat_with_fakes = kl_hdulist[0].data[elno]
                     dat_with_fakes_centers = [kl_hdulist[0].header['PSFCENTX'], kl_hdulist[0].header['PSFCENTY']]
 
@@ -408,7 +457,6 @@ class AnalysisTools():
                 median_flux=np.nanmedian(fake_planet_fluxes)
                 if median_flux >= 0:
                     retrieved_fluxes.append(median_flux)
-                    # retrieved_seps.append(sep)
                     input_fluxes.append(input_planet_flux)
                     std_fluxes.append(np.nanstd(input_planet_flux))
 
@@ -416,7 +464,7 @@ class AnalysisTools():
             # fake planet output / fake planet input = throughput of KLIP
             algo_throughput = np.round(np.array(retrieved_fluxes) / np.array(input_fluxes),2)  # a number less than 1 probably
             if np.any(algo_throughput>1):
-                raise Warning(f"Algorithm throughput above 1 in KLmode {KL}: {algo_throughput}")
+                getLogger(__name__).warning(f"Algorithm throughput above 1 in KLmode {KL}: {algo_throughput}")
 
             if KL == self.KLdetect:
                 ax3.plot(seps, algo_throughput, '-', color='k', ms=2, label=f'KL = {KL}', linewidth=3.0, zorder=5)
@@ -450,24 +498,28 @@ class AnalysisTools():
 
         plt.close()
 
-        getLogger(__name__).info(f'Saving corrected contrast curves dictionary to file: {outputdir}/extracted_companion/{filter}_corr_contrast_curves.pkl')
-        with open(outputdir + f"/extracted_companion/{filter}_corr_contrast_curves.pkl", "wb") as f:
-            pickle.dump(ccc_dict, f)
+        getLogger(__name__).info(f'Saving corrected contrast curves dictionary to file: {outputdir}/{filter}_corr_contrast_curves.pkl')
+        with open(outputdir + f"/{filter}_corr_contrast_curves.yaml", "w") as f:
+            yaml.dump(ccc_dict, f)
 
-# if __name__ == "__main__":
-def analysis(filter, numbasis, fwhm, dataset, residuals, psflib, PSF, outputdir, xycomp_list=[None, None],
-             extract_companion=True, contrast_curves=True, cal_contrast_curves=True, mask_companion=True, inject_fake = True,
+def run_analysis(DF, id, filter, numbasis, fwhm, dataset, obsdataset, residuals, outputdir, xycomp_list=[None, None],
+             extract_candidate=True, contrast_curves=True, cal_contrast_curves=True, mask_candidate=True, inject_fake = True,
              guess_contrast=1e-1, pxsc_arcsec = 0.04, KLdetect = 7, klstep = 1  ,min_corr = 0.8,
              pa_list = [0, 45, 90, 135, 180, 225, 270, 315], seps = [1, 2, 3, 4, 5, 10, 15]):
-    os.makedirs(outputdir, exist_ok=True)
+
+    psflib, PSF = generate_psflib(DF, id, obsdataset, filter,
+                                  KL=KLdetect,
+                                  dir=outputdir + f"/{filter}_corr_matrix.fits",
+                                  min_corr=dataset.pipe_cfg.analysis['min_corr'])
+
     xcomp, ycomp = xycomp_list
-    if np.all([x is None for x in [xcomp, ycomp]]) and np.any([extract_companion,mask_companion]):
+    if np.all([x is None for x in [xcomp, ycomp]]) and np.any([extract_candidate,mask_candidate]):
         max_value = np.nanmax(np.median(residuals, axis=0))
         max_index = np.where(np.median(residuals, axis=0) == max_value)
         xcomp, ycomp = [max_index[1][0], max_index[0][0]]
 
 
-    analysistools = AnalysisTools(dataset=dataset,
+    analysistools = AnalysisTools(dataset=obsdataset,
                                   KLdetect = KLdetect,
                                   obspsflib = psflib,
                                   obsPSF = PSF,
@@ -476,48 +528,46 @@ def analysis(filter, numbasis, fwhm, dataset, residuals, psflib, PSF, outputdir,
                                   guess_contrast=guess_contrast,
                                   pxsc_arcsec = pxsc_arcsec,
                                   numbasis = numbasis,
-                                  extract_companion = extract_companion,
-                                  mask_companion = mask_companion,
+                                  extract_candidate = extract_candidate,
+                                  mask_candidate = mask_candidate,
                                   contrast_curves = contrast_curves,
                                   cal_contrast_curves = cal_contrast_curves,
                                   fwhm = fwhm)
 
-    if extract_companion:
-        analysistools.companion_extraction(filter, outputdir)
+    if extract_candidate:
+        analysistools.candidate_extraction(filter, outputdir+f"/candidates/ID{id}")
 
     if contrast_curves:
-        analysistools.mk_contrast_curves(filter, outputdir, seps, mask_companion, klstep, min_corr=min_corr)
+        analysistools.mk_contrast_curves(filter, residuals, outputdir+f"/contrast_curves/ID{id}", seps, mask_candidate, klstep, min_corr=min_corr, KLdetect=KLdetect)
 
     if cal_contrast_curves:
-        analysistools.mk_cal_contrast_curves(filter, outputdir, inject_fake, mask_companion, pa_list, klstep, min_corr=min_corr)
+        analysistools.mk_cal_contrast_curves(filter, outputdir+f"/contrast_curves/ID{id}", inject_fake, mask_candidate, pa_list, klstep, min_corr=min_corr, KLdetect=KLdetect)
 
-def run(packet):
-    getLogger(__name__).info(f'Running Analysis step')
-    DF = packet['DF']
-    dataset = packet['dataset']
-    numbasis = np.array(DF.kmodes)
-    filter = str(lower(dataset.pipe_cfg.analysis['filter']))
-    id = dataset.pipe_cfg.analysis['id']
-    fwhm = dataset.pipe_cfg.instrument['fwhm'][filter]
-    obsdataset, residuals = setup_DATASET(DF, id, filter, dataset.pipe_cfg.psfsubtraction['kmodes'])
-    outputdir = f"/Users/gstrampelli/PycharmProjects/FFP_binaries/out/contrast_curves/ID{id}"
+if __name__ == "steps.analysis":
 
-    psflib, PSF = generate_psflib(DF, id, obsdataset, filter,
-                                  KL=dataset.pipe_cfg.analysis['KLdetect'],
-                                  dir =outputdir+f"/{filter}_corr_matrix.fits",
-                                  min_corr=dataset.pipe_cfg.analysis['min_corr'])
+    def run(packet):
+        getLogger(__name__).info(f'Running Analysis step')
+        DF = packet['DF']
+        dataset = packet['dataset']
+        numbasis = np.array(DF.kmodes)
 
-    analysis(filter, numbasis, fwhm, obsdataset, residuals, psflib, PSF, outputdir,
-             xycomp_list=dataset.pipe_cfg.analysis['xycomp_list'] if len(dataset.pipe_cfg.analysis['xycomp_list']) >0 else [None, None],
-             extract_companion=dataset.pipe_cfg.analysis['extract_companion'],
-             contrast_curves=dataset.pipe_cfg.analysis['contrast_curves'],
-             cal_contrast_curves=dataset.pipe_cfg.analysis['cal_contrast_curves'],
-             mask_companion=dataset.pipe_cfg.analysis['mask_companion'],
-             inject_fake=dataset.pipe_cfg.analysis['inject_fake'],
-             guess_contrast=dataset.pipe_cfg.analysis['guess_contrast'],
-             pxsc_arcsec=dataset.pipe_cfg.instrument['pixelscale'],
-             KLdetect=dataset.pipe_cfg.analysis['KLdetect'],
-             klstep=dataset.pipe_cfg.analysis['klstep'],
-             min_corr=dataset.pipe_cfg.analysis['min_corr'],
-             pa_list=dataset.pipe_cfg.analysis['pa_list'],
-             seps=dataset.pipe_cfg.analysis['seps'])
+        for id in dataset.pipe_cfg.analysis['id_list']:
+            outputdir = f"/Users/gstrampelli/PycharmProjects/FFP_binaries/out"
+
+            for filter in dataset.pipe_cfg.analysis['filter']:
+                obsdataset, residuals = setup_DATASET(DF, id, filter, dataset.pipe_cfg.psfsubtraction['kmodes'])
+                fwhm = dataset.pipe_cfg.instrument['fwhm'][filter]
+                run_analysis(DF, id, filter.lower(), numbasis, fwhm, dataset, obsdataset, residuals, outputdir,
+                         xycomp_list=dataset.pipe_cfg.analysis['xycomp_list'] if len(dataset.pipe_cfg.analysis['xycomp_list']) >0 else [None, None],
+                         extract_candidate=dataset.pipe_cfg.analysis['extract_candidate'],
+                         contrast_curves=dataset.pipe_cfg.analysis['contrast_curves'],
+                         cal_contrast_curves=dataset.pipe_cfg.analysis['cal_contrast_curves'],
+                         mask_candidate=dataset.pipe_cfg.analysis['mask_candidate'],
+                         inject_fake=dataset.pipe_cfg.analysis['inject_fake'],
+                         guess_contrast=dataset.pipe_cfg.analysis['guess_contrast'],
+                         pxsc_arcsec=dataset.pipe_cfg.instrument['pixelscale'],
+                         KLdetect=dataset.pipe_cfg.analysis['KLdetect'] if dataset.pipe_cfg.analysis['KLdetect'] is not None else np.max(dataset.pipe_cfg.psfsubtraction['kmodes']),
+                         klstep=dataset.pipe_cfg.analysis['klstep'],
+                         min_corr=dataset.pipe_cfg.analysis['min_corr'],
+                         pa_list=dataset.pipe_cfg.analysis['pa_list'],
+                         seps=dataset.pipe_cfg.analysis['seps'])

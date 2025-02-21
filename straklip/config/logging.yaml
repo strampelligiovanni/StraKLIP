@@ -47,7 +47,7 @@ loggers:
     handlers: [ default, file ]
     level: DEBUG
     propagate: False
-  step.analysis:
+  steps.analysis:
     handlers: [ default, file ]
     level: DEBUG
     propagate: False

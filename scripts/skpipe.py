@@ -7,6 +7,8 @@ from datetime import datetime
 import steps
 from straklip import config, input_tables
 from steps import buildhdf, mktiles, mkphotometry,fow2cells,psfsubtraction,klipphotometry,analysis,buildfphdf,mkcompleteness,fpanalysis
+import warnings
+import logging
 
 def parse():
     # read in command line arguments
@@ -25,11 +27,11 @@ def parse():
 if 'SHARED_LOG_FILE' not in os.environ:
     os.environ['SHARED_LOG_FILE'] = f'straklip_{datetime.now().strftime("%Y-%m-%d_%H%M")}.log'
 
-getLogger('straklip', setup=True, logfile=os.environ['SHARED_LOG_FILE'],
+getLogger('straklip', setup=True, logfile=os.environ['SHARED_LOG_FILE'],debu=False,
           configfile=pkg.resource_filename('straklip', './config/logging.yaml'))
 
 if __name__ == "__main__":
-
+ # Restore warnings
 
     args = parse()
 
@@ -45,6 +47,14 @@ if __name__ == "__main__":
         sys.exit(1)
 
     dataset = input_tables.Tables(data_cfg, pipe_cfg)
+
+    if dataset.pipe_cfg.debug:
+        warnings.filterwarnings("default")
+        logging.captureWarnings(True)
+    else:
+        warnings.filterwarnings("ignore")
+        logging.captureWarnings(False)
+
     DF = config.configure_dataframe(dataset)
     for step in pipe_cfg.flow:
         if step == 'fow2cells':

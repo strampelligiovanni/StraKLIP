@@ -163,7 +163,7 @@ class Primary:
         self.ext = ext
 
 class MCMCfit:
-    def __init__(self,initial_guess=[],best_fit_params=[],limits=[],filename='',burnin=None,thin=None,nsteps=500,ndim=3,nwalkers=50,debug=False,flux=1,contrast=1,oversampling=1, center=[], dxy=[]):
+    def __init__(self,initial_guess=[],best_fit_params=[],limits=[],filename='',burnin=None,thin=None,nsteps=500,ndim=3,nwalkers=50,debug=False,flux=1,contrast=1,oversampling=1, center=[], dxy=[],epsf=None,size=41,visual_binary=False):
         self.best_fit_params=best_fit_params
         self.filename=filename
         self.burnin=burnin
@@ -179,8 +179,11 @@ class MCMCfit:
         self.oversampling = oversampling
         self.dxy = dxy
         self.center = center
+        self.epsf=epsf
+        self.size=size
+        self.visual_binary = visual_binary
 
-    def build_model_from_psf(self, params, psf1, psf2, x_guess=0, y_guess=0, shifted=True):
+    def build_model_from_psf(self, params, psf1, psf2, x_guess=0, y_guess=0,):
         '''
         Routine to inject a companion PSF around a single PSF, with an counter clockwise sangle and separation. 0 degree is up.
         :param params:
@@ -189,17 +192,37 @@ class MCMCfit:
         :param shifted:
         :return:
         '''
+        if self.visual_binary:
+            x1, y1, x2, y2, flux, contrast = params
 
-        x1, y1, x2, y2, flux, contrast = params
-        model1 = psf1  * flux
-        model2 = psf2 * flux * contrast
-        # This step will shift the final model (single or binary PSF) by the current x_guess-x and y_guess-y shift values to center it somewhere in the tile
-        shifted_model1 = shift(model1, shift=[y1 - y_guess, x_guess - x1], mode='constant', cval=0.0)
-        shifted_model2 = shift(model2, shift=[y2 - y_guess, x_guess - x2], mode='constant', cval=0.0)
-        if self.oversampling is not None:
-            return  zoom(shifted_model1 + shifted_model2, 1 / self.oversampling, order=1)
-        else:
+            if psf1 is None or psf2 is None:
+                y, x = np.mgrid[:self.size, :self.size]
+                model1 = self.epsf.evaluate(x, y, 1, self.center[0] + x_guess - x1, self.center[1] + y1 - y_guess)
+                # shifted_model1 = model1/np.max(model1) * flux
+                shifted_model1 = model1 * flux
+                model2 = self.epsf.evaluate(x, y, 1, self.center[0] + x_guess - x2, self.center[1] + y2 - y_guess)
+                # shifted_model2 = model2/np.max(model2) * flux * contrast
+                shifted_model2 = model2 * flux * contrast
+            else:
+                model1 = psf1 * flux
+                shifted_model1 = shift(model1, shift=[y1 - y_guess, x_guess - x1], mode='constant', cval=0.0)
+                model2 = psf2 * flux * contrast
+                shifted_model2 = shift(model2, shift=[y2 - y_guess, x_guess - x2], mode='constant', cval=0.0)
+
             return shifted_model1 + shifted_model2
+
+        else:
+
+            x1, y1, flux = params
+            if psf1 is None:
+                y, x = np.mgrid[:self.size, :self.size]
+                model1 = self.epsf.evaluate(x, y, flux, self.center[0] + x_guess - x1, self.center[1] + y1 - y_guess)
+                shifted_model1 = model1
+            else:
+                model1 = psf1  * flux
+                shifted_model1 = shift(model1, shift=[y1 - y_guess, x_guess - x1], mode='constant', cval=0.0)
+            return shifted_model1
+
 
     def log_likelihood(self,params, star_image, psf1, psf2, centers, show_plots=False, vmin=None, vmax=None, vminres=None,
                        vmaxres=None, path2fitsfile=None):
@@ -221,6 +244,7 @@ class MCMCfit:
 
         # Assuming Gaussian errors, the log-likelihood is proportional to the chi-squared
         log_likelihood = -0.5 * np.nansum(residual ** 2)
+        # log_likelihood = -0.5 * np.nansum(residual ** 2/(np.sqrt(abs(residual))**2))
 
         if show_plots:
             if vmin is None:
@@ -231,25 +255,33 @@ class MCMCfit:
                 vminres = np.nanmin(residual)
             if vmaxres is None:
                 vmaxres = np.nanmax(residual)
-            fig, ax = plt.subplots(1, 3, figsize=(21, 7))
-            im0 = ax[0].imshow(star_image, origin='lower', vmin=vmin, vmax=vmax)
-            ax[0].set_title('Data')
-            ax[0].plot([params[0],params[2]], [params[1], params[3]],'k', marker='x')
-            divider0 = make_axes_locatable(ax[0])
-            cax0 = divider0.append_axes('right', size='5%', pad=0.05)
-            fig.colorbar(im0, cax=cax0, orientation='vertical')
+            if self.visual_binary:
+                fig, ax = plt.subplots(1, 3, figsize=(21, 7))
+                im0 = ax[0].imshow(star_image, origin='lower', vmin=vmin, vmax=vmax)
+                ax[0].set_title('Data')
+                ax[0].plot([self.center[0]+params[0],self.center[0]-params[2]], [self.center[0]+params[1], self.center[0]+params[3]],'r', marker='x')
 
-            im1 = ax[1].imshow(model, origin='lower', vmin=vmin, vmax=vmax)
-            ax[1].set_title('Model')
-            divider1 = make_axes_locatable(ax[1])
-            cax1 = divider1.append_axes('right', size='5%', pad=0.05)
-            fig.colorbar(im1, cax=cax1, orientation='vertical')
+                divider0 = make_axes_locatable(ax[0])
+                cax0 = divider0.append_axes('right', size='5%', pad=0.05)
+                fig.colorbar(im0, cax=cax0, orientation='vertical')
 
-            im2 = ax[2].imshow(star_image - model, origin='lower', vmin=vminres, vmax=vmaxres)
-            ax[2].set_title('Residual')
-            divider2 = make_axes_locatable(ax[2])
-            cax2 = divider2.append_axes('right', size='5%', pad=0.05)
-            fig.colorbar(im2, cax=cax2, orientation='vertical')
+                im1 = ax[1].imshow(model, origin='lower', vmin=vmin, vmax=vmax)
+                ax[1].set_title('Model')
+                divider1 = make_axes_locatable(ax[1])
+                cax1 = divider1.append_axes('right', size='5%', pad=0.05)
+                fig.colorbar(im1, cax=cax1, orientation='vertical')
+
+                im2 = ax[2].imshow(star_image - model, origin='lower', vmin=vminres, vmax=vmaxres)
+                ax[2].set_title('Residual')
+                divider2 = make_axes_locatable(ax[2])
+                cax2 = divider2.append_axes('right', size='5%', pad=0.05)
+                fig.colorbar(im2, cax=cax2, orientation='vertical')
+            else:
+                fig, ax = plt.subplots(1, 1, figsize=(7, 7))
+                im0 = ax.imshow(star_image, origin='lower', vmin=vmin, vmax=vmax)
+                ax.set_title('Data')
+                ax.plot([self.center[0]+params[0],self.center[0]-self.dxy[0]], [self.center[0]+params[1], self.center[0]+self.dxy[1]],'r', marker='x')
+
             if path2fitsfile is not None:
                 plt.savefig(path2fitsfile, bbox_inches='tight')
                 plt.close()
@@ -268,13 +300,22 @@ class MCMCfit:
         Returns:
             float: Log-prior value (log(1) for uniform priors, or -inf if out of bounds).
         """
-        x1, y1, x2, y2, flux, contrast = params
+        if self.visual_binary:
+            x1, y1, x2, y2, flux, contrast = params
 
-        # Define uniform priors
-        if (limits[0][0] < x1 < limits[0][1]) and (limits[0][0] < y1 < limits[0][1]) and (limits[1][0] < x2 < limits[1][1]) and (limits[1][0] < y2 < limits[1][1]) and (limits[2][0] < flux < limits[2][1]) and (limits[3][0] < contrast < limits[3][1]):
-            return 0.0
+            # Define uniform priors
+            if (limits[0][0] < x1 < limits[0][1]) and (limits[0][0] < y1 < limits[0][1]) and (limits[1][0] < x2 < limits[1][1]) and (limits[1][0] < y2 < limits[1][1]) and (limits[2][0] < flux < limits[2][1]) and (limits[3][0] < contrast < limits[3][1]):
+                return 0.0
+            else:
+                return -np.inf
         else:
-            return -np.inf
+            x1, y1, flux = params
+
+            # Define uniform priors
+            if (limits[0][0] < x1 < limits[0][1]) and (limits[0][0] < y1 < limits[0][1])  and (limits[1][0] < flux < limits[1][1]):
+                return 0.0
+            else:
+                return -np.inf
 
     def log_posterior(self,params, star_image, psf1, psf2, limits, centers, show_plots=False, vmin=None, vmax=None,
                       vminres=None, vmaxres=None, path2fitsfile=None):
@@ -330,7 +371,10 @@ class MCMCfit:
             pranges.append((np.nanmin(flat_samples[:, i][np.isfinite(flat_samples[:, i])]),
                             np.nanmax(flat_samples[:, i][np.isfinite(flat_samples[:, i])])))
 
-        labels = ['x1', 'y1', 'x2', 'y2', 'flux', 'contrast']
+        if self.visual_binary:
+            labels = ['x1', 'y1', 'x2', 'y2', 'flux', 'contrast']
+        else:
+            labels = ['x1', 'y1', 'flux']
 
         samples = sampler.get_chain()  # Shape: (n_steps, n_walkers, n_dim)
         n_walkers = samples.shape[1]
@@ -364,7 +408,8 @@ class MCMCfit:
 class AnalysisTools():
     def __init__(self,DF=None,dataset=None,resdataset=None,maskeddataset=None, KLdetect=None, obspsflib = None, obsPSF = None,
                  xcomp=None, ycomp=None, guess_contrast=None, pxsc_arcsec = None, numbasis = None, extract_candidate = None,
-                 mask_candidate = None, contrast_curves = None, cal_contrast_curves = None, fwhm=None):
+                 mask_candidate = None, contrast_curves = None, cal_contrast_curves = None, fwhm=None,
+                 subtract_companion=False):
         self.DF=DF
         self.obsdataset = dataset
         self.obspsflib = obspsflib
@@ -382,6 +427,19 @@ class AnalysisTools():
         self.contrast_curves = contrast_curves
         self.cal_contrast_curves = cal_contrast_curves
         self.fwhm = fwhm
+        self.subtract_companion=subtract_companion
+
+    def build_epsf(self,list_of_references, shape=41, oversampling=3):
+
+        epsfs = pupsf.EPSFStars(list_of_references)
+        epsf_builder = pupsf.EPSFBuilder(
+            oversampling=oversampling,
+            maxiters=10,
+            shape=shape * oversampling,
+            progress_bar=False
+        )
+        epsf, fitted_stars = epsf_builder(epsfs)
+        return epsf
 
     def extract_subarray(self, data, center_x, center_y, size=3, flat_and_skip_center=False):
         """
@@ -471,36 +529,40 @@ class AnalysisTools():
                         list_of_references.append(hdul[1].data)
 
             if epsf:
-                oversampling = 3
-                epsfs = pupsf.EPSFStars(list_of_references)
-                epsf_builder = pupsf.EPSFBuilder(
-                    oversampling=oversampling,
-                    maxiters=10,
-                    shape=target.shape[0] * oversampling,
-                    progress_bar=False
-                )
-                epsf, fitted_stars = epsf_builder(epsfs)
-                if psf1 is None:
-                    psf1 = epsf.data/np.nanmax(epsf.data)
-                if psf2 is None:
-                    psf2 = epsf.data/np.nanmax(epsf.data)
+                epsf = self.build_epsf(list_of_references, shape=target.shape[0] , oversampling=3)
+
             else:
+                epsf = None
                 if psf1 is None:
                     psf1 = np.nanmedian(list_of_references,axis=0)/np.nanmax(np.nanmedian(list_of_references,axis=0))
                 if psf2 is None:
                     psf2 = np.nanmedian(list_of_references,axis=0)/np.nanmax(np.nanmedian(list_of_references,axis=0))
 
         if initial_params is None:
-            initial_params = np.array([0, 0, dxy[0],dxy[1], guess_flux,guess_contrast])
+            if not self.subtract_companion:
+                initial_params = np.array([0, 0, dxy[0],dxy[1], guess_flux,guess_contrast])
+            else:
+                initial_params = np.array([0, 0, guess_flux])
 
         if bounds is None:
-            bounds = np.array([(-1, 1),(np.nanmin(dxy)-1, np.nanmax(dxy)+1), (guess_flux*1e-1,guess_flux*1e1),(0,1)])
+            if not self.subtract_companion:
+                bounds = np.array([(-1, 1),(np.nanmin(dxy)-1, np.nanmax(dxy)+1), (guess_flux*1e-1,guess_flux*1e1),(0,1)])
+            else:
+                bounds = np.array([(-1, 1),(guess_flux*1e-1,guess_flux*1e1)])
 
-        self.mcmcfit = MCMCfit(initial_guess=initial_params,limits=bounds,
+        self.mcmcfit = MCMCfit(initial_guess=initial_params,limits=bounds, visual_binary = not self.subtract_companion,
                         filename=outputdir + f"/extracted_candidate/{filter}_ref_extracted",
-                        burnin=1700,thin=None,nsteps=2000,nwalkers=100,debug=True,ndim=6,flux=guess_flux,
-                        contrast=guess_contrast,oversampling=oversampling, dxy=dxy, center=center)
+                        burnin=1700,thin=None,nsteps=2000,nwalkers=100,debug=False,ndim=len(initial_params),flux=guess_flux,
+                        contrast=guess_contrast,oversampling=oversampling, dxy=dxy, center=center, epsf=epsf,size=target.shape[0])
+
+        data = target.copy()
+        if self.subtract_companion:
+            model = self.mcmcfit.build_model_from_psf([dxy[0],dxy[1], 1], psf1, psf2)
+            target -= model/np.max(model) * guess_flux * guess_contrast
         self.mcmcfit.run(target,psf1,psf2)
+        self.mcmcfit.log_posterior([i[0] for i in self.mcmcfit.best_fit_params], data, psf1, psf2, self.mcmcfit.limits, self.mcmcfit.center,
+                           show_plots=True,
+                           path2fitsfile=self.mcmcfit.filename + '_log_posterior_residuals.png')
         pass
 
     def get_temp_sep_and_posang(self):
@@ -581,11 +643,16 @@ class AnalysisTools():
         self.estimate_target_candidate_position(filter,self.obsdataset.input[0],guess_flux, guess_contrast,self.obsdataset.centers[0], [cand_extracted['dx'],cand_extracted['dy']],outputdir=outputdir, psf1=psf1, psf2=psf2, epsf=epsf)
         self.x_ref_err, self.y_ref_err = [self.mcmcfit.best_fit_params[0][1], self.mcmcfit.best_fit_params[0][2]]
         self.x_err, self.y_err = [self.mcmcfit.best_fit_params[1][1], self.mcmcfit.best_fit_params[1][2]]
-
         self.x_ref, self.y_ref = [x + self.mcmcfit.best_fit_params[0][0], y + self.mcmcfit.best_fit_params[1][0]]
-        self.dx, self.dy = [self.mcmcfit.best_fit_params[2][0],self.mcmcfit.best_fit_params[3][0]]  # delta coordinate respect to the position of the target
-        self.x, self.y = [self.x_ref - self.dx, self.y_ref + self.dy]  # c
+
+        if self.mcmcfit.visual_binary:
+            self.dx, self.dy = [self.mcmcfit.best_fit_params[2][0],self.mcmcfit.best_fit_params[3][0]]  # delta coordinate respect to the position of the target
+        else:
+            self.dx, self.dy = [cand_extracted['dx'], cand_extracted['dy']]
+
+        self.x, self.y = [self.x_ref - self.dx, self.y_ref + self.dy]
         self.ra_dec = wcs.pixel_to_world(self.x, self.y)
+
         self.ra_dec_ref = wcs.pixel_to_world(self.x_ref, self.y_ref)
 
         # Compute the angular separation in arcseconds
@@ -787,7 +854,7 @@ class AnalysisTools():
         with fits.open(cand_extracted['PSFref']) as hdul:
             psf2=(hdul['SCI'].data)/np.max(hdul['SCI'].data)
 
-        self.get_sep_and_posang(filter, cand_extracted, self.tagetdataset.input[0], guess_flux, fuess_comp_contrast, outputdir=outputdir, psf1=None, psf2=None, epsf=False)
+        self.get_sep_and_posang(filter, cand_extracted, self.tagetdataset.input[0], guess_flux, fuess_comp_contrast, outputdir=outputdir, psf1=None, psf2=None, epsf=True)
         cand_extracted['sep'] = float(self.separation_arcsec)
         cand_extracted['sep_err'] = float(self.separation_arcsec_err)
         cand_extracted['PA'] = float(self.position_angle)
@@ -1052,7 +1119,8 @@ class AnalysisTools():
 def run_analysis(DF, id, filter, numbasis, fwhm, dataset, obsdataset, residuals, outputdir, xycomp_list=[None, None],
              extract_candidate=True, contrast_curves=True, cal_contrast_curves=True, mask_candidate=True, inject_fake = True,
              guess_contrast=1e-1, pxsc_arcsec = 0.04, KLdetect = 7, klstep = 1  ,min_corr = 0.8,
-             pa_list = [0, 45, 90, 135, 180, 225, 270, 315], seps = [1, 2, 3, 4, 5, 10, 15],overwrite=True):
+             pa_list = [0, 45, 90, 135, 180, 225, 270, 315], seps = [1, 2, 3, 4, 5, 10, 15],overwrite=True,
+             subtract_companion=False):
 
     print_readme_to_file(output_path=outputdir+f"/analysis/")
     psflib, PSF = generate_psflib(DF, id, obsdataset, filter,
@@ -1081,7 +1149,8 @@ def run_analysis(DF, id, filter, numbasis, fwhm, dataset, obsdataset, residuals,
                                   mask_candidate = mask_candidate,
                                   contrast_curves = contrast_curves,
                                   cal_contrast_curves = cal_contrast_curves,
-                                  fwhm = fwhm)
+                                  fwhm = fwhm,
+                                  subtract_companion=subtract_companion)
 
     if extract_candidate:
         analysistools.candidate_extraction(filter,residuals[np.where(np.array(DF.kmodes)==KLdetect)[0][0]], outputdir+f"/analysis/ID{id}",overwrite=overwrite)
@@ -1119,4 +1188,5 @@ if __name__ == "steps.analysis":
                          min_corr=dataset.pipe_cfg.analysis['min_corr'],
                          pa_list=dataset.pipe_cfg.analysis['pa_list'],
                          seps=dataset.pipe_cfg.analysis['seps'],
-                         overwrite=dataset.pipe_cfg.analysis['overwrite'])
+                         overwrite=dataset.pipe_cfg.analysis['overwrite'],
+                         subtract_companion=dataset.pipe_cfg.analysis['subtract_companion'])

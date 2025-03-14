@@ -1010,8 +1010,6 @@ class AnalysisTools():
                 self.obsPSF = get_MODEL_from_data(ref / np.nanmax(ref), self.obsdataset._centers[0])
 
             os.makedirs(outputdir + '/inj_candidates', exist_ok=True)
-            os.makedirs(outputdir + '/inj_candidates/with_fakes', exist_ok=True)
-            os.makedirs(outputdir + '/inj_candidates/residuals_with_fakes', exist_ok=True)
             elno=1
             for input_planet_flux, sep in zip(input_planet_fluxes, seps):
                 for pa in pa_list:

@@ -46,7 +46,7 @@ if __name__ == "__main__":
         getLogger(__name__).critical(f'Required paths missing:\n\t'+'\n\t'.join(missing_paths))
         sys.exit(1)
 
-    dataset = input_tables.Tables(data_cfg, pipe_cfg)
+    dataset = input_tables.Tables(data_cfg, pipe_cfg, skip_originals=pipe_cfg.skip_originals)
 
     if dataset.pipe_cfg.debug:
         warnings.filterwarnings("default")

@@ -27,13 +27,12 @@ import astropy.units as u
 from scipy.optimize import minimize
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from scipy.ndimage import zoom
-
+from straklip import config
 from photutils import psf as pupsf
 
 
-def star2epsf(stamp, center=[20, 20]):
+def star2epsf(stamp,weights=None, center=[20, 20]):
     """Get the stamp and uncertainties from a Star object and provide it to EPSFStar"""
-    weights = np.sqrt(stamp - np.min(stamp))
     epsf = pupsf.EPSFStar(
         stamp,
         weights=weights,
@@ -95,7 +94,10 @@ def setup_DATASET(DF, id, filter, pipe_cfg):  # , remove_candidate=False):
     data[data < 0] = 0
     centers = [int((data.shape[1] - 1) / 2), int((data.shape[0] - 1) / 2)]
 
-    residuals = np.array([hdulist[f'KMODE{nb}'].data for nb in pipe_cfg.psfsubtraction['kmodes']])
+    if pipe_cfg.mktiles['la_cr_remove'] or pipe_cfg.mktiles['cr_remove']:
+        residuals = np.array([hdulist[f'CRCLEAN_KMODE{nb}'].data for nb in pipe_cfg.psfsubtraction['kmodes']])
+    else:
+        residuals = np.array([hdulist[f'KMODE{nb}'].data for nb in pipe_cfg.psfsubtraction['kmodes']])
     dataset = GenericData([data], [centers], filenames=[filename])
     mvs_ids = DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids == id].mvs_ids.values
     dataset.fullframe_fitsname = [f"{pipe_cfg.paths['data']}/{i}_drc.fits" for i in DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids), f'fits_{filter}'].values]
@@ -106,26 +108,47 @@ def setup_DATASET(DF, id, filter, pipe_cfg):  # , remove_candidate=False):
 
     return (dataset, residuals)
 
-def generate_psflib(DF, id, dataset, filter, d=3, KL=1, dir='./', min_corr=None, badfiles=None):
+def generate_psflib(DF, id, dataset, filter, d=3, KL=1, dir='./', min_corr=None, badfiles=None,epsf=False):
     getLogger(__name__).info(f'Generating PSF library')
     data = dataset.input[0]
     centers = dataset._centers[0]
     psf_list = [data]
+    epsf_list = []
+    weight_list = []
     psf_names = [DF.path2out + f'/mvs_tiles/{filter}/tile_ID{id}.fits']
     models_list = []
-
-    for psfid in DF.mvs_targets_df.loc[
-        (DF.mvs_targets_df[f'flag_{filter}'] == 'good_psf') & (DF.mvs_targets_df.mvs_ids != id)].mvs_ids.unique():
+    for psfid in DF.mvs_targets_df.loc[(DF.mvs_targets_df[f'flag_{filter}'] == 'good_psf') & (DF.mvs_targets_df.mvs_ids != id)].mvs_ids.unique():
         hdul = fits.open(DF.path2out + f'/mvs_tiles/{filter}/tile_ID{psfid}.fits')
         data = hdul['SCI'].data
         data[data < 0] = 0
-        model = hdul[f'MODEL{KL}'].data
-        model[model < 0] = 0
-        model_peak = np.nanmax(model)
-        models_list.append(model / model_peak)
+        if not epsf:
+            try:
+                model = hdul[f'MODEL{KL}'].data
+                model[model < 0] = 0
+                model_peak = np.nanmax(model)
+                models_list.append(model / model_peak)
+            except:
+                getLogger(__name__).warning(f'MODEL{KL} missing in ID {psfid}. Skipping')
+        else:
+            edata = hdul['ERR'].data
+            epsf_list.append(data)
+            weight = 1/edata
+            weight[~np.isfinite(weight)] = 0
+            weight_list.append(weight)
+
         psf_list.append(data)
         psf_names.append(DF.path2out + f'/mvs_tiles/{filter}/tile_ID{psfid}.fits')
         hdul.close()
+
+    if epsf:
+        list_of_references=[]
+        for psf, weight in zip(epsf_list,weight_list):
+            list_of_references.append(star2epsf(psf, weight, center=centers))
+
+        epsf = AnalysisTools.build_epsf(AnalysisTools, list_of_references, shape=psf.shape[0], oversampling=3)
+        y, x = np.mgrid[:psf.shape[0], :psf.shape[1]]
+        model = epsf.evaluate(x, y, 1, centers[0],centers[1])
+        models_list.append(model)
 
     PSF = get_MODEL_from_data(np.median(models_list, axis=0), centers, d)
 
@@ -1124,7 +1147,8 @@ def run_analysis(DF, id, filter, numbasis, fwhm, dataset, obsdataset, residuals,
     psflib, PSF = generate_psflib(DF, id, obsdataset, filter,
                                   KL=KLdetect,
                                   dir=outputdir + f"/{filter}_corr_matrix.fits",
-                                  min_corr=dataset.pipe_cfg.analysis['min_corr'])
+                                  min_corr=dataset.pipe_cfg.analysis['min_corr'],
+                                  epsf=dataset.pipe_cfg.analysis['epsf'])
 
     xcomp, ycomp = xycomp_list
     if np.all([x is None for x in [xcomp, ycomp]]) and np.any([extract_candidate,mask_candidate]):
@@ -1166,9 +1190,10 @@ if __name__ == "steps.analysis":
         DF = packet['DF']
         dataset = packet['dataset']
         numbasis = np.array(DF.kmodes)
-        outputdir = f"/Users/gstrampelli/PycharmProjects/FFP_binaries/out"
+        outputdir =dataset.pipe_cfg.paths['out']
+        config.make_paths(config=None, paths=outputdir + '/analysis/')
 
-        for id in dataset.pipe_cfg.analysis['id_list']:
+        for id in dataset.pipe_cfg.unq_ids_list:
             for filter in dataset.pipe_cfg.analysis['filter']:
                 obsdataset, residuals = setup_DATASET(DF, id, filter, dataset.pipe_cfg)
                 fwhm = dataset.pipe_cfg.instrument['fwhm'][filter]

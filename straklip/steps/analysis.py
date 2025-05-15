@@ -86,9 +86,9 @@ def get_MODEL_from_data(psf, centers, d=3):
     return (PSF)
 
 
-def setup_DATASET(DF, id, filter, pipe_cfg):  # , remove_candidate=False):
+def setup_DATASET(DF, unq_id, mvs_id, filter, pipe_cfg):  # , remove_candidate=False):
     getLogger(__name__).info(f'Setting up Dataset for observation')
-    filename = DF.path2out + f'/mvs_tiles/{filter}/tile_ID{id}.fits'
+    filename = DF.path2out + f'/mvs_tiles/{filter}/tile_ID{mvs_id}.fits'
     hdulist = pyfits.open(filename)
     data = hdulist['SCI'].data
     data[data < 0] = 0
@@ -99,25 +99,24 @@ def setup_DATASET(DF, id, filter, pipe_cfg):  # , remove_candidate=False):
     else:
         residuals = np.array([hdulist[f'KMODE{nb}'].data for nb in pipe_cfg.psfsubtraction['kmodes']])
     dataset = GenericData([data], [centers], filenames=[filename])
-    mvs_ids = DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids == id].mvs_ids.values
-    dataset.fullframe_fitsname = [f"{pipe_cfg.paths['data']}/{i}_drc.fits" for i in DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids), f'fits_{filter}'].values]
-    dataset.fullframe_ra_prim = DF.unq_targets_df.loc[DF.unq_targets_df.unq_ids == id].ra.values[0]
-    dataset.fullframe_dec_prim = DF.unq_targets_df.loc[DF.unq_targets_df.unq_ids == id].dec.values[0]
-    dataset.fullframe_x_prim = DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids), f'x_{filter}'].values-1
-    dataset.fullframe_y_prim = DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids.isin(mvs_ids), f'y_{filter}'].values-1
+    dataset.fullframe_fitsname = [f"{pipe_cfg.paths['data']}/{i}_drc.fits" for i in DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==mvs_id, f'fits_{filter}'].values]
+    dataset.fullframe_ra_prim = DF.unq_targets_df.loc[DF.unq_targets_df.unq_ids == unq_id].ra.values[0]
+    dataset.fullframe_dec_prim = DF.unq_targets_df.loc[DF.unq_targets_df.unq_ids == unq_id].dec.values[0]
+    dataset.fullframe_x_prim = DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==mvs_id, f'x_{filter}'].values-1
+    dataset.fullframe_y_prim = DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==mvs_id, f'y_{filter}'].values-1
 
     return (dataset, residuals)
 
-def generate_psflib(DF, id, dataset, filter, d=3, KL=1, dir='./', min_corr=None, badfiles=None,epsf=False):
+def generate_psflib(DF, mvs_id, dataset, filter, d=3, KL=1, dir='./', min_corr=None, badfiles=None,epsf=False):
     getLogger(__name__).info(f'Generating PSF library')
     data = dataset.input[0]
     centers = dataset._centers[0]
     psf_list = [data]
     epsf_list = []
     weight_list = []
-    psf_names = [DF.path2out + f'/mvs_tiles/{filter}/tile_ID{id}.fits']
+    psf_names = [DF.path2out + f'/mvs_tiles/{filter}/tile_ID{mvs_id}.fits']
     models_list = []
-    for psfid in DF.mvs_targets_df.loc[(DF.mvs_targets_df[f'flag_{filter}'] == 'good_psf') & (DF.mvs_targets_df.mvs_ids != id)].mvs_ids.unique():
+    for psfid in DF.mvs_targets_df.loc[(DF.mvs_targets_df[f'flag_{filter}'] == 'good_psf') & (DF.mvs_targets_df.mvs_ids != mvs_id)].mvs_ids.unique():
         hdul = fits.open(DF.path2out + f'/mvs_tiles/{filter}/tile_ID{psfid}.fits')
         data = hdul['SCI'].data
         data[data < 0] = 0
@@ -942,7 +941,7 @@ class AnalysisTools():
                                   corr_smooth=0,
                                   verbose=False)
 
-    def mk_contrast_curves(self, filter, residuals, outputdir, seps, mask_candidate, klstep, min_corr=None, KLdetect=1):
+    def mk_contrast_curves(self, filter, residuals, outputdir, seps, mask_candidate, klstep, min_corr=None, KLdetect=1, arc_sec=False, pixelscale=1):
         getLogger(__name__).info(f'Making contrast curves.')
         os.makedirs(outputdir, exist_ok=True)
 
@@ -965,11 +964,16 @@ class AnalysisTools():
         fig1, ax1 = plt.subplots(figsize=(12,6))
         cc_dict={}
         cc_dict['sep'] = seps
+        if arc_sec:
+            cc_dict['sep_arcsec'] = [i * pixelscale for i in seps]
+
         for elno in range(len(self.numbasis[::klstep])):
             KL = self.numbasis[::klstep][elno]
             klframe = residuals[elno]/np.nanmax(self.maskeddataset.input[0])
             contrast_seps, contrast = klip.meas_contrast(klframe, 0.5, seps[-1]+self.fwhm, self.fwhm,
                                                          center=self.maskeddataset._centers[0], low_pass_filter=False)
+            if arc_sec:
+                contrast_seps *= pixelscale
 
             med_interp = interp1d(contrast_seps,
                                   contrast,
@@ -977,22 +981,26 @@ class AnalysisTools():
                                   bounds_error=False,
                                   kind='slinear')
             contrast_curve_iterp=[]
-            for i, sep in enumerate(seps):
+            for i, sep in enumerate(contrast_seps):
                 contrast_curve_iterp.append(med_interp(sep))
 
             if KL == self.KLdetect:
-                ax1.plot(seps, contrast_curve_iterp, '-',color = 'k', label=f'KL = {KL}',linewidth=3.0, zorder=5)
+                ax1.plot(contrast_seps, contrast_curve_iterp, '-',color = 'k', label=f'KL = {KL}',linewidth=3.0, zorder=5)
             else:
-                ax1.plot(seps, contrast_curve_iterp, '-.',label=f'KL = {KL}',linewidth=3.0)
+                ax1.plot(contrast_seps, contrast_curve_iterp, '-.',label=f'KL = {KL}',linewidth=3.0)
 
-            cc_dict[KL] = med_interp(seps)
+            cc_dict[KL] = med_interp(contrast_seps)
 
         getLogger(__name__).info(f'Saving contrast curves plot in: {outputdir}')
         ax1.set_yscale('log')
         ax1.set_ylabel('5$\sigma$ Contrast')
-        ax1.set_xlabel('Separation [pix]')
+        if arc_sec:
+            ax1.set_xlabel('Separation ["]')
+            ax1.set_xlim(1*pixelscale, int(np.nanmax(cc_dict['sep']))*pixelscale)
+        else:
+            ax1.set_xlabel('Separation [pix]')
+            ax1.set_xlim(1, int(np.nanmax(cc_dict['sep'])))
         ax1.minorticks_on()
-        ax1.set_xlim(1, int(np.nanmax(contrast_seps)))
         ax1.set_ylim(1e-2, 1)
         fig1.legend(ncols=3, loc=1)
         fig1.savefig(outputdir + f'/{filter}-raw.png', bbox_inches='tight')
@@ -1002,7 +1010,7 @@ class AnalysisTools():
         with open(outputdir + f"/{filter}_contrast_curves.pkl", "wb") as f:
             pickle.dump(cc_dict, f)
 
-    def mk_cal_contrast_curves(self, filter, outputdir, inject_fake, mask_candidate, pa_list, klstep, min_corr=None, KLdetect=1):
+    def mk_cal_contrast_curves(self, filter, outputdir, inject_fake, mask_candidate, pa_list, klstep, min_corr=None, KLdetect=1, arc_sec=False, pixelscale=1):
         getLogger(__name__).info(f'Making corrected contrast curves.')
         os.makedirs(outputdir, exist_ok=True)
         if mask_candidate:
@@ -1020,6 +1028,7 @@ class AnalysisTools():
             cc_dict = pickle.load(f)
 
         seps = cc_dict['sep']
+
         input_contrast_list = [cc_dict[KL] for KL in self.numbasis]
         input_planet_fluxes =  np.median(input_contrast_list, axis=0)*np.nanmax(self.fkdataset.input[0])
         if inject_fake:
@@ -1064,7 +1073,10 @@ class AnalysisTools():
         fig2, ax2 = plt.subplots(figsize=(12, 6))
         fig3, ax3 = plt.subplots(figsize=(12, 6))
         ccc_dict={}
-        ccc_dict['sep'] = cc_dict['sep']
+        ccc_dict['sep'] = seps
+        if arc_sec:
+            ccc_dict['sep_arcsec'] = [i * pixelscale for i in seps]
+
         for elno in range(len(self.numbasis[::klstep])):
             KL = self.numbasis[::klstep][elno]
             retrieved_fluxes = []  # will be populated, one for each separation
@@ -1101,6 +1113,9 @@ class AnalysisTools():
             if np.any(algo_throughput>1):
                 getLogger(__name__).warning(f"Algorithm throughput above 1 in KLmode {KL}: {algo_throughput}")
 
+            if arc_sec:
+                seps *= pixelscale
+
             if KL == self.KLdetect:
                 ax3.plot(seps, algo_throughput, '-', color='k', ms=2, label=f'KL = {KL}', linewidth=3.0, zorder=5)
             else:
@@ -1108,16 +1123,21 @@ class AnalysisTools():
 
             ccc_dict[KL] = cc_dict[KL]/algo_throughput
             if KL == self.KLdetect:
-                ax2.plot(ccc_dict['sep'], ccc_dict[KL], '-',color='k', label=f'KL = {KL}',linewidth=3.0, zorder=5)
+                ax2.plot(seps, ccc_dict[KL], '-',color='k', label=f'KL = {KL}',linewidth=3.0, zorder=5)
             else:
-                ax2.plot(ccc_dict['sep'], ccc_dict[KL], '-.',label=f'KL = {KL}',linewidth=3.0)
+                ax2.plot(seps, ccc_dict[KL], '-.',label=f'KL = {KL}',linewidth=3.0)
 
 
         getLogger(__name__).info(f'Saving corrected contrast curves plot in: {outputdir}')
         ax2.set_yscale('log')
         ax2.set_ylabel('5$\sigma$ Contrast')
-        ax2.set_xlabel('Separation [pix]')
-        ax2.set_xlim(1, int(np.nanmax(cc_dict['sep'])))
+        if arc_sec:
+            ax2.set_xlabel('Separation ["]')
+            ax2.set_xlim(1*pixelscale, int(np.nanmax(ccc_dict['sep']))*pixelscale)
+
+        else:
+            ax2.set_xlabel('Separation [pix]')
+            ax2.set_xlim(1, int(np.nanmax(ccc_dict['sep'])))
         ax2.minorticks_on()
         ax2.set_ylim(1e-2, 1)
         fig2.legend(ncols=3, loc=1)
@@ -1125,7 +1145,10 @@ class AnalysisTools():
 
         getLogger(__name__).info(f'Saving throughput correction curves plot in: {outputdir}')
         ax3.set_ylabel('Throughput')
-        ax3.set_xlabel('Separation [pix]')
+        if arc_sec:
+            ax3.set_xlabel('Separation ["]')
+        else:
+            ax3.set_xlabel('Separation [pix]')
         ax3.set_xlim(1, int(np.nanmax(seps)))
         ax3.minorticks_on()
         fig3.legend(ncols=3, loc=1)
@@ -1137,14 +1160,14 @@ class AnalysisTools():
         with open(outputdir + f"/{filter}_corr_contrast_curves.pkl", "wb") as f:
             pickle.dump(ccc_dict, f)
 
-def run_analysis(DF, id, filter, numbasis, fwhm, dataset, obsdataset, residuals, outputdir, xycomp_list=[None, None],
+def run_analysis(DF, mvs_id, filter, numbasis, fwhm, dataset, obsdataset, residuals, outputdir, xycomp_list=[None, None],
              extract_candidate=True, contrast_curves=True, cal_contrast_curves=True, mask_candidate=True, inject_fake = True,
              guess_contrast=1e-1, pxsc_arcsec = 0.04, KLdetect = 7, klstep = 1  ,min_corr = 0.8,
              pa_list = [0, 45, 90, 135, 180, 225, 270, 315], seps = [1, 2, 3, 4, 5, 10, 15],overwrite=True,
-             subtract_companion=False):
+             subtract_companion=False, arc_sec=False):
 
     print_readme_to_file(output_path=outputdir+f"/analysis/")
-    psflib, PSF = generate_psflib(DF, id, obsdataset, filter,
+    psflib, PSF = generate_psflib(DF, mvs_id, obsdataset, filter,
                                   KL=KLdetect,
                                   dir=outputdir + f"/{filter}_corr_matrix.fits",
                                   min_corr=dataset.pipe_cfg.analysis['min_corr'],
@@ -1175,13 +1198,13 @@ def run_analysis(DF, id, filter, numbasis, fwhm, dataset, obsdataset, residuals,
                                   subtract_companion=subtract_companion)
 
     if extract_candidate:
-        analysistools.candidate_extraction(filter,residuals[np.where(np.array(DF.kmodes)==KLdetect)[0][0]], outputdir+f"/analysis/ID{id}",overwrite=overwrite)
+        analysistools.candidate_extraction(filter,residuals[np.where(np.array(DF.kmodes)==KLdetect)[0][0]], outputdir+f"/analysis/ID{mvs_id}",overwrite=overwrite)
 
     if contrast_curves:
-        analysistools.mk_contrast_curves(filter, residuals, outputdir+f"/analysis/ID{id}", seps, mask_candidate, klstep, min_corr=min_corr, KLdetect=KLdetect)
+        analysistools.mk_contrast_curves(filter, residuals, outputdir+f"/analysis/ID{mvs_id}", seps, mask_candidate, klstep, min_corr=min_corr, KLdetect=KLdetect,arc_sec=arc_sec, pixelscale=pxsc_arcsec)
 
     if cal_contrast_curves:
-        analysistools.mk_cal_contrast_curves(filter, outputdir+f"/analysis/ID{id}", inject_fake, mask_candidate, pa_list, klstep, min_corr=min_corr, KLdetect=KLdetect)
+        analysistools.mk_cal_contrast_curves(filter, outputdir+f"/analysis/ID{mvs_id}", inject_fake, mask_candidate, pa_list, klstep, min_corr=min_corr, KLdetect=KLdetect, arc_sec=arc_sec, pixelscale=pxsc_arcsec)
 
 if __name__ == "steps.analysis":
 
@@ -1193,23 +1216,25 @@ if __name__ == "steps.analysis":
         outputdir =dataset.pipe_cfg.paths['out']
         config.make_paths(config=None, paths=outputdir + '/analysis/')
 
-        for id in dataset.pipe_cfg.unq_ids_list:
+        for unq_id in dataset.pipe_cfg.unq_ids_list:
             for filter in dataset.pipe_cfg.analysis['filter']:
-                obsdataset, residuals = setup_DATASET(DF, id, filter, dataset.pipe_cfg)
-                fwhm = dataset.pipe_cfg.instrument['fwhm'][filter]
-                run_analysis(DF, id, filter.lower(), numbasis, fwhm, dataset, obsdataset, residuals, outputdir,
-                         xycomp_list=dataset.pipe_cfg.analysis['xycomp_list'] if len(dataset.pipe_cfg.analysis['xycomp_list']) >0 else [None, None],
-                         extract_candidate=dataset.pipe_cfg.analysis['extract_candidate'],
-                         contrast_curves=dataset.pipe_cfg.analysis['contrast_curves'],
-                         cal_contrast_curves=dataset.pipe_cfg.analysis['cal_contrast_curves'],
-                         mask_candidate=dataset.pipe_cfg.analysis['mask_candidate'],
-                         inject_fake=dataset.pipe_cfg.analysis['inject_fake'],
-                         guess_contrast=dataset.pipe_cfg.analysis['guess_contrast'],
-                         pxsc_arcsec=dataset.pipe_cfg.instrument['pixelscale'],
-                         KLdetect=dataset.pipe_cfg.analysis['KLdetect'] if dataset.pipe_cfg.analysis['KLdetect'] is not None else np.max(dataset.pipe_cfg.psfsubtraction['kmodes']),
-                         klstep=dataset.pipe_cfg.analysis['klstep'],
-                         min_corr=dataset.pipe_cfg.analysis['min_corr'],
-                         pa_list=dataset.pipe_cfg.analysis['pa_list'],
-                         seps=dataset.pipe_cfg.analysis['seps'],
-                         overwrite=dataset.pipe_cfg.analysis['overwrite'],
-                         subtract_companion=dataset.pipe_cfg.analysis['subtract_companion'])
+                for mvs_id in DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids == unq_id].mvs_ids.values:
+                    obsdataset, residuals = setup_DATASET(DF, unq_id, mvs_id, filter, dataset.pipe_cfg)
+                    fwhm = dataset.pipe_cfg.instrument['fwhm'][filter]
+                    run_analysis(DF, mvs_id, filter.lower(), numbasis, fwhm, dataset, obsdataset, residuals, outputdir,
+                             xycomp_list=dataset.pipe_cfg.analysis['xycomp_list'] if len(dataset.pipe_cfg.analysis['xycomp_list']) >0 else [None, None],
+                             extract_candidate=dataset.pipe_cfg.analysis['extract_candidate'],
+                             contrast_curves=dataset.pipe_cfg.analysis['contrast_curves'],
+                             cal_contrast_curves=dataset.pipe_cfg.analysis['cal_contrast_curves'],
+                             mask_candidate=dataset.pipe_cfg.analysis['mask_candidate'],
+                             inject_fake=dataset.pipe_cfg.analysis['inject_fake'],
+                             guess_contrast=dataset.pipe_cfg.analysis['guess_contrast'],
+                             pxsc_arcsec=dataset.pipe_cfg.instrument['pixelscale'],
+                             KLdetect=dataset.pipe_cfg.analysis['KLdetect'] if dataset.pipe_cfg.analysis['KLdetect'] is not None else np.max(dataset.pipe_cfg.psfsubtraction['kmodes']),
+                             klstep=dataset.pipe_cfg.analysis['klstep'],
+                             min_corr=dataset.pipe_cfg.analysis['min_corr'],
+                             pa_list=dataset.pipe_cfg.analysis['pa_list'],
+                             seps=dataset.pipe_cfg.analysis['seps'],
+                             overwrite=dataset.pipe_cfg.analysis['overwrite'],
+                             subtract_companion=dataset.pipe_cfg.analysis['subtract_companion'],
+                             arc_sec=dataset.pipe_cfg.analysis['arc_sec'])

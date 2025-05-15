@@ -116,7 +116,8 @@ def generate_psflib(DF, mvs_id, dataset, filter, d=3, KL=1, dir='./', min_corr=N
     weight_list = []
     psf_names = [DF.path2out + f'/mvs_tiles/{filter}/tile_ID{mvs_id}.fits']
     models_list = []
-    for psfid in DF.mvs_targets_df.loc[(DF.mvs_targets_df[f'flag_{filter}'] == 'good_psf') & (DF.mvs_targets_df.mvs_ids != mvs_id)].mvs_ids.unique():
+    target_cell = DF.mvs_targets_df.loc[(DF.mvs_targets_df.mvs_ids == mvs_id),f'cell_{filter}'].values[0]
+    for psfid in DF.mvs_targets_df.loc[(DF.mvs_targets_df[f'cell_{filter}'] == target_cell) & (DF.mvs_targets_df[f'flag_{filter}'] == 'good_psf') & (DF.mvs_targets_df.mvs_ids != mvs_id)].mvs_ids.unique():
         hdul = fits.open(DF.path2out + f'/mvs_tiles/{filter}/tile_ID{psfid}.fits')
         data = hdul['SCI'].data
         data[data < 0] = 0
@@ -167,21 +168,29 @@ def generate_psflib(DF, mvs_id, dataset, filter, d=3, KL=1, dir='./', min_corr=N
     return (psflib, PSF)
 
 class Candidate:
-    def __init__(self, input, chi2=[], fma=None, con=None, econ=None, ext='cand'):
+    def __init__(self, input, chi2=[], fma=None, mag=None, emag=None, dmag=None, con=None, econ=None, mass=None,
+                 emass=None,teff=None,spaccr=None,ext='cand'):
         self.input = input
         self.chi2 = chi2
+        self.mag = mag
+        self.emag = emag
+        self.dmag = dmag
         self.con = con
         self.econ = econ
         self.fma = fma
+        self.mass = mass
+        self.emass = emass
+        self.teff = teff
+        self.spaccr = spaccr
         self.ext = ext
 
 class Primary:
-    def __init__(self, input=None, chi2=[], fma=None, con=None, econ=None, ext='prim'):
-        self.input = input
-        self.chi2 = chi2
-        self.con = con
-        self.econ = econ
-        self.fma = fma
+    def __init__(self, mag=None, emag=None, age=None, dist=None, accr=None, ext='prim'):
+        self.mag = mag
+        self.emag = emag
+        self.age = age
+        self.dist = dist
+        self.accr = accr
         self.ext = ext
 
 class MCMCfit:
@@ -683,8 +692,6 @@ class AnalysisTools():
 
         getLogger(__name__).info(f"Separation: {self.separation_arcsec:.4f} arcsec")
         getLogger(__name__).info(f"Position Angle: {self.position_angle:.2f} degrees")
-
-
         pass
 
     def run_FMAstrometry(self,obj,sep,pa,filter,PSF,chaindir,boxsize,dr,fileprefix,outputdir,fitkernel,corr_len_guess,corr_len_range,xrange,yrange,frange,nwalkers,nburn,nsteps,nthreads,wkl):
@@ -778,7 +785,7 @@ class AnalysisTools():
         self.run_FMAstrometry(obj, sep, pa, filter, PSF, chaindir, boxsize=7, dr=5,
                               fileprefix=f"{filter}_{obj.ext}_{elno}", outputdir=test_outputdir,
                               fitkernel='diag', corr_len_guess=3, corr_len_range=2,
-                              xrange=1, yrange=1, frange=1, nwalkers=100,
+                              xrange=2, yrange=2, frange=1, nwalkers=100,
                               nburn=500, nsteps=1000, nthreads=4,
                               wkl=np.where(self.KLdetect == np.array(self.numbasis))[0])
 
@@ -825,7 +832,7 @@ class AnalysisTools():
 
         return obj_extracted
 
-    def candidate_extraction(self, filter, residuals, outputdir,overwrite=True):
+    def candidate_extraction(self, filter, residuals, outputdir,overwrite=True,path2iso_interp=None,spaccr=None):
         getLogger(__name__).info(f'Extracting candidate from: {self.obsdataset.filenames}')
         test_outputdir = f'{outputdir}/extracted_candidate/testPSF4extraction/'
         os.makedirs(outputdir, exist_ok=True)
@@ -839,7 +846,7 @@ class AnalysisTools():
 
         path2yalms=glob(test_outputdir + f"/{filter}_cand_*_extracted.yaml")
         if len(path2yalms) == 0 or overwrite:
-            for elno in range(len(self.obspsflib.master_library)):
+            for elno in range(1,len(self.obspsflib.master_library)):
                 cand_extracted = self.fit_astrometry(candidate, self.separation_pixels_temp , self.position_angle_temp, filter,  elno, chaindir, test_outputdir)
                 getLogger(__name__).info(f'Saving candidate dictionary to file: {test_outputdir}/{filter}_cand_{elno}_extracted.yaml')
                 with open(test_outputdir + f"{filter}_cand_{elno}_extracted.yaml", "w") as f:
@@ -862,6 +869,17 @@ class AnalysisTools():
         with open(path2loadyalm, "r") as f:
             cand_extracted = yaml.safe_load(f)
 
+        self.candidate = Candidate(input=self.obsdataset.input[0],
+                                   chi2=cand_extracted['chi2'],
+                                   con=cand_extracted['con'],
+                                   econ=cand_extracted['econ'],
+                                   dmag=-2.5 * np.log10(cand_extracted['con']),
+                                   mag=self.primary.mag -2.5 * np.log10(cand_extracted['con']),
+                                   spaccr=spaccr,
+                                   ext='cand')
+        cand_extracted['mag'] = float(self.candidate.mag)
+        cand_extracted['dmag'] = float(self.candidate.dmag)
+
         self.tagetdataset=copy.deepcopy(self.obsdataset)
         self.get_temp_sep_and_posang()
         fakes.inject_planet(self.tagetdataset.input, self.tagetdataset.centers,
@@ -876,20 +894,30 @@ class AnalysisTools():
         with fits.open(cand_extracted['PSFref']) as hdul:
             psf2=(hdul['SCI'].data)/np.max(hdul['SCI'].data)
 
-        self.get_sep_and_posang(filter, cand_extracted, self.tagetdataset.input[0], guess_flux, fuess_comp_contrast, outputdir=outputdir, psf1=None, psf2=None, epsf=True)
-        cand_extracted['sep'] = float(self.separation_arcsec)
-        cand_extracted['sep_err'] = float(self.separation_arcsec_err)
-        cand_extracted['PA'] = float(self.position_angle)
-        cand_extracted['PA_err'] = float(self.position_angle_err)
+        if path2iso_interp is not None:
+            ## Load interpolated isochrones
+            with open(path2iso_interp, 'rb') as file_handle:
+                getLogger(__name__).info(f'Loading isochrones interpolator dictionary from file: {path2iso_interp}')
+                interp = pickle.load(file_handle)
 
-        cand_extracted['ra'] = float(self.ra_dec.ra.value)
-        cand_extracted['dec'] = float(self.ra_dec.dec.value)
-        cand_extracted['x_prim'] = float(self.x_ref)+1
-        cand_extracted['y_prim'] = float(self.y_ref)+1
-        cand_extracted['x_prim_err'] = float(self.x_ref_err)
-        cand_extracted['y_prim_err'] = float(self.y_ref_err)
-        cand_extracted['ra_prim'] = float(self.ra_dec_ref.ra.value)
-        cand_extracted['dec_prim'] = float(self.ra_dec_ref.dec.value)
+            self.candidate.mass = interp[filter]['mass'](self.candidate.mag - 5 * np.log10(self.primary.dist / 10), self.primary.age, self.candidate.spaccr)
+            self.candidate.teff = interp[filter]['teff'](self.candidate.mag - 5 * np.log10(self.primary.dist / 10), self.primary.age, self.candidate.spaccr)
+            cand_extracted['mass'] = float(self.candidate.mass)
+            cand_extracted['teff'] = float(self.candidate.teff)
+
+        # self.get_sep_and_posang(filter, cand_extracted, self.tagetdataset.input[0], guess_flux, fuess_comp_contrast, outputdir=outputdir, psf1=None, psf2=None, epsf=True)
+        # cand_extracted['sep'] = float(self.separation_arcsec)
+        # cand_extracted['sep_err'] = float(self.separation_arcsec_err)
+        # cand_extracted['PA'] = float(self.position_angle)
+        # cand_extracted['PA_err'] = float(self.position_angle_err)
+        # cand_extracted['ra'] = float(self.ra_dec.ra.value)
+        # cand_extracted['dec'] = float(self.ra_dec.dec.value)
+        # cand_extracted['x_prim'] = float(self.x_ref)+1
+        # cand_extracted['y_prim'] = float(self.y_ref)+1
+        # cand_extracted['x_prim_err'] = float(self.x_ref_err)
+        # cand_extracted['y_prim_err'] = float(self.y_ref_err)
+        # cand_extracted['ra_prim'] = float(self.ra_dec_ref.ra.value)
+        # cand_extracted['dec_prim'] = float(self.ra_dec_ref.dec.value)
 
         with open(outputdir + f"/extracted_candidate/{filter}_extracted.yaml", "w") as f:
             yaml.dump(cand_extracted, f,  sort_keys=False)
@@ -941,7 +969,7 @@ class AnalysisTools():
                                   corr_smooth=0,
                                   verbose=False)
 
-    def mk_contrast_curves(self, filter, residuals, outputdir, seps, mask_candidate, klstep, min_corr=None, KLdetect=1, arc_sec=False, pixelscale=1):
+    def mk_contrast_curves(self, filter, residuals, outputdir, seps, mask_candidate, klstep, min_corr=None, KLdetect=1, arc_sec=False, pixelscale=1,ylim=[1e-4, 1],xlim=None,r=2):
         getLogger(__name__).info(f'Making contrast curves.')
         os.makedirs(outputdir, exist_ok=True)
 
@@ -958,6 +986,16 @@ class AnalysisTools():
             getLogger(__name__).info(f'Loading residuas from file: {outputdir}/masked_candidates/{filter}-res_masked-KLmodes-all.fits')
             with fits.open(f"{outputdir}/masked_candidates/{filter}-res_masked-KLmodes-all.fits") as kl_hdulist:
                 residuals =  kl_hdulist[0].data
+            # self.maskeddataset=deepcopy(self.obsdataset)
+            # for elno in range(len(self.numbasis)):
+            #     # Create a grid of coordinates
+            #     rows, cols = np.indices(residuals[elno].shape)
+            #     # Compute Euclidean distance from the (x, y) point
+            #     distances = np.sqrt((rows - self.ycomp) ** 2 + (cols - self.xcomp) ** 2)
+            #     # Create a mask for all positions within radius r
+            #     mask = distances <= r
+            #     residuals[elno][mask] = np.nan
+
         else:
             self.maskeddataset=deepcopy(self.obsdataset)
 
@@ -996,21 +1034,37 @@ class AnalysisTools():
         ax1.set_ylabel('5$\sigma$ Contrast')
         if arc_sec:
             ax1.set_xlabel('Separation ["]')
-            ax1.set_xlim(1*pixelscale, int(np.nanmax(cc_dict['sep']))*pixelscale)
+            if xlim is None:
+                ax1.set_xlim(1*pixelscale, int(np.nanmax(cc_dict['sep']))*pixelscale)
+            else:
+                ax1.set_xlim(xlim)
         else:
             ax1.set_xlabel('Separation [pix]')
-            ax1.set_xlim(1, int(np.nanmax(cc_dict['sep'])))
+            if xlim is None:
+                ax1.set_xlim(1, int(np.nanmax(cc_dict['sep'])))
+            else:
+                ax1.set_xlim(xlim)
         ax1.minorticks_on()
-        ax1.set_ylim(1e-2, 1)
+        ax1.set_ylim(ylim)
         fig1.legend(ncols=3, loc=1)
         fig1.savefig(outputdir + f'/{filter}-raw.png', bbox_inches='tight')
+        plt.close()
+
+        getLogger(__name__).info(f'residual masked plot in: {outputdir}')
+        fig2 = plt.figure(figsize=(6,6))
+        plt.set_ylabel('y')
+        plt.set_xlabel('x')
+        plt.imshow(residuals[np.where(self.numbasis==self.KLdetect)[0][0]], cmap='gray',origin='lower')
+        plt.minorticks_on()
+        plt.colorbar()
+        fig2.savefig(outputdir + f'/{filter}-masked.png', bbox_inches='tight')
         plt.close()
 
         getLogger(__name__).info(f'Saving contrast curves dictionary to file: {outputdir}/{filter}_contrast_curves.pkl')
         with open(outputdir + f"/{filter}_contrast_curves.pkl", "wb") as f:
             pickle.dump(cc_dict, f)
 
-    def mk_cal_contrast_curves(self, filter, outputdir, inject_fake, mask_candidate, pa_list, klstep, min_corr=None, KLdetect=1, arc_sec=False, pixelscale=1):
+    def mk_cal_contrast_curves(self, filter, outputdir, inject_fake, mask_candidate, pa_list, klstep, min_corr=None, KLdetect=1, arc_sec=False, pixelscale=1,ylim=[1e-4, 1],xlim=None):
         getLogger(__name__).info(f'Making corrected contrast curves.')
         os.makedirs(outputdir, exist_ok=True)
         if mask_candidate:
@@ -1133,13 +1187,18 @@ class AnalysisTools():
         ax2.set_ylabel('5$\sigma$ Contrast')
         if arc_sec:
             ax2.set_xlabel('Separation ["]')
-            ax2.set_xlim(1*pixelscale, int(np.nanmax(ccc_dict['sep']))*pixelscale)
-
+            if xlim is None:
+                ax2.set_xlim(1 * pixelscale, int(np.nanmax(ccc_dict['sep'])) * pixelscale)
+            else:
+                ax2.set_xlim(xlim)
         else:
             ax2.set_xlabel('Separation [pix]')
-            ax2.set_xlim(1, int(np.nanmax(ccc_dict['sep'])))
+            if xlim is None:
+                ax2.set_xlim(1, int(np.nanmax(ccc_dict['sep'])))
+            else:
+                ax2.set_xlim(xlim)
         ax2.minorticks_on()
-        ax2.set_ylim(1e-2, 1)
+        ax2.set_ylim(ylim)
         fig2.legend(ncols=3, loc=1)
         fig2.savefig(outputdir+f'/{filter}-calcc.png',bbox_inches='tight')
 
@@ -1147,8 +1206,18 @@ class AnalysisTools():
         ax3.set_ylabel('Throughput')
         if arc_sec:
             ax3.set_xlabel('Separation ["]')
+            if xlim is None:
+                ax3.set_xlim(1 * pixelscale, int(np.nanmax(ccc_dict['sep'])) * pixelscale)
+            else:
+                ax3.set_xlim(xlim)
         else:
             ax3.set_xlabel('Separation [pix]')
+            if xlim is None:
+                ax3.set_xlim(1, int(np.nanmax(ccc_dict['sep'])))
+            else:
+                ax3.set_xlim(xlim)
+        ax3.minorticks_on()
+        ax3.set_ylim(ylim)
         ax3.set_xlim(1, int(np.nanmax(seps)))
         ax3.minorticks_on()
         fig3.legend(ncols=3, loc=1)
@@ -1160,11 +1229,22 @@ class AnalysisTools():
         with open(outputdir + f"/{filter}_corr_contrast_curves.pkl", "wb") as f:
             pickle.dump(ccc_dict, f)
 
-def run_analysis(DF, mvs_id, filter, numbasis, fwhm, dataset, obsdataset, residuals, outputdir, xycomp_list=[None, None],
+    def mk_mass_sensitivity_curves(self):
+        getLogger(__name__).info(f'Making mass sensitivity curves.')
+        os.makedirs(outputdir, exist_ok=True)
+        getLogger(__name__).info( f'Loading contrast curves dictionary from file: {outputdir}/{filter}_contrast_curves.pkl')
+        with open(outputdir + f"/{filter}_contrast_curves.pkl", "rb") as f:
+            cc_dict = pickle.load(f)
+
+        seps = cc_dict['sep']
+
+        pass
+
+def run_analysis(DF, unq_id, mvs_id, filter, numbasis, fwhm, dataset, obsdataset, residuals, outputdir, xycomp_list=[None, None],
              extract_candidate=True, contrast_curves=True, cal_contrast_curves=True, mask_candidate=True, inject_fake = True,
              guess_contrast=1e-1, pxsc_arcsec = 0.04, KLdetect = 7, klstep = 1  ,min_corr = 0.8,
              pa_list = [0, 45, 90, 135, 180, 225, 270, 315], seps = [1, 2, 3, 4, 5, 10, 15],overwrite=True,
-             subtract_companion=False, arc_sec=False):
+             subtract_companion=False, arc_sec=False,ylim=[1e-4, 1],xlim=None,path2iso_interp=None,age=1,accr=1e-5,distance=400,spaccr=-5):
 
     print_readme_to_file(output_path=outputdir+f"/analysis/")
     psflib, PSF = generate_psflib(DF, mvs_id, obsdataset, filter,
@@ -1173,7 +1253,12 @@ def run_analysis(DF, mvs_id, filter, numbasis, fwhm, dataset, obsdataset, residu
                                   min_corr=dataset.pipe_cfg.analysis['min_corr'],
                                   epsf=dataset.pipe_cfg.analysis['epsf'])
 
-    xcomp, ycomp = xycomp_list
+    # xycomp_list is a 1-index array, e.g. coordinates from ds9, while the extraction need a 0-index array to work
+    if isinstance(xycomp_list, dict):
+        xcomp, ycomp = np.array(xycomp_list[str(mvs_id)]) - 1
+    else:
+        xcomp, ycomp = np.array(xycomp_list) - 1
+
     if np.all([x is None for x in [xcomp, ycomp]]) and np.any([extract_candidate,mask_candidate]):
         max_value = np.nanmax(np.median(residuals, axis=0))
         max_index = np.where(np.median(residuals, axis=0) == max_value)
@@ -1197,14 +1282,24 @@ def run_analysis(DF, mvs_id, filter, numbasis, fwhm, dataset, obsdataset, residu
                                   fwhm = fwhm,
                                   subtract_companion=subtract_companion)
 
+    analysistools.primary = Primary(
+        mag=DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids == mvs_id, f'm_{filter.lower()}'].values[0],
+        emag=DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids == mvs_id, f'e_{filter.lower()}'].values[0],
+        age=age,
+        dist=distance,
+        accr=accr)
+
     if extract_candidate:
-        analysistools.candidate_extraction(filter,residuals[np.where(np.array(DF.kmodes)==KLdetect)[0][0]], outputdir+f"/analysis/ID{mvs_id}",overwrite=overwrite)
+        analysistools.candidate_extraction(filter,residuals[np.where(np.array(DF.kmodes)==KLdetect)[0][0]], outputdir+f"/analysis/ID{mvs_id}",overwrite=overwrite,path2iso_interp=path2iso_interp,spaccr=spaccr)
 
     if contrast_curves:
-        analysistools.mk_contrast_curves(filter, residuals, outputdir+f"/analysis/ID{mvs_id}", seps, mask_candidate, klstep, min_corr=min_corr, KLdetect=KLdetect,arc_sec=arc_sec, pixelscale=pxsc_arcsec)
+        analysistools.mk_contrast_curves(filter, residuals, outputdir+f"/analysis/ID{mvs_id}", seps, mask_candidate, klstep, min_corr=min_corr, KLdetect=KLdetect,arc_sec=arc_sec, pixelscale=pxsc_arcsec,ylim=ylim,xlim=xlim)
 
     if cal_contrast_curves:
-        analysistools.mk_cal_contrast_curves(filter, outputdir+f"/analysis/ID{mvs_id}", inject_fake, mask_candidate, pa_list, klstep, min_corr=min_corr, KLdetect=KLdetect, arc_sec=arc_sec, pixelscale=pxsc_arcsec)
+        analysistools.mk_cal_contrast_curves(filter, outputdir+f"/analysis/ID{mvs_id}", inject_fake, mask_candidate, pa_list, klstep, min_corr=min_corr, KLdetect=KLdetect, arc_sec=arc_sec, pixelscale=pxsc_arcsec,ylim=ylim,xlim=xlim)
+
+    if mass_sensitivity_curves:
+        analysistools.mk_mass_sensitivity_curves(filter, outputdir+f"/analysis/ID{mvs_id}", inject_fake, mask_candidate, pa_list, klstep, min_corr=min_corr, KLdetect=KLdetect, arc_sec=arc_sec, pixelscale=pxsc_arcsec,ylim=ylim,xlim=xlim)
 
 if __name__ == "steps.analysis":
 
@@ -1221,7 +1316,7 @@ if __name__ == "steps.analysis":
                 for mvs_id in DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids == unq_id].mvs_ids.values:
                     obsdataset, residuals = setup_DATASET(DF, unq_id, mvs_id, filter, dataset.pipe_cfg)
                     fwhm = dataset.pipe_cfg.instrument['fwhm'][filter]
-                    run_analysis(DF, mvs_id, filter.lower(), numbasis, fwhm, dataset, obsdataset, residuals, outputdir,
+                    run_analysis(DF, unq_id, mvs_id, filter.lower(), numbasis, fwhm, dataset, obsdataset, residuals, outputdir,
                              xycomp_list=dataset.pipe_cfg.analysis['xycomp_list'] if len(dataset.pipe_cfg.analysis['xycomp_list']) >0 else [None, None],
                              extract_candidate=dataset.pipe_cfg.analysis['extract_candidate'],
                              contrast_curves=dataset.pipe_cfg.analysis['contrast_curves'],
@@ -1237,4 +1332,11 @@ if __name__ == "steps.analysis":
                              seps=dataset.pipe_cfg.analysis['seps'],
                              overwrite=dataset.pipe_cfg.analysis['overwrite'],
                              subtract_companion=dataset.pipe_cfg.analysis['subtract_companion'],
-                             arc_sec=dataset.pipe_cfg.analysis['arc_sec'])
+                             arc_sec=dataset.pipe_cfg.analysis['arc_sec'],
+                             ylim=dataset.pipe_cfg.analysis['ylim'],
+                             xlim=dataset.pipe_cfg.analysis['xlim'],
+                             path2iso_interp=dataset.pipe_cfg.analysis['path2iso_interp'],
+                             age=dataset.pipe_cfg.analysis['age'],
+                             accr=dataset.pipe_cfg.analysis['accr'],
+                             distance=dataset.pipe_cfg.analysis['dist'],
+                             spaccr=dataset.pipe_cfg.analysis['spaccr'])

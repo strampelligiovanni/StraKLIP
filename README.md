@@ -132,10 +132,7 @@ flow:
 - fow2cells
 - psfsubtraction
 - klipphotometry
-########## second part of the pipeline ##########
-- buildfphdf
-- mkcompleteness
-- fpanalysis
+- analysis
 ```
 
   

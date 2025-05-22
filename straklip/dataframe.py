@@ -4,21 +4,16 @@ manipulation of the data tables (multivisits detections, average visits detectio
 through  all the pipeline
 '''
 
-from astropy.io import fits
 from utils.ancillary import keys_list_from_dic
-from pathlib import PurePath,Path
 import pandas as pd
 from stralog import getLogger
-from astropy.table import Table
 from glob import glob
-
-DEFAULT_FLOW=['buildhdf','tiles']
 
 class DataFrame():
     # def __getstate__(self):
     #     return {"data": self.values, "columns": self.columns}
 
-    def __init__(self,path2data='',path2out='',path2database='',path2pam='',target='',inst='',pixscale=1,gain=1,PAMdict={},tilebase=15,radec=[],filters=[],xyaxis=[],fitsext='_flt',skipphot=False,dq2mask=[],zpt={},Av={},dist=0,kmodes=[],type='type',maxsep=2,minsep=0,kind='dataframe',steps=[]):
+    def __init__(self,path2data='',path2out='',path2database='',path2pam='',target='',inst='',pixscale=1,gain=1,PAMdict={},tilebase=15,radec=[],filters=[],xyaxis=[],fitsext='_flt',skipphot=False,dq2mask=[],zpt={},Av={},dist=0,kmodes=[],type='type',maxsep=2,minsep=0,df_ext='.h5',steps=[]):
         '''
         Create the dataframe object
 
@@ -64,7 +59,7 @@ class DataFrame():
         None.
 
         '''
-        self.kind=kind
+        self.df_ext=df_ext
         self.path2out=path2out
         self.path2data=path2data
         self.path2database=path2database
@@ -93,11 +88,6 @@ class DataFrame():
     ######################
     # Ancillary routines #
     ######################
-    def print_all(self,max_rows=500,max_columns=500,width=1000):
-        pd.set_option('display.max_rows', max_rows)
-        pd.set_option('display.max_columns', max_columns)
-        pd.set_option('display.width', width)
-
     def save_dataframes(self,step):
         '''
         Save DataFrame to file
@@ -112,7 +102,7 @@ class DataFrame():
         '''
         if step not in self.steps: self.steps.append(step)
         self.keys=keys_list_from_dic(self.__dict__,'_df')
-        getLogger(__name__).info(f'Saving the the following keys in %s to %s in %s'%(self.keys,self.kind,str(self.path2out)))
+        getLogger(__name__).info(f'Saving the the following keys in %s to an %s file in %s'%(self.keys,self.df_ext,str(self.path2out)))
         for elno in range(len(self.keys)):
             key = self.keys[elno]
             filename=str(self.path2out + '/' + key.split('_df')[0] + '.h5')
@@ -121,18 +111,7 @@ class DataFrame():
                     if '_df' not in label:
                         getattr(self,key).attrs[label] = vars(self)[label]
 
-            # try:
-
             getattr(self,key).to_hdf(filename, key=key, mode='w')
-
-            # with pd.HDFStore(filename) as store:
-            #     store.put(key.split('_df')[0], getattr(self,key), format='table')
-                    # if key == 'crossmatch_ids_df':
-                    #     store.get_storer(key.split('_df')[0]).attrs.metadata = getattr(self,key).attrs
-
-            # except:
-            #     getLogger(__name__).critical(f'Saving of %s failed. Abort' % key)
-            #     raise ValueError
 
     def load_dataframe(self):
         '''
@@ -146,17 +125,8 @@ class DataFrame():
         self.list_of_HDF5_keys(self.path2out)
         for key in self.keys:
             filename = self.path2out+'/'+key+'.h5'
-            setattr(self, key+'_df', pd.read_hdf(filename, mode='r'))
-
-            # with pd.HDFStore(self.path2out+'/'+key+'.h5') as store:
-            #     # if key == 'crossmatch_ids':
-            #     #     metadata = store.get_storer(key).attrs
-            #     df = store.get(key)
-            #
-            #     setattr(self, key+'_df', df)
-
-        # for key in metadata.metadata.keys():
-        #     setattr(self, key, metadata.metadata[key])
+            df = pd.read_hdf(filename, mode='r')
+            setattr(self, key+'_df', df)
 
     def list_of_HDF5_keys(self,path):
         '''
@@ -172,22 +142,10 @@ class DataFrame():
         None.
 
         '''
-        # if self.kind == 'table':
-        #     ext='.fits'
-        # elif self.kind == 'dataframe':
-        #     ext='.h5'
-        # else:
-        #     getLogger(__name__).critical()
-        #     raise ValueError()
         file = glob(path+'/*.h5')
         self.keys = []
         for name in file:
             self.keys.append(name.split('/')[-1].split('.')[0])
-        # with pd.HDFStore(path) as store:
-        #     keys = store.keys()
-        #     if verbose:print('List of keys:',keys)
-        #     self.keys=keys
-        #     store.close()
 
     def remove_HDF5_key(self):
         '''

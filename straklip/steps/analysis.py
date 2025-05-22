@@ -1456,14 +1456,17 @@ if __name__ == "steps.analysis":
                 for mvs_id in mvs_ids_lit:
                     if dataset.pipe_cfg.analysis['candidate']['coords'] is not None:
                         xycomp_list = dataset.pipe_cfg.analysis['candidate']['coords'],
+                        KLdetect = int(dataset.pipe_cfg.analysis['candidate']['KLdetect'])
                     elif dataset.pipe_cfg.analysis['candidate']['coords'] is None and DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_id,[f'flag_{filter}']].values != 'rejected':
                         xycomp_list = DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_id,[f'x_tile_{filter}',f'y_tile_{filter}']].values[0]+1 #xycomp_list is a 1-index array
+                        KLdetect = int(DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids == mvs_id, f'kmode_{filter}'].values[0])
                     else:
                         if DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==mvs_id,[f'flag_{filter}']].values != 'rejected':
                             xycomp_list = np.round(np.nanmedian(DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_lit), [ f'x_tile_{filter}', f'y_tile_{filter}']].values, axis=0))+1 #xycomp_list is a 1-index array
+                            KLdetect = int(np.nanmin(DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_lit), f'kmode_{filter}'].values))
                         else:
                             continue
-                    if not np.isnan(DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_id,f'kmode_{filter}'].values[0]):
+                    if not np.isnan(KLdetect):
                         obsdataset, residuals = setup_DATASET(DF, unq_id, mvs_id, filter, dataset.pipe_cfg)
                         fwhm = dataset.pipe_cfg.instrument['fwhm'][filter]
                         run_analysis(DF, unq_id, mvs_id, filter.lower(), numbasis, fwhm, dataset, obsdataset, residuals, outputdir,
@@ -1489,6 +1492,6 @@ if __name__ == "steps.analysis":
                                  logSPacc=dataset.pipe_cfg.analysis['primay']['logSPacc'],
                                  guess_contrast = dataset.pipe_cfg.analysis['candidate']['guess_contrast'],
                                  xycomp_list = xycomp_list,
-                                 KLdetect = dataset.pipe_cfg.analysis['candidate']['KLdetect'] if dataset.pipe_cfg.analysis['candidate']['KLdetect'] is not None else np.max(dataset.pipe_cfg.psfsubtraction['kmodes']),
+                                 KLdetect = KLdetect,
                                  subtract_companion = dataset.pipe_cfg.analysis['candidate']['subtract_companion'],
                                  kwargs=dataset.pipe_cfg.analysis['kwargs'])

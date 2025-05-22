@@ -782,14 +782,69 @@ class AnalysisTools():
         getLogger(__name__).info(f' contrast: {obj.con}, error: {obj.econ}')
         obj.fma = fma
 
-    def fit_astrometry(self, filter, elno, chaindir, test_outputdir, arc_sec, obj_extracted={}):
+    def fit_astrometry(self, filter, elno, chaindir, test_outputdir, arc_sec, kwargs=None, obj_extracted={}):
         PSF = get_MODEL_from_data(self.obspsflib.master_library[elno] / np.nanmax(self.obspsflib.master_library[elno]),
                                   self.obsdataset._centers[0])
-        self.run_FMAstrometry(self.candidate, self.separation_pixels_temp, self.position_angle_temp, filter, PSF, chaindir, boxsize=7, dr=5,
-                              fileprefix=f"{filter}_{self.candidate.ext}_{elno}", outputdir=test_outputdir,
-                              fitkernel='diag', corr_len_guess=3, corr_len_range=2,
-                              xrange=2, yrange=2, frange=1, nwalkers=100,
-                              nburn=500, nsteps=1000, nthreads=4,
+
+        if isinstance(kwargs,dict) and 'corr_len_guess' in kwargs.keys():
+            corr_len_guess = kwargs['corr_len_guess']
+        else:
+            corr_len_guess = 3
+        if isinstance(kwargs,dict) and 'corr_len_range' in kwargs.keys():
+            corr_len_range = kwargs['corr_len_range']
+        else:
+            corr_len_range = 2
+        if isinstance(kwargs,dict) and 'yrange' in kwargs.keys():
+            yrange = kwargs['yrange']
+        else:
+            yrange = 2
+        if isinstance(kwargs,dict) and 'xrange' in kwargs.keys():
+            xrange = kwargs['xrange']
+        else:
+            xrange = 2
+        if isinstance(kwargs,dict) and 'frange' in kwargs.keys():
+            frange = kwargs['frange']
+        else:
+            frange = 1
+        if isinstance(kwargs,dict) and 'nwalkers' in kwargs.keys():
+            nwalkers = kwargs['nwalkers']
+        else:
+            nwalkers = 100
+        if isinstance(kwargs,dict) and 'nburn' in kwargs.keys():
+            nburn = kwargs['nburn']
+        else:
+            nburn = 500
+        if isinstance(kwargs,dict) and 'nsteps' in kwargs.keys():
+            nsteps = kwargs['nsteps']
+        else:
+            nsteps = 1000
+        if isinstance(kwargs, dict) and 'nthreads' in kwargs.keys():
+            nthreads = kwargs['nthreads']
+        else:
+            nthreads = 4
+        if isinstance(kwargs, dict) and 'boxsize' in kwargs.keys():
+            boxsize = kwargs['boxsize']
+        else:
+            boxsize = 7
+        if isinstance(kwargs, dict) and 'dr' in kwargs.keys():
+            dr = kwargs['dr']
+        else:
+            dr = 5
+        if isinstance(kwargs, dict) and 'fileprefix' in kwargs.keys():
+            fileprefix = kwargs['fileprefix']
+        else:
+            fileprefix = f"{filter}_{self.candidate.ext}_{elno}"
+        if isinstance(kwargs, dict) and 'fitkernel' in kwargs.keys():
+            fitkernel = kwargs['fitkernel']
+        else:
+            fitkernel = 'diag'
+
+        self.run_FMAstrometry(self.candidate, self.separation_pixels_temp, self.position_angle_temp, filter, PSF, chaindir,
+                              boxsize=boxsize, dr=dr,
+                              fileprefix=fileprefix, outputdir=test_outputdir,
+                              fitkernel=fitkernel, corr_len_guess=corr_len_guess, corr_len_range=corr_len_range,
+                              xrange=xrange, yrange=yrange, frange=frange, nwalkers=nwalkers,
+                              nburn=nburn, nsteps=nsteps, nthreads=nthreads,
                               wkl=np.where(self.KLdetect == np.array(self.numbasis))[0])
 
         self.candidate.fma.sampler.flatchain[:, 2] *= self.guess_contrast
@@ -837,7 +892,7 @@ class AnalysisTools():
 
         return obj_extracted
 
-    def candidate_extraction(self, filter, residuals, outputdir,overwrite=True,path2iso_interp=None, arc_sec=False):
+    def candidate_extraction(self, filter, residuals, outputdir,overwrite=True,path2iso_interp=None, arc_sec=False,kwargs=None):
         getLogger(__name__).info(f'Extracting candidate from: {self.obsdataset.filenames}')
         test_outputdir = f'{outputdir}/extracted_candidate/testPSF4extraction/'
         os.makedirs(outputdir, exist_ok=True)
@@ -852,7 +907,7 @@ class AnalysisTools():
         path2yalms=glob(test_outputdir + f"/{filter}_cand_*_extracted.yaml")
         if len(path2yalms) == 0 or overwrite:
             for elno in range(1,len(self.obspsflib.master_library)):
-                cand_extracted = self.fit_astrometry(filter,  elno, chaindir, test_outputdir, arc_sec)
+                cand_extracted = self.fit_astrometry(filter,  elno, chaindir, test_outputdir, arc_sec,kwargs=kwargs)
                 getLogger(__name__).info(f'Saving candidate dictionary to file: {test_outputdir}/{filter}_cand_{elno}_extracted.yaml')
                 with open(test_outputdir + f"{filter}_cand_{elno}_extracted.yaml", "w") as f:
                     yaml.dump(cand_extracted, f, sort_keys=False)
@@ -1299,7 +1354,7 @@ def run_analysis(DF, unq_id, mvs_id, filter, numbasis, fwhm, dataset, obsdataset
              extract_candidate=True, contrast_curves=True, cal_contrast_curves=True,mass_sensitivity_curves=True, mask_candidate=True, inject_fake = True,
              guess_contrast=1e-1, pxsc_arcsec = 0.04, KLdetect = 7, klstep = 1  ,min_corr = 0.8,
              pa_list = [0, 45, 90, 135, 180, 225, 270, 315], seps = [1, 2, 3, 4, 5, 10, 15],overwrite=True,
-             subtract_companion=False, arc_sec=False,ylim=[1e-4, 1],xlim=None,path2iso_interp=None,age=1,accr=1e-5,distance=400,av=0,logSPacc=-5):
+             subtract_companion=False, arc_sec=False,ylim=[1e-4, 1],xlim=None,path2iso_interp=None,age=1,accr=1e-5,distance=400,av=0,logSPacc=-5,kwargs=None):
 
     print_readme_to_file(output_path=outputdir+f"/analysis/")
     psflib, PSF = generate_psflib(DF, mvs_id, obsdataset, filter,
@@ -1350,7 +1405,7 @@ def run_analysis(DF, unq_id, mvs_id, filter, numbasis, fwhm, dataset, obsdataset
                                         chi2=[],
                                         ext='cand')
     if extract_candidate:
-        analysistools.candidate_extraction(filter,residuals[np.where(np.array(DF.kmodes)==KLdetect)[0][0]], outputdir+f"/analysis/ID{mvs_id}",overwrite=overwrite,path2iso_interp=path2iso_interp,arc_sec=arc_sec)
+        analysistools.candidate_extraction(filter,residuals[np.where(np.array(DF.kmodes)==KLdetect)[0][0]], outputdir+f"/analysis/ID{mvs_id}",overwrite=overwrite,path2iso_interp=path2iso_interp,arc_sec=arc_sec,kwargs=kwargs)
 
     if contrast_curves:
         analysistools.mk_contrast_curves(filter, residuals, outputdir+f"/analysis/ID{mvs_id}", seps, mask_candidate, klstep, min_corr=min_corr, KLdetect=KLdetect,arc_sec=arc_sec, pixelscale=pxsc_arcsec,ylim=ylim,xlim=xlim)
@@ -1414,4 +1469,5 @@ if __name__ == "steps.analysis":
                                  guess_contrast = dataset.pipe_cfg.analysis['candidate']['guess_contrast'],
                                  xycomp_list = xycomp_list,
                                  KLdetect = dataset.pipe_cfg.analysis['candidate']['KLdetect'] if dataset.pipe_cfg.analysis['candidate']['KLdetect'] is not None else np.max(dataset.pipe_cfg.psfsubtraction['kmodes']),
-                                 subtract_companion = dataset.pipe_cfg.analysis['candidate']['subtract_companion'])
+                                 subtract_companion = dataset.pipe_cfg.analysis['candidate']['subtract_companion'],
+                                 kwargs=dataset.pipe_cfg.analysis['kwargs'])

@@ -53,7 +53,7 @@ flow: enable which step the pipeline will go thorugh
     - fow2cells:  break the FOW dividing the source in groups of close spatially related targets in order to minimize distorsion when building the PSF library and performin PSF subtraction
     - psfsubtraction: perform PSF subtraction on each tile, and create a residual tile.
     - klipphotometry: perform photometry on each residual tile and check the presence of a candidate companion
-    - fpanalysis: asses the probability of false positive in the candidate detection and build the completness map
+    - analysis: extract companions, and asses contrast curves (raw and calibrated through throuput) and mass sensitivity curves 
 paths: path mandatory for the pipeline
   pyklip: path to pyklip
   pam: path to Pixel Area Map for the instument
@@ -66,7 +66,7 @@ mkphotometry: here we record all the specific option for this step of the pipeli
 fow2cells: here we record all the specific option for this step of the pipeline
 psfsubtraction: here we record all the specific option for this step of the pipeline
 klipphotometry: here we record all the specific option for this step of the pipeline
-fpanalysis: here we record all the specific option for this step of the pipeline
+analysis: here we record all the specific option for this step of the pipeline
 ```
 
 Before running the pipeline, you will need a series of HST `_flc` images, and a catalog recording the `x`, `y`

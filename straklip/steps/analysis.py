@@ -979,9 +979,15 @@ class AnalysisTools():
                 getLogger(__name__).info(f'Loading isochrones interpolator dictionary from file: {path2iso_interp}')
                 interp = pickle.load(file_handle)
 
-            self.candidate.mass = 10**interp[filter]['logmass'](self.candidate.mag - 5 * np.log10(self.primary.dist / 10), self.primary.age, self.primary.logSPacc)
-            self.candidate.teff = interp[filter]['teff'](self.candidate.mag - 5 * np.log10(self.primary.dist / 10), self.primary.age, self.primary.logSPacc)
-            self.candidate.R = 10**interp[filter]['logR'](self.candidate.mag - 5 * np.log10(self.primary.dist / 10), self.primary.age, self.primary.logSPacc)
+            if self.primary.logSPacc is not None:
+                self.candidate.mass = 10**interp[filter]['logmass'](self.candidate.mag - 5 * np.log10(self.primary.dist / 10), self.primary.age, self.primary.logSPacc)
+                self.candidate.teff = interp[filter]['teff'](self.candidate.mag - 5 * np.log10(self.primary.dist / 10), self.primary.age, self.primary.logSPacc)
+                self.candidate.R = 10**interp[filter]['logR'](self.candidate.mag - 5 * np.log10(self.primary.dist / 10), self.primary.age, self.primary.logSPacc)
+            else:
+                self.candidate.mass = 10 ** interp[filter]['logmass'](self.candidate.mag - 5 * np.log10(self.primary.dist / 10), self.primary.age)
+                self.candidate.teff = interp[filter]['teff'](self.candidate.mag - 5 * np.log10(self.primary.dist / 10),self.primary.age)
+                self.candidate.R = 10 ** interp[filter]['logR'](self.candidate.mag - 5 * np.log10(self.primary.dist / 10), self.primary.age)
+
             cand_extracted['mass'] = float(self.candidate.mass)
             cand_extracted['teff'] = float(self.candidate.teff)
             cand_extracted['R'] = float(self.candidate.R)

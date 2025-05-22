@@ -9,7 +9,6 @@ def getLogger(args,**kwargs):
     setup = kwargs.pop('setup', False)
     logfile = kwargs.pop('logfile', None)
     configfile = kwargs.pop('configfile', None)
-
     if setup:
         setupLogger(configfile,logfile)
     log = logging.getLogger(args)
@@ -22,7 +21,6 @@ def setupLogger(configfile,logfile):
         config = yaml.safe_load(f.read())
     config['handlers']['file']['filename'] = logfile
     logging.config.dictConfig(config)
-    logging.captureWarnings(True)
 
 class MakeFileHandler(logging.FileHandler):
     def __init__(self, filename, mode='a', encoding=None, delay=0):

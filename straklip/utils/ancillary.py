@@ -475,11 +475,10 @@ def get_Av_dict(filter_label_list,inst=None,date=None,verbose=False,Av=1,Rv=3.1,
                 #     obs = Observation(vegaspec, band(f'acs,wfc1,%s,mjd#{obsdate}'%filter.lower()))
                 #     obs_ext = Observation(vegaspec_ext, band(f'acs,wfc1,%s,mjd#{obsdate}'%filter.lower()))
                 if inst.lower() == 'acs':
-                    band_filter = band_dict[ext] + f',mjd#{date},{filter.lower()}'
+                    band_filter = f"{band_dict[ext].split(',')[0]},{band_dict[ext].split(',')[1]},{filter.lower()},{band_dict[ext].split(',')[2]}"
                 else:
                     band_filter = band_dict[ext] + f',{filter.lower()}'
 
-                band_filter = band_dict[ext] + f',{filter.lower()}'
                 obs = Observation(vegaspec, band(band_filter))
                 obs_ext = Observation(vegaspec_ext, band(band_filter))
                 if verbose:

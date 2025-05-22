@@ -6,12 +6,13 @@ import numpy as np
 from astropy.io import fits
 
 class Tables:
-    def __init__(self,data_cfg, pipe_cfg):
+    def __init__(self,data_cfg, pipe_cfg, skip_originals=False):
         self.pipe_cfg = pipe_cfg
         self.data_cfg = data_cfg
-        for table_name in ['mvs_table','unq_table']:
-            self.load_table_into_df(table_name)
-        self.select_tables()
+        if not skip_originals:
+            for table_name in ['mvs_table','unq_table']:
+                self.load_table_into_df(table_name)
+            self.select_tables()
 
     def select_tables(self):
         self.mvs_table=self.mvs_table.loc[

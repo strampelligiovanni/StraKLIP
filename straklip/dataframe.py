@@ -4,21 +4,16 @@ manipulation of the data tables (multivisits detections, average visits detectio
 through  all the pipeline
 '''
 
-from astropy.io import fits
 from utils.ancillary import keys_list_from_dic
-from pathlib import PurePath,Path
 import pandas as pd
 from stralog import getLogger
-from astropy.table import Table
 from glob import glob
-
-DEFAULT_FLOW=['buildhdf','tiles']
 
 class DataFrame():
     # def __getstate__(self):
     #     return {"data": self.values, "columns": self.columns}
 
-    def __init__(self,path2data='',path2out='',path2database='',path2pam='',target='',inst='',pixscale=1,gain=1,PAMdict={},tilebase=15,radec=[],filters=[],xyaxis=[],fitsext='_flt',skipphot=False,dq2mask=[],zpt={},Av={},dist=0,kmodes=[],type='type',maxsep=2,minsep=0,kind='dataframe',steps=[]):
+    def __init__(self,path2data='',path2out='',path2database='',path2pam='',target='',inst='',pixscale=1,gain=1,PAMdict={},tilebase=15,radec=[],filters=[],xyaxis=[],fitsext='_flt',skipphot=False,dq2mask=[],zpt={},Av={},dist=0,kmodes=[],type='type',maxsep=2,minsep=0,df_ext_in='.h5',df_ext_out='.h5',steps=[]):
         '''
         Create the dataframe object
 
@@ -64,7 +59,8 @@ class DataFrame():
         None.
 
         '''
-        self.kind=kind
+        self.df_ext_in=df_ext_in
+        self.df_ext_out=df_ext_out
         self.path2out=path2out
         self.path2data=path2data
         self.path2database=path2database
@@ -93,7 +89,6 @@ class DataFrame():
     ######################
     # Ancillary routines #
     ######################
-
     def save_dataframes(self,step):
         '''
         Save DataFrame to file
@@ -108,27 +103,21 @@ class DataFrame():
         '''
         if step not in self.steps: self.steps.append(step)
         self.keys=keys_list_from_dic(self.__dict__,'_df')
-        getLogger(__name__).info(f'Saving the the following keys in %s to %s in %s'%(self.keys,self.kind,str(self.path2out)))
+        getLogger(__name__).info(f'Saving the the following keys in %s to %s files in %s'%(self.keys,self.df_ext_out,str(self.path2out)))
         for elno in range(len(self.keys)):
             key = self.keys[elno]
-            filename=str(self.path2out + '/' + key.split('_df')[0] + '.h5')
+            filename=str(self.path2out + '/' + key.split('_df')[0] + self.df_ext_out)
             if key == 'crossmatch_ids_df':
                 for label in vars(self).keys():
                     if '_df' not in label:
                         getattr(self,key).attrs[label] = vars(self)[label]
 
-            # try:
-
-            getattr(self,key).to_hdf(filename, key=key, mode='w')
-
-            # with pd.HDFStore(filename) as store:
-            #     store.put(key.split('_df')[0], getattr(self,key), format='table')
-                    # if key == 'crossmatch_ids_df':
-                    #     store.get_storer(key.split('_df')[0]).attrs.metadata = getattr(self,key).attrs
-
-            # except:
-            #     getLogger(__name__).critical(f'Saving of %s failed. Abort' % key)
-            #     raise ValueError
+            if self.df_ext_out == '.h5':
+                getattr(self,key).to_hdf(filename, key=key, mode='w')
+            elif self.df_ext_out == '.csv':
+                getattr(self,key).to_csv(filename, mode='w', encoding='utf-8-sig', index=False)
+            else:
+                getLogger(__name__).error(f'DataFrame extension {self.df_ext_out} not supported. Please use .h5 or .csv')
 
     def load_dataframe(self):
         '''
@@ -141,20 +130,18 @@ class DataFrame():
         '''
         self.list_of_HDF5_keys(self.path2out)
         for key in self.keys:
-            filename = self.path2out+'/'+key+'.h5'
-            setattr(self, key+'_df', pd.read_hdf(filename, mode='r'))
+            filename = self.path2out+'/'+key+self.df_ext_in
+            if self.df_ext_in == '.h5':
+                df = pd.read_hdf(filename, mode='r')
+            elif self.df_ext_in == '.csv':
+                df = pd.read_csv(filename, encoding='utf-8-sig')
+            else:
+                getLogger(__name__).error(f'DataFrame extension {self.df_ext_in} not supported. Please use .h5 or .csv')
 
-            # with pd.HDFStore(self.path2out+'/'+key+'.h5') as store:
-            #     # if key == 'crossmatch_ids':
-            #     #     metadata = store.get_storer(key).attrs
-            #     df = store.get(key)
-            #
-            #     setattr(self, key+'_df', df)
+            setattr(self, key+'_df', df)
 
-        # for key in metadata.metadata.keys():
-        #     setattr(self, key, metadata.metadata[key])
 
-    def list_of_HDF5_keys(self,path):
+    def list_of_HDF5_keys(self,path, ext=None):
         '''
         generate list of keys in dataframe
 
@@ -168,22 +155,14 @@ class DataFrame():
         None.
 
         '''
-        # if self.kind == 'table':
-        #     ext='.fits'
-        # elif self.kind == 'dataframe':
-        #     ext='.h5'
-        # else:
-        #     getLogger(__name__).critical()
-        #     raise ValueError()
-        file = glob(path+'/*.h5')
+        if ext is None:
+            file = glob(path + f'/*{self.df_ext_in}')
+        else:
+            file = glob(path + f'/*{ext}')
+
         self.keys = []
         for name in file:
             self.keys.append(name.split('/')[-1].split('.')[0])
-        # with pd.HDFStore(path) as store:
-        #     keys = store.keys()
-        #     if verbose:print('List of keys:',keys)
-        #     self.keys=keys
-        #     store.close()
 
     def remove_HDF5_key(self):
         '''

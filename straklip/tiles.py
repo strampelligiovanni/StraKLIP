@@ -272,12 +272,12 @@ class Tile():
         im=self.plot_tile(fig,ax,title=title,cmap=cmap,xy_tile=xy_tile,xy_cen=xy_cen,xy_m=xy_m,cbar=cbar,lpad=lpad,legend=legend,mk_arrow=mk_arrow,xa=xa,ya=ya,theta=theta,PAV3=PAV3,L=L,dtx=dtx,dty=dty,head_width=head_width, head_length=head_length,width=width, fc=fc, ec=ec,tc=tc,north=north,east=east,roll=roll,showplot=showplot,step=step,simplenorm=simplenorm,min_percent=min_percent,max_percent=max_percent,power=power,log=log,verbose=verbose,kill=kill,close=close,vmin=vmin,vmax=vmax,extent=None,kill_plots=kill_plots,savename=path2savefig)
         if return_tile: return(im)
 
-    def append_tile(self, path2tile,Datacube=None,verbose=False,name='SCI',return_Datacube=False,write=True):
+    def append_tile(self, path2tile,Datacube=None,verbose=False,name='SCI',header=None,return_Datacube=False,write=True):
         if Datacube==None:
             Datacube= fits.HDUList()
             Datacube.append(fits.PrimaryHDU())
         data=self.data[int(self.delta/2):self.tile_base-int(self.delta/2),int(self.delta/2):self.tile_base-int(self.delta/2)].copy()
-        Datacube.append(fits.ImageHDU(data=data,name=name))
+        Datacube.append(fits.ImageHDU(data=data,name=name,header=header))
         if verbose:
             getLogger(__name__).debug(Datacube.info())
 

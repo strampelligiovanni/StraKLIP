@@ -239,7 +239,7 @@ def configure_dataframe(dataset,load=False):
         getLogger(__name__).critical(f'Zero points option from data.yaml as to be either a dictionary with "datetime.date" and "filters" obj or a filterwise list of values')
         raise ValueError
 
-    DF = DataFrame(kind=dataset.data_cfg.target['kind'],
+    DF = DataFrame(df_ext=dataset.pipe_cfg.df_ext,
                    path2out=dataset.pipe_cfg.paths['out'],
                    path2data=dataset.pipe_cfg.paths['data'],
                    path2database=dataset.pipe_cfg.paths['database'],

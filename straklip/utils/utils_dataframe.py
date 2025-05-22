@@ -13,8 +13,12 @@ import pandas as pd
 # Ancillary routines #
 ######################
 # Define the pprint_all method
-def pprint_all(self):
-    with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+def pprint_all(self, max_rows=None, max_columns=None, expand_frame=False):
+    with pd.option_context(
+        'display.max_rows', max_rows if max_rows is not None else None,
+        'display.max_columns', max_columns if max_columns is not None else None,
+        'display.expand_frame_repr', expand_frame
+    ):
         print(self)
 
 # Patch it ONCE for all DataFrames

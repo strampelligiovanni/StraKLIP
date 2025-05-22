@@ -4,15 +4,22 @@ utilities functions that can be use by or with the dataframe class
 
 import sys
 sys.path.append('/')
-# from pipeline_config import path2data
 from ancillary import distances_cube
 from stralog import getLogger
-
-import pandas as pd
 import numpy as np
+import pandas as pd
+
 ######################
 # Ancillary routines #
 ######################
+# Define the pprint_all method
+def pprint_all(self):
+    with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+        print(self)
+
+# Patch it ONCE for all DataFrames
+if not hasattr(pd.DataFrame, 'pprint_all'):
+    pd.DataFrame.pprint_all = pprint_all
 
 def create_empty_df(row_list,columns_list,set_index2=[],int_columns=None,object_columns=None,str_columns=None,flt_columns=None,multy_index=False,levels=[]):
     '''
@@ -440,6 +447,7 @@ def mk_mvs_targets_df(DF, dataset):
         for filter in DF.filters:
             df_new.loc[~df_new['x_%s' % filter].isna(), ['flag_%s' % filter]] = 'good_target'
     df_new[['cell_%s' % i for i in DF.filters]] = np.nan
+
     DF.mvs_targets_df = df_new
 
 
@@ -468,6 +476,7 @@ def mk_unq_candidates_df(DF):
                            int_columns=['unq_ids','mkmode']+['magbin_%s'%i for i in DF.filters],
                            flt_columns=['mass','emass','sep']+['n_%s'%i for i in DF.filters]+['nsigma_%s'%i for i in DF.filters]+['m_%s'%i for i in DF.filters]+['e_%s'%i for i in DF.filters]+['th_%s'%i for i in DF.filters]+['tp_above_th_%s'%i for i in DF.filters]+['tp_above_nsigma_%s'%i for i in DF.filters]+['fp_above_th_%s'%i for i in DF.filters]+['fp_above_nsigma_%s'%i for i in DF.filters]+['auc_%s'%i for i in DF.filters])
     df_new['unq_ids']=DF.unq_targets_df.unq_ids.unique()
+
     DF.unq_candidates_df=df_new
 
 def mk_mvs_candidates_df(DF):
@@ -489,9 +498,8 @@ def mk_mvs_candidates_df(DF):
                            flt_columns=['x_rot_%s'%i for i in DF.filters]+['y_rot_%s'%i for i in DF.filters]+['counts_%s'%i for i in DF.filters]+['ecounts_%s'%i for i in DF.filters]+['m_%s'%i for i in DF.filters]+['e_%s'%i for i in DF.filters]+['rota_%s'%i for i in DF.filters]+['pav3_%s'%i for i in DF.filters]+['flag_%s'%i for i in DF.filters]+['sep_%s'%i for i in DF.filters]+['std_%s'%i for i in DF.filters]+['nsigma_%s'%i for i in DF.filters]+['th_%s'%i for i in DF.filters]+['tp_above_th_%s'%i for i in DF.filters]+['tp_above_nsigma_%s'%i for i in DF.filters]+['fp_above_th_%s'%i for i in DF.filters]+['fp_above_nsigma_%s'%i for i in DF.filters]+['auc_%s'%i for i in DF.filters])
     df_new['mvs_ids']=DF.mvs_targets_df.mvs_ids.unique()
     df_new[['flag_%s'%i for i in DF.filters]]='rejected'
+
     DF.mvs_candidates_df=df_new
-
-
 
 def mk_fk_references_df(DF,Nstar):
     '''
@@ -507,6 +515,7 @@ def mk_fk_references_df(DF,Nstar):
     '''
     df_new=create_empty_df([],['fk_ids']+['x_%s'%i for i in DF.filters]+['y_%s'%i for i in DF.filters]+['counts%s'%i for i in DF.filters]+['m%s'%i for i in DF.filters],int_columns=['fk_ids'],flt_columns=['x_%s'%i for i in DF.filters]+['y_%s'%i for i in DF.filters]+['counts%s'%i for i in DF.filters]+['m%s'%i for i in DF.filters])
     df_new['fk_ids']=[i for i in range(Nstar)]
+
     DF.fk_references_df=df_new
 
 def get_levels(values_range,elno=0):
@@ -561,8 +570,9 @@ def mk_fakes_df(DF,MagBin_list,Dmag_list,Sep_range,Nstar,filters=None,skip_filte
             df_candidates_new=create_empty_df(['filter','magbin','dmag','sep','fk_ids'],[],multy_index=True,levels=[[filter],magbins_levels,dmags_levels,seps_levels,nstar_levels])
             df_targets_list.append(df_targets_new)
             df_candidates_list.append(df_candidates_new)
-    DF.fk_targets_df=pd.concat(df_targets_list)    
-    DF.fk_candidates_df=pd.concat(df_candidates_list) 
+
+    DF.fk_targets_df=pd.concat(df_targets_list)
+    DF.fk_candidates_df=pd.concat(df_candidates_list)
 
 def mk_fk_tiles_df(DF):
     '''
@@ -589,6 +599,7 @@ def mk_fk_tiles_df(DF):
 
     columns=['%s_data'%i for i in DF.filters]+[f'data_no_injection_{i}' for i in DF.filters]+counts_KLIP_list
     df_new=create_empty_df(['magbin','dmag','sep','fk_ids'],[columns],multy_index=True,levels=[MagBin_list,Dmag_list,Sep_list,Nstar_list])
+
     DF.fk_tiles_df=df_new
 
 def mk_fk_references_tiles_df(DF):
@@ -605,6 +616,7 @@ def mk_fk_references_tiles_df(DF):
     '''
     df_new=create_empty_df([],['fk_ids']+['%s_data'%i for i in DF.filters],int_columns=['fk_ids'])
     df_new['fk_ids']=DF.fk_references_df.fk_ids.unique()
+
     DF.fk_references_tiles_df=df_new
 
 

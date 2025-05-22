@@ -782,80 +782,82 @@ class AnalysisTools():
         getLogger(__name__).info(f' contrast: {obj.con}, error: {obj.econ}')
         obj.fma = fma
 
-    def fit_astrometry(self, obj, sep, pa, filter, elno, chaindir, test_outputdir, obj_extracted={}):
+    def fit_astrometry(self, filter, elno, chaindir, test_outputdir, arc_sec, obj_extracted={}):
         PSF = get_MODEL_from_data(self.obspsflib.master_library[elno] / np.nanmax(self.obspsflib.master_library[elno]),
                                   self.obsdataset._centers[0])
-        self.run_FMAstrometry(obj, sep, pa, filter, PSF, chaindir, boxsize=7, dr=5,
-                              fileprefix=f"{filter}_{obj.ext}_{elno}", outputdir=test_outputdir,
+        self.run_FMAstrometry(self.candidate, self.separation_pixels_temp, self.position_angle_temp, filter, PSF, chaindir, boxsize=7, dr=5,
+                              fileprefix=f"{filter}_{self.candidate.ext}_{elno}", outputdir=test_outputdir,
                               fitkernel='diag', corr_len_guess=3, corr_len_range=2,
                               xrange=2, yrange=2, frange=1, nwalkers=100,
                               nburn=500, nsteps=1000, nthreads=4,
                               wkl=np.where(self.KLdetect == np.array(self.numbasis))[0])
 
-        obj.fma.sampler.flatchain[:, 2] *= self.guess_contrast
+        self.candidate.fma.sampler.flatchain[:, 2] *= self.guess_contrast
 
         getLogger(__name__).info(f'Saving MCMC plots in: {test_outputdir}')
         # Plot the MCMC fit results.
         all_labels = [r"dx", r"dy", r"$\alpha$"]
-        all_labels = np.append(all_labels, obj.fma.covar_param_labels)
-        fig = corner.corner(obj.fma.sampler.flatchain, labels=all_labels, quantiles=[0.16, 0.5, 0.84],
+        all_labels = np.append(all_labels, self.candidate.fma.covar_param_labels)
+        fig = corner.corner(self.candidate.fma.sampler.flatchain, labels=all_labels, quantiles=[0.16, 0.5, 0.84],
                             show_titles=True,
                             title_fmt='.4f')
-        path = os.path.join(test_outputdir, f'{filter}_{obj.ext}_{elno}_corner.png')
+        path = os.path.join(test_outputdir, f'{filter}_{self.candidate.ext}_{elno}_corner.png')
         fig.savefig(path)
         plt.close(fig)
 
-        fig = obj.fma.best_fit_and_residuals()
-        path = os.path.join(test_outputdir, f'{filter}_{obj.ext}_{elno}_residuals.png')
+        fig = self.candidate.fma.best_fit_and_residuals()
+        path = os.path.join(test_outputdir, f'{filter}_{self.candidate.ext}_{elno}_residuals.png')
         fig.savefig(path)
         plt.close(fig)
 
-        dx = obj.fma.fit_x.bestfit - obj.fma.data_stamp_x_center
-        dy = obj.fma.fit_y.bestfit - obj.fma.data_stamp_y_center
+        dx = self.candidate.fma.fit_x.bestfit - self.candidate.fma.data_stamp_x_center
+        dy = self.candidate.fma.fit_y.bestfit - self.candidate.fma.data_stamp_y_center
 
-        fm_bestfit = obj.fma.fit_flux.bestfit * sinterp.shift(obj.fma.fm_stamp, [dy, dx])
-        if obj.fma.padding > 0:
-            fm_bestfit = fm_bestfit[obj.fma.padding:-obj.fma.padding, obj.fma.padding:-obj.fma.padding]
+        fm_bestfit = self.candidate.fma.fit_flux.bestfit * sinterp.shift(self.candidate.fma.fm_stamp, [dy, dx])
+        if self.candidate.fma.padding > 0:
+            fm_bestfit = fm_bestfit[self.candidate.fma.padding:-self.candidate.fma.padding, self.candidate.fma.padding:-self.candidate.fma.padding]
 
         # make residual map
-        residual_map = obj.fma.data_stamp - fm_bestfit
-        obj.chi2.append(np.nansum(residual_map) ** 2)
+        residual_map = self.candidate.fma.data_stamp - fm_bestfit
+        self.candidate.chi2.append(np.nansum(residual_map) ** 2)
         obj_extracted['PSFref'] = str(self.obspsflib.master_filenames[elno])
         obj_extracted['chi2'] = float(np.nansum(residual_map) ** 2)
-        obj_extracted['con'] = float(obj.con)
-        obj_extracted['econ'] = obj.econ.tolist()
-        obj_extracted['dx'] = float(self.obsdataset._centers[0][0]-obj.fma.fit_x.bestfit)
-        obj_extracted['dy'] = float(obj.fma.fit_y.bestfit-self.obsdataset._centers[0][1])
-        obj_extracted['x'] = float(obj.fma.fit_x.bestfit)+1
-        obj_extracted['y'] = float(obj.fma.fit_y.bestfit)+1
-        obj_extracted['x_err'] = float(obj.fma.fit_x.error)
-        obj_extracted['y_err'] = float(obj.fma.fit_y.error)
-        obj_extracted['sep'] = float(sep)
-        obj_extracted['PA'] = float(pa)
+        obj_extracted['con'] = float(self.candidate.con)
+        obj_extracted['econ'] = self.candidate.econ.tolist()
+        obj_extracted['dx'] = float(self.obsdataset._centers[0][0]-self.candidate.fma.fit_x.bestfit)
+        obj_extracted['dy'] = float(self.candidate.fma.fit_y.bestfit-self.obsdataset._centers[0][1])
+        obj_extracted['x'] = float(self.candidate.fma.fit_x.bestfit)+1
+        obj_extracted['y'] = float(self.candidate.fma.fit_y.bestfit)+1
+        obj_extracted['x_err'] = float(self.candidate.fma.fit_x.error)
+        obj_extracted['y_err'] = float(self.candidate.fma.fit_y.error)
+        if arc_sec:
+            obj_extracted['sep_arcsec'] = float(self.separation_arcsec_temp)
+        obj_extracted['sep'] = float(self.separation_pixels_temp)
+        obj_extracted['PA'] = float(self.position_angle_temp)
 
         return obj_extracted
 
-    def candidate_extraction(self, filter, residuals, outputdir,overwrite=True,path2iso_interp=None):
+    def candidate_extraction(self, filter, residuals, outputdir,overwrite=True,path2iso_interp=None, arc_sec=False):
         getLogger(__name__).info(f'Extracting candidate from: {self.obsdataset.filenames}')
         test_outputdir = f'{outputdir}/extracted_candidate/testPSF4extraction/'
         os.makedirs(outputdir, exist_ok=True)
         os.makedirs(test_outputdir, exist_ok=True)
         chaindir = f'{outputdir}/extracted_candidate/chains'
         os.makedirs(chaindir, exist_ok=True)
-        candidate = Candidate(input=self.obsdataset.input[0])
-
+        self.candidate.input=self.obsdataset.input[0]
+        self.candidate.chi2 = []
         self.guess_flux = np.nanmax(self.obsdataset.input[0]) * self.guess_contrast
         self.get_temp_sep_and_posang()
 
         path2yalms=glob(test_outputdir + f"/{filter}_cand_*_extracted.yaml")
         if len(path2yalms) == 0 or overwrite:
             for elno in range(1,len(self.obspsflib.master_library)):
-                cand_extracted = self.fit_astrometry(candidate, self.separation_pixels_temp , self.position_angle_temp, filter,  elno, chaindir, test_outputdir)
+                cand_extracted = self.fit_astrometry(filter,  elno, chaindir, test_outputdir, arc_sec)
                 getLogger(__name__).info(f'Saving candidate dictionary to file: {test_outputdir}/{filter}_cand_{elno}_extracted.yaml')
                 with open(test_outputdir + f"{filter}_cand_{elno}_extracted.yaml", "w") as f:
                     yaml.dump(cand_extracted, f, sort_keys=False)
 
-            q_cand=np.where(candidate.chi2 == np.nanmin(candidate.chi2))[0][0]
+            q_cand=np.where(self.candidate.chi2 == np.nanmin(self.candidate.chi2))[0][0]
             path2loadyalm = test_outputdir + f"{filter}_cand_{q_cand}_extracted.yaml"
 
         else:
@@ -1345,9 +1347,10 @@ def run_analysis(DF, unq_id, mvs_id, filter, numbasis, fwhm, dataset, obsdataset
         logSPacc = DF.unq_targets_df.loc[DF.unq_targets_df.unq_ids == unq_id, logSPacc].values[0] if isinstance(logSPacc, str) else logSPacc)
 
     analysistools.candidate = Candidate(input=obsdataset,
-                               ext='cand')
+                                        chi2=[],
+                                        ext='cand')
     if extract_candidate:
-        analysistools.candidate_extraction(filter,residuals[np.where(np.array(DF.kmodes)==KLdetect)[0][0]], outputdir+f"/analysis/ID{mvs_id}",overwrite=overwrite,path2iso_interp=path2iso_interp)
+        analysistools.candidate_extraction(filter,residuals[np.where(np.array(DF.kmodes)==KLdetect)[0][0]], outputdir+f"/analysis/ID{mvs_id}",overwrite=overwrite,path2iso_interp=path2iso_interp,arc_sec=arc_sec)
 
     if contrast_curves:
         analysistools.mk_contrast_curves(filter, residuals, outputdir+f"/analysis/ID{mvs_id}", seps, mask_candidate, klstep, min_corr=min_corr, KLdetect=KLdetect,arc_sec=arc_sec, pixelscale=pxsc_arcsec,ylim=ylim,xlim=xlim)
@@ -1373,31 +1376,42 @@ if __name__ == "steps.analysis":
 
         for unq_id in dataset.pipe_cfg.unq_ids_list:
             for filter in dataset.pipe_cfg.analysis['filter']:
-                for mvs_id in DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids == unq_id].mvs_ids.values:
-                    obsdataset, residuals = setup_DATASET(DF, unq_id, mvs_id, filter, dataset.pipe_cfg)
-                    fwhm = dataset.pipe_cfg.instrument['fwhm'][filter]
-                    run_analysis(DF, unq_id, mvs_id, filter.lower(), numbasis, fwhm, dataset, obsdataset, residuals, outputdir,
-                             extract_candidate=dataset.pipe_cfg.analysis['steps']['extract_candidate'],
-                             contrast_curves=dataset.pipe_cfg.analysis['steps']['contrast_curves'],
-                             cal_contrast_curves=dataset.pipe_cfg.analysis['steps']['cal_contrast_curves'],
-                             mass_sensitivity_curves=dataset.pipe_cfg.analysis['steps']['mass_sensitivity_curves'],
-                             mask_candidate=dataset.pipe_cfg.analysis['mask_candidate'],
-                             inject_fake=dataset.pipe_cfg.analysis['inject_fake'],
-                             pxsc_arcsec=dataset.pipe_cfg.instrument['pixelscale'],
-                             klstep=dataset.pipe_cfg.analysis['klstep'],
-                             min_corr=dataset.pipe_cfg.analysis['min_corr'],
-                             pa_list=dataset.pipe_cfg.analysis['pa_list'],
-                             seps=dataset.pipe_cfg.analysis['seps'],
-                             overwrite=dataset.pipe_cfg.analysis['overwrite'],
-                             arc_sec=dataset.pipe_cfg.analysis['arc_sec'],
-                             ylim=dataset.pipe_cfg.analysis['ylim'],
-                             xlim=dataset.pipe_cfg.analysis['xlim'],
-                             path2iso_interp=dataset.pipe_cfg.analysis['path2iso_interp'],
-                             age=dataset.pipe_cfg.analysis['primay']['age'],
-                             distance=dataset.pipe_cfg.analysis['primay']['dist'],
-                             av=dataset.pipe_cfg.analysis['primay']['av'],
-                             logSPacc=dataset.pipe_cfg.analysis['primay']['logSPacc'],
-                             guess_contrast = dataset.pipe_cfg.analysis['candidate']['guess_contrast'],
-                             xycomp_list = dataset.pipe_cfg.analysis['candidate']['coords'] if len(dataset.pipe_cfg.analysis['candidate']['coords']) > 0 else [None, None],
-                             KLdetect = dataset.pipe_cfg.analysis['candidate']['KLdetect'] if dataset.pipe_cfg.analysis['candidate']['KLdetect'] is not None else np.max(dataset.pipe_cfg.psfsubtraction['kmodes']),
-                             subtract_companion = dataset.pipe_cfg.analysis['candidate']['subtract_companion'])
+                mvs_ids_lit = DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids == unq_id].mvs_ids.values
+                for mvs_id in mvs_ids_lit:
+                    if dataset.pipe_cfg.analysis['candidate']['coords'] is not None:
+                        xycomp_list = dataset.pipe_cfg.analysis['candidate']['coords'],
+                    elif dataset.pipe_cfg.analysis['candidate']['coords'] is None and DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_id,[f'flag_{filter}']].values != 'rejected':
+                        xycomp_list = DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_id,[f'x_tile_{filter}',f'y_tile_{filter}']].values[0]+1 #xycomp_list is a 1-index array
+                    else:
+                        if DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==mvs_id,[f'flag_{filter}']].values != 'rejected':
+                            xycomp_list = np.round(np.nanmedian(DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_lit), [ f'x_tile_{filter}', f'y_tile_{filter}']].values, axis=0))+1 #xycomp_list is a 1-index array
+                        else:
+                            continue
+                    if not np.isnan(DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_id,f'kmode_{filter}'].values[0]):
+                        obsdataset, residuals = setup_DATASET(DF, unq_id, mvs_id, filter, dataset.pipe_cfg)
+                        fwhm = dataset.pipe_cfg.instrument['fwhm'][filter]
+                        run_analysis(DF, unq_id, mvs_id, filter.lower(), numbasis, fwhm, dataset, obsdataset, residuals, outputdir,
+                                 extract_candidate=dataset.pipe_cfg.analysis['steps']['extract_candidate'],
+                                 contrast_curves=dataset.pipe_cfg.analysis['steps']['contrast_curves'],
+                                 cal_contrast_curves=dataset.pipe_cfg.analysis['steps']['cal_contrast_curves'],
+                                 mass_sensitivity_curves=dataset.pipe_cfg.analysis['steps']['mass_sensitivity_curves'],
+                                 mask_candidate=dataset.pipe_cfg.analysis['mask_candidate'],
+                                 inject_fake=dataset.pipe_cfg.analysis['inject_fake'],
+                                 pxsc_arcsec=dataset.pipe_cfg.instrument['pixelscale'],
+                                 klstep=dataset.pipe_cfg.analysis['klstep'],
+                                 min_corr=dataset.pipe_cfg.analysis['min_corr'],
+                                 pa_list=dataset.pipe_cfg.analysis['pa_list'],
+                                 seps=dataset.pipe_cfg.analysis['seps'],
+                                 overwrite=dataset.pipe_cfg.analysis['overwrite'],
+                                 arc_sec=dataset.pipe_cfg.analysis['arc_sec'],
+                                 ylim=dataset.pipe_cfg.analysis['ylim'],
+                                 xlim=dataset.pipe_cfg.analysis['xlim'],
+                                 path2iso_interp=dataset.pipe_cfg.analysis['path2iso_interp'],
+                                 age=dataset.pipe_cfg.analysis['primay']['age'],
+                                 distance=dataset.pipe_cfg.analysis['primay']['dist'],
+                                 av=dataset.pipe_cfg.analysis['primay']['av'],
+                                 logSPacc=dataset.pipe_cfg.analysis['primay']['logSPacc'],
+                                 guess_contrast = dataset.pipe_cfg.analysis['candidate']['guess_contrast'],
+                                 xycomp_list = xycomp_list,
+                                 KLdetect = dataset.pipe_cfg.analysis['candidate']['KLdetect'] if dataset.pipe_cfg.analysis['candidate']['KLdetect'] is not None else np.max(dataset.pipe_cfg.psfsubtraction['kmodes']),
+                                 subtract_companion = dataset.pipe_cfg.analysis['candidate']['subtract_companion'])

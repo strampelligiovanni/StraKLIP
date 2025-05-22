@@ -782,6 +782,18 @@ class AnalysisTools():
         getLogger(__name__).info(f' contrast: {obj.con}, error: {obj.econ}')
         obj.fma = fma
 
+    def plot_traces(self, nburn=100, labels=[r"x", r"y", r"$\alpha$", "l"]):
+        fig, ax = plt.subplots(len(labels), 1, figsize=(20, 20), sharex=True)
+        samples = self.candidate.fma.sampler.get_chain()  # Shape: (n_steps, n_walkers, n_dim)
+        n_walkers = samples.shape[1]
+        for elno in range(len(labels)):
+            for i in range(n_walkers):
+                ax[elno].plot(samples[:, i, elno], alpha=0.5)
+                # ax[elno].axvline(nburn, color='k', linestyle='--')
+            ax[elno].set_ylabel(f"{labels[elno]}")
+        ax[elno].set_xlabel("Step number")
+        return fig
+
     def fit_astrometry(self, filter, elno, chaindir, test_outputdir, arc_sec, kwargs=None, obj_extracted={}):
         PSF = get_MODEL_from_data(self.obspsflib.master_library[elno] / np.nanmax(self.obspsflib.master_library[elno]),
                                   self.obsdataset._centers[0])
@@ -810,14 +822,14 @@ class AnalysisTools():
             nwalkers = kwargs['nwalkers']
         else:
             nwalkers = 100
-        if isinstance(kwargs,dict) and 'nburn' in kwargs.keys():
+        if isinstance(kwargs,dict) and 'nburn' in kwargs.keys(): #this are the step to burn. It is supposed to be already converged when reach the endo of it.
             nburn = kwargs['nburn']
         else:
             nburn = 500
-        if isinstance(kwargs,dict) and 'nsteps' in kwargs.keys():
+        if isinstance(kwargs,dict) and 'nsteps' in kwargs.keys(): #this are the step it supposded to run AFTER the burning period. It is supposed to be well converged here.
             nsteps = kwargs['nsteps']
         else:
-            nsteps = 1000
+            nsteps = 200
         if isinstance(kwargs, dict) and 'nthreads' in kwargs.keys():
             nthreads = kwargs['nthreads']
         else:
@@ -838,6 +850,10 @@ class AnalysisTools():
             fitkernel = kwargs['fitkernel']
         else:
             fitkernel = 'diag'
+        if isinstance(kwargs, dict) and 'labels' in kwargs.keys():
+            labels = kwargs['labels']
+        else:
+            labels = [r"dx", r"dy", r"$\alpha$"]
 
         self.run_FMAstrometry(self.candidate, self.separation_pixels_temp, self.position_angle_temp, filter, PSF, chaindir,
                               boxsize=boxsize, dr=dr,
@@ -850,10 +866,10 @@ class AnalysisTools():
         self.candidate.fma.sampler.flatchain[:, 2] *= self.guess_contrast
 
         getLogger(__name__).info(f'Saving MCMC plots in: {test_outputdir}')
+
         # Plot the MCMC fit results.
-        all_labels = [r"dx", r"dy", r"$\alpha$"]
-        all_labels = np.append(all_labels, self.candidate.fma.covar_param_labels)
-        fig = corner.corner(self.candidate.fma.sampler.flatchain, labels=all_labels, quantiles=[0.16, 0.5, 0.84],
+        labels = np.append(labels, self.candidate.fma.covar_param_labels)
+        fig = corner.corner(self.candidate.fma.sampler.flatchain, labels=labels, quantiles=[0.16, 0.5, 0.84],
                             show_titles=True,
                             title_fmt='.4f')
         path = os.path.join(test_outputdir, f'{filter}_{self.candidate.ext}_{elno}_corner.png')
@@ -862,6 +878,11 @@ class AnalysisTools():
 
         fig = self.candidate.fma.best_fit_and_residuals()
         path = os.path.join(test_outputdir, f'{filter}_{self.candidate.ext}_{elno}_residuals.png')
+        fig.savefig(path)
+        plt.close(fig)
+
+        fig = self.plot_traces(nburn=nburn, labels=labels)
+        path = os.path.join(test_outputdir, f'{filter}_{self.candidate.ext}_{elno}_traces.png')
         fig.savefig(path)
         plt.close(fig)
 

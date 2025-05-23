@@ -168,8 +168,10 @@ def generate_psflib(DF, mvs_id, dataset, filter, d=3, KL=1, dir='./', min_corr=N
     return (psflib, PSF)
 
 class Candidate:
-    def __init__(self, input, chi2=[], fma=None, mag=None, emag=None, dmag=None, con=None, econ=None, mass=None,
+    def __init__(self, unq_id, mvs_id, input, chi2=[], fma=None, mag=None, emag=None, dmag=None, con=None, econ=None, mass=None,
                  emass=None,teff=None,av=None,R=None,ext='cand'):
+        self.unq_id = unq_id
+        self.mvs_id = mvs_id
         self.input = input
         self.chi2 = chi2
         self.mag = mag
@@ -185,7 +187,9 @@ class Candidate:
         self.ext = ext
 
 class Primary:
-    def __init__(self, mag=None, emag=None, age=None, dist=None, accr=None, av=None, logSPacc=None, ccd=None, ext='prim'):
+    def __init__(self, unq_id, mvs_id, mag=None, emag=None, age=None, dist=None, accr=None, av=None, logSPacc=None, ccd=None, ext='prim'):
+        self.unq_id = unq_id
+        self.mvs_id = mvs_id
         self.mag = mag
         self.emag = emag
         self.age = age
@@ -1420,6 +1424,8 @@ def run_analysis(DF, unq_id, mvs_id, filter, numbasis, fwhm, dataset, obsdataset
                                   subtract_companion=subtract_companion)
 
     analysistools.primary = Primary(
+        unq_id = unq_id,
+        mvs_id=mvs_id,
         mag=DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids == mvs_id, f'm_{filter.lower()}'].values[0],
         emag=DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids == mvs_id, f'e_{filter.lower()}'].values[0],
         age=DF.unq_targets_df.loc[DF.unq_targets_df.unq_ids == unq_id, age].values[0] if isinstance(age,str) else age,
@@ -1428,9 +1434,13 @@ def run_analysis(DF, unq_id, mvs_id, filter, numbasis, fwhm, dataset, obsdataset
         av=DF.unq_targets_df.loc[DF.unq_targets_df.unq_ids == unq_id, av].values[0] if isinstance(av,str) else av,
         logSPacc = DF.unq_targets_df.loc[DF.unq_targets_df.unq_ids == unq_id, logSPacc].values[0] if isinstance(logSPacc, str) else logSPacc)
 
-    analysistools.candidate = Candidate(input=obsdataset,
-                                        chi2=[],
-                                        ext='cand')
+    analysistools.candidate = Candidate(
+        unq_id=unq_id,
+        mvs_id=mvs_id,
+        input=obsdataset,
+        chi2=[],
+        ext='cand')
+
     if extract_candidate:
         analysistools.candidate_extraction(filter,residuals[np.where(np.array(DF.kmodes)==KLdetect)[0][0]], outputdir+f"/analysis/ID{mvs_id}",overwrite=overwrite,path2iso_interp=path2iso_interp,arc_sec=arc_sec,kwargs=kwargs)
 

@@ -783,6 +783,9 @@ class AnalysisTools():
 
         obj.con = np.round(fma.fit_flux.bestfit * self.guess_contrast,3)
         obj.econ = np.round(fma.fit_flux.error_2sided * self.guess_contrast,3)
+        obj.flux = np.round(fma.fit_flux.bestfit * self.guess_contrast,3)
+        obj.eflux = np.round(fma.fit_flux.error_2sided * self.guess_contrast,3)
+
         getLogger(__name__).info(f' contrast: {obj.con}, error: {obj.econ}')
         obj.fma = fma
 
@@ -958,10 +961,14 @@ class AnalysisTools():
         self.candidate.con=cand_extracted['con']
         self.candidate.econ=cand_extracted['econ']
         self.candidate.dmag=-2.5 * np.log10(cand_extracted['con'])
+        self.candidate.edmag= 2.5 / np.log(10.) * np.sqrt(cand_extracted['econ'][0]**2+cand_extracted['econ'][1]**2)/2 / cand_extracted['con']
         self.candidate.mag=self.primary.mag -2.5 * np.log10(cand_extracted['con'])
+        self.candidate.emag=np.sqrt(self.primary.emag ** 2 + self.candidate.edmag ** 2)
 
         cand_extracted['mag'] = float(self.candidate.mag)
+        cand_extracted['emag'] = float(self.candidate.emag)
         cand_extracted['dmag'] = float(self.candidate.dmag)
+        cand_extracted['edmag'] = float(self.candidate.edmag)
 
         self.tagetdataset=copy.deepcopy(self.obsdataset)
         self.get_temp_sep_and_posang()
@@ -1009,6 +1016,14 @@ class AnalysisTools():
         # cand_extracted['y_prim_err'] = float(self.y_ref_err)
         # cand_extracted['ra_prim'] = float(self.ra_dec_ref.ra.value)
         # cand_extracted['dec_prim'] = float(self.ra_dec_ref.dec.value)
+        self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids == self.candidate.mvs_id, f'mcmc_x_{filter}'] = cand_extracted['x']
+        self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids == self.candidate.mvs_id, f'mcmc_y_{filter}'] = cand_extracted['y']
+        self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids == self.candidate.mvs_id, f'mcmc_con_{filter}'] = cand_extracted['con']
+        self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids == self.candidate.mvs_id, f'mcmc_econ_{filter}'] = np.sqrt(cand_extracted['econ'][0]**2+cand_extracted['econ'][1]**2)/2
+        self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids == self.candidate.mvs_id, f'mcmc_m_{filter}'] = cand_extracted['mag']
+        self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids == self.candidate.mvs_id, f'mcmc_em_{filter}'] = cand_extracted['emag']
+        self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids == self.candidate.mvs_id, f'mcmc_dmag_{filter}'] = cand_extracted['dmag']
+        self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids == self.candidate.mvs_id, f'mcmc_edmag_{filter}'] = cand_extracted['edmag']
 
         with open(outputdir + f"/extracted_candidate/{filter}_extracted.yaml", "w") as f:
             yaml.dump(cand_extracted, f,  sort_keys=False)
@@ -1511,3 +1526,10 @@ if __name__ == "steps.analysis":
                                  KLdetect = KLdetect,
                                  subtract_companion = dataset.pipe_cfg.analysis['candidate']['subtract_companion'],
                                  kwargs=dataset.pipe_cfg.analysis['kwargs'])
+
+                DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_id, f'mcmc_m_{filter}'] = np.nanmean(DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_lit),f'mcmc_m_{filter}'].values)
+                DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_id, f'mcmc_em_{filter}'] = np.nanmean(DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_lit),f'mcmc_em_{filter}'].values)
+                DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_id, f'mcmc_dmag_{filter}'] = np.nanmean(DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_lit),f'mcmc_dmag_{filter}'].values)
+                DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_id, f'mcmc_edmag_{filter}'] = np.nanmean(DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_lit),f'mcmc_edmag_{filter}'].values)
+
+        DF.save_dataframes(__name__)

@@ -1,4 +1,7 @@
 import os, copy, sys,yaml,shutil,corner,emcee,textwrap,pickle
+
+import numpy as np
+
 from tiles import Tile
 from copy import deepcopy
 from glob import glob
@@ -1016,14 +1019,14 @@ class AnalysisTools():
         # cand_extracted['y_prim_err'] = float(self.y_ref_err)
         # cand_extracted['ra_prim'] = float(self.ra_dec_ref.ra.value)
         # cand_extracted['dec_prim'] = float(self.ra_dec_ref.dec.value)
-        self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids == self.candidate.mvs_id, f'mcmc_x_{filter}'] = cand_extracted['x']
-        self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids == self.candidate.mvs_id, f'mcmc_y_{filter}'] = cand_extracted['y']
-        self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids == self.candidate.mvs_id, f'mcmc_con_{filter}'] = cand_extracted['con']
-        self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids == self.candidate.mvs_id, f'mcmc_econ_{filter}'] = np.sqrt(cand_extracted['econ'][0]**2+cand_extracted['econ'][1]**2)/2
-        self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids == self.candidate.mvs_id, f'mcmc_m_{filter}'] = cand_extracted['mag']
-        self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids == self.candidate.mvs_id, f'mcmc_em_{filter}'] = cand_extracted['emag']
-        self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids == self.candidate.mvs_id, f'mcmc_dmag_{filter}'] = cand_extracted['dmag']
-        self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids == self.candidate.mvs_id, f'mcmc_edmag_{filter}'] = cand_extracted['edmag']
+        self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids == self.candidate.mvs_id, f'exct_x_{filter}'] = cand_extracted['x']
+        self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids == self.candidate.mvs_id, f'exct_y_{filter}'] = cand_extracted['y']
+        self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids == self.candidate.mvs_id, f'exct_con_{filter}'] = cand_extracted['con']
+        self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids == self.candidate.mvs_id, f'exct_econ_{filter}'] = np.sqrt(cand_extracted['econ'][0]**2+cand_extracted['econ'][1]**2)/2
+        self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids == self.candidate.mvs_id, f'exct_m_{filter}'] = cand_extracted['mag']
+        self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids == self.candidate.mvs_id, f'exct_em_{filter}'] = cand_extracted['emag']
+        self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids == self.candidate.mvs_id, f'exct_dmag_{filter}'] = cand_extracted['dmag']
+        self.DF.mvs_candidates_df.loc[self.DF.mvs_candidates_df.mvs_ids == self.candidate.mvs_id, f'exct_edmag_{filter}'] = cand_extracted['edmag']
 
         with open(outputdir + f"/extracted_candidate/{filter}_extracted.yaml", "w") as f:
             yaml.dump(cand_extracted, f,  sort_keys=False)
@@ -1527,9 +1530,9 @@ if __name__ == "steps.analysis":
                                  subtract_companion = dataset.pipe_cfg.analysis['candidate']['subtract_companion'],
                                  kwargs=dataset.pipe_cfg.analysis['kwargs'])
 
-                DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_id, f'mcmc_m_{filter}'] = np.nanmean(DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_lit),f'mcmc_m_{filter}'].values)
-                DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_id, f'mcmc_em_{filter}'] = np.nanmean(DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_lit),f'mcmc_em_{filter}'].values)
-                DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_id, f'mcmc_dmag_{filter}'] = np.nanmean(DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_lit),f'mcmc_dmag_{filter}'].values)
-                DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_id, f'mcmc_edmag_{filter}'] = np.nanmean(DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_lit),f'mcmc_edmag_{filter}'].values)
+                DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_id, f'exct_m_{filter}'] = np.average(DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_lit),f'exct_m_{filter}'].values,weights=1/DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_lit),f'exct_em_{filter}'].values)
+                DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_id, f'exct_em_{filter}'] = np.sqrt(np.sum([i**2 for i in DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_lit),f'exct_em_{filter}'].values]))
+                DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_id, f'exct_dmag_{filter}'] = np.average(DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_lit),f'exct_dmag_{filter}'].values,weights=1/DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_lit),f'exct_edmag_{filter}'].values)
+                DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_id, f'exct_edmag_{filter}'] = np.sqrt(np.sum([i**2 for i in DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_lit),f'exct_edmag_{filter}'].values]))
 
         DF.save_dataframes(__name__)

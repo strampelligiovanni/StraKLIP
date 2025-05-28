@@ -1530,9 +1530,11 @@ if __name__ == "steps.analysis":
                                  subtract_companion = dataset.pipe_cfg.analysis['candidate']['subtract_companion'],
                                  kwargs=dataset.pipe_cfg.analysis['kwargs'])
 
-                DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_id, f'exct_m_{filter}'] = np.average(DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_lit),f'exct_m_{filter}'].values,weights=1/DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_lit),f'exct_em_{filter}'].values)
-                DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_id, f'exct_em_{filter}'] = np.sqrt(np.sum([i**2 for i in DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_lit),f'exct_em_{filter}'].values]))
-                DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_id, f'exct_dmag_{filter}'] = np.average(DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_lit),f'exct_dmag_{filter}'].values,weights=1/DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_lit),f'exct_edmag_{filter}'].values)
-                DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_id, f'exct_edmag_{filter}'] = np.sqrt(np.sum([i**2 for i in DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_lit),f'exct_edmag_{filter}'].values]))
+                id_sel = (DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_lit))
+                mag_sel = ~(DF.mvs_candidates_df.loc[id_sel,f'exct_m_{filter}'].isna())
+                DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_id, f'exct_m_{filter}'] = np.average(DF.mvs_candidates_df.loc[id_sel&mag_sel,f'exct_m_{filter}'].values,weights=1/DF.mvs_candidates_df.loc[id_sel&mag_sel,f'exct_em_{filter}'].values)
+                DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_id, f'exct_em_{filter}'] = np.sqrt(np.sum([i**2 for i in DF.mvs_candidates_df.loc[id_sel&mag_sel,f'exct_em_{filter}'].values]))
+                DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_id, f'exct_dmag_{filter}'] = np.average(DF.mvs_candidates_df.loc[id_sel&mag_sel,f'exct_dmag_{filter}'].values,weights=1/DF.mvs_candidates_df.loc[id_sel&mag_sel,f'exct_edmag_{filter}'].values)
+                DF.unq_candidates_df.loc[DF.unq_candidates_df.unq_ids == unq_id, f'exct_edmag_{filter}'] = np.sqrt(np.sum([i**2 for i in DF.mvs_candidates_df.loc[id_sel&mag_sel,f'exct_edmag_{filter}'].values]))
 
         DF.save_dataframes(__name__)

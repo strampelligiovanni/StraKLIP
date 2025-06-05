@@ -32,7 +32,7 @@ paths:
   data: /Users/gstrampelli/StraKLIP/Tutorial/data/fits
   database: /Users/gstrampelli/StraKLIP/Tutorial/database
   out: /Users/gstrampelli/StraKLIP/Tutorial/out
-unq_ids_list: []
+unq_ids_list: [52]
 buildhdf:
   redo: false
   dq2mask: []

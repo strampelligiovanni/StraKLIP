@@ -136,52 +136,64 @@ klipphotometry:
   mak: 7
   pruning: true
 analysis:
-  subtract_companion: false
+  path2iso_interp: /Users/gstrampelli/PycharmProjects/NGC1976/database/interpolated_isochrones.pck
   overwrite: false
-  id_list: [3]
   filter: ['f814w', 'f850lp']
-#  filter: ['f850lp']
-  xycomp_list: []
-  extract_candidate: false
-  contrast_curves: true
-  cal_contrast_curves: true
-  mask_candidate: false
+  epsf: false
+  arc_sec: true
+  mask_candidate: true
   inject_fake: true
-  guess_contrast: 1e-1
-  KLdetect: 35
   klstep: 1
   min_corr: 0.
+  xlim:
+  ylim:
   pa_list: [0, 45, 90, 135, 180, 225, 270, 315]
   seps: [1, 2, 3, 4, 5, 10, 15]
-buildfphdf:
-  redo: true
-  nstars: 50
-  NPSFsample : 50
-  magbins: '19-20'
-  dmags: '0-10'
-  sep_range: '1-25'
-  skip_filters: []
-  parallel_runs : true
-  inner_shift : 0.25
-  showplot : false
-  suffix : ''
-mkcompleteness:
-  redo: false
-  parallel_runs : true
-  nvisits: '1-4'
-  auc_limit: 0.0
-  fp_limit: 0.001
-  psf_filename : ''
-  showplot : False
-  suffix : ''
-  save_figure: true
-  sma_interp: true
-  smooth: 0.001
-  method: 'linear'
-  sep_step: 0.05
-fpanalysis:
-  redo: false
-  verbose: true
-  sigma: 2.5
-  showplot: true
-  oversubtraction: true
+  kwargs: {'xrange': 3, 'yrange': 3, 'nwalkers': 50}
+  primay:
+    age:
+    dist:
+    av:
+    logSPacc:
+  candidate:
+    subtract_companion: false
+    coords:
+    guess_contrast: 1e-1
+    KLdetect: 7
+  steps:
+    extract_candidate: true
+    contrast_curves: false
+    cal_contrast_curves: false
+    mass_sensitivity_curves: false
+#buildfphdf:
+#  redo: true
+#  nstars: 50
+#  NPSFsample : 50
+#  magbins: '19-20'
+#  dmags: '0-10'
+#  sep_range: '1-25'
+#  skip_filters: []
+#  parallel_runs : true
+#  inner_shift : 0.25
+#  showplot : false
+#  suffix : ''
+#mkcompleteness:
+#  redo: false
+#  parallel_runs : true
+#  nvisits: '1-4'
+#  auc_limit: 0.0
+#  fp_limit: 0.001
+#  psf_filename : ''
+#  showplot : False
+#  suffix : ''
+#  save_figure: true
+#  sma_interp: true
+#  smooth: 0.001
+#  method: 'linear'
+#  sep_step: 0.05
+#fpanalysis:
+#  redo: false
+#  verbose: true
+#  sigma: 2.5
+#  showplot: true
+#  oversubtraction: true

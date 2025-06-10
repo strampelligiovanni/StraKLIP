@@ -2,7 +2,7 @@
 
 We present a new pipeline developed to detect and characterize faint astronomical companions at small angular 
 separation from the host star using sets of wide-field imaging observations not specifically designed for 
-High Contrast Imaging analysis. The core of the pipeline relies on Karhunen-Lo`eve trun- cated transformation 
+High Contrast Imaging analysis. The core of the pipeline relies on Karhunen-Lo`eve truncated transformation 
 of the reference PSF library to perform PSF subtraction and identify candidates. Tests of reliability of detections 
 and characterization of companions are made through simulation of binaries and generation of Receiver Operating 
 Characteristic curves for false positive/true positive analysis. The algorithm has been successfully tested on 

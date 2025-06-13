@@ -1,15 +1,13 @@
-Welcome to StraKLIP's documentation!
-====================================
+StraKLIP Documentation
+======================
+
+Welcome to the documentation for StraKLIP!
+
+Contents:
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: Sections
 
-   modules  # or tutorial, usage, etc.
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+   usage
+   tutorial

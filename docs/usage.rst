@@ -1,10 +1,14 @@
-USAGE
-========
+Usage
+=====
 
-This is a tutorial page.
+Here’s a basic example of how to use StraKLIP:
 
-Here’s how to use StraKLIP:
+.. code-block:: python
 
-1. Install it
-2. Import the module
-3. Run your analysis
+   import straklip
+
+   straklip.run_basic_analysis("data/example.csv")
+
+More examples:
+
+- :doc:`tutorial <tutorial>`

@@ -1,17 +1,17 @@
 Tutorial
 ========
 
-This is a tutorial page.
+This is a step-by-step tutorial using StraKLIP.
 
-Here’s how to use StraKLIP:
-
-1. Install it
-2. Import the module
-3. Run your analysis
-
-You can also include code:
+1. Load your data:
 
 .. code-block:: python
 
    import straklip
-   straklip.run()
+   data = straklip.load("yourfile.csv")
+
+2. Run analysis:
+
+.. code-block:: python
+
+   result = straklip.analyze(data)

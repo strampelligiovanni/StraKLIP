@@ -1,6 +1,15 @@
 version: 2
-sphinx:
-  configuration: docs/conf.py
+
+build:
+  os: ubuntu-22.04
+  tools:
+    python: "3.10"
+
 python:
   install:
-    - requirements: requirements.txt
+    - method: pip
+      path: .
+    - requirements: docs/requirements.txt  # if needed
+
+sphinx:
+  configuration: docs/conf.py

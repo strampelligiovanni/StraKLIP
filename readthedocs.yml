@@ -12,7 +12,7 @@ python:
     # - requirements: docs/requirements.txt  # uncomment if needed
 
 sphinx:
-  configuration: docs/source/conf.py
+  configuration: docs/conf.py
 
 #python:
 #  install:

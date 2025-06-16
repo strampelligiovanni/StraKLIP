@@ -12,14 +12,12 @@ python:
     # - requirements: docs/requirements.txt  # uncomment if needed
 
 sphinx:
-  configuration: docs/conf.py
+  configuration: docs/source/conf.py
 
-#python:
-#  install:
-#    - requirements: requirements.txt
-#    - requirements: requirements-dev.txt
-#    - method: pip
-#      path: .
+python:
+  install:
+    - method: pip
+      requirements: docs/source/requirements.txt
 
 # Don't build any extra formats
 formats: []

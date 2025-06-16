@@ -13,3 +13,13 @@ python:
 
 sphinx:
   configuration: docs/source/conf.py
+
+#python:
+#  install:
+#    - requirements: requirements.txt
+#    - requirements: requirements-dev.txt
+#    - method: pip
+#      path: .
+
+# Don't build any extra formats
+formats: []

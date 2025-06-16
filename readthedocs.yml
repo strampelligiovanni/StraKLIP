@@ -16,8 +16,9 @@ sphinx:
 
 python:
   install:
+    - requirements: docs/source/requirements.txt
     - method: pip
-      requirements: docs/source/requirements.txt
+      path: .
 
 # Don't build any extra formats
 formats: []

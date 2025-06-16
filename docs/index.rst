@@ -25,4 +25,5 @@ It is built on top of `pyKLIP <https://pyklip.readthedocs.io/en/latest/>`_ and p
 
    installation
    usage
+   tutorials
    api

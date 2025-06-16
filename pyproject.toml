@@ -12,13 +12,8 @@ authors = [
   { name="StraKLIP: A Novel Pipeline for Detection and Characterization of Close-in Faint Companions through the Karhunen-Loéve Image Processing Algorithm"},
 ]
 
-
 [build-system]
-requires = [
-    "setuptools>=42",
-    "setuptools_scm[toml]>=6.2",
-    "wheel"
-]
+requires = ["setuptools>=61", "setuptools_scm[toml]>=6.4", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]

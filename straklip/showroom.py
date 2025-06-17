@@ -5,12 +5,12 @@ to check the final product of the PSF subtraction process using ipywidgets.
 # import sys
 # sys.path.append('/')
 # from pipeline_config import path2data
-from utils_tile import load_image
-from utils_dataframe import update_type
-from ancillary import get_monitor_from_coord
-from utils_false_positives import FP_analysis
-from tiles import Tile
-from klipphotometry import update_median_candidates_tile
+from straklip.utils.utils_tile import load_image
+from straklip.utils.utils_dataframe import update_type
+from straklip.utils.ancillary import get_monitor_from_coord
+from straklip.utils.utils_false_positives import FP_analysis
+from straklip.tiles import Tile
+from straklip.steps.klipphotometry import update_median_candidates_tile
 
 import numpy as np
 from IPython.display import display, clear_output

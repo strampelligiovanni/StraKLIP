@@ -6,7 +6,7 @@ photometry classes (aperture,PSF and matched filter) and lux2counts (and vicever
 
 import sys
 sys.path.append('/')
-from ancillary import find_closer,gaussian_func
+from straklip.utils.ancillary import find_closer,gaussian_func
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -57,6 +57,7 @@ class Detection:
         None.
 
         '''
+
         self.x=x
         self.y=y
         self.data=data.copy()
@@ -293,14 +294,17 @@ class photometry_AP:
     def mask_aperture_data(self,mask_shape=(2,2)):
         """
         Mask the data inside the aperture. Results depending on the selected type of aperture through 'aperture'
+
         Parameters
         ----------
         mask_shape : tuple, optional
             shape dimension for the new data mask . The default is (2,2).
-        Output
-        ------
+
+        Returns
+        -------
         None
         """
+
         if isinstance(self.aperture,(list,np.ndarray)):
             xs = range(self.data.shape[0])
             ys = range(self.data.shape[1])
@@ -372,7 +376,7 @@ class photometry_AP:
 
     def grow_curves(self,fig=None,ax=None,gstep=0.25,sigma=4.5,p=2,showplot=False,r_in=1,r_min=3,r_max=15):
         '''
-        evaluate grow curves for aperture photometry
+        Evaluate grow curves for aperture photometry
 
         Parameters
         ----------
@@ -397,11 +401,12 @@ class photometry_AP:
         r_max : int, optional
             maximum distance from the center of the tile to consider when 
             evaluate the flatness of the for growcurves. The default is 15.
+
         Returns
         -------
         None.
-
         '''
+
         counts_list=[]
         aperture_list=[]
         sky_list=[]
@@ -447,7 +452,8 @@ class photometry_AP:
             ax.plot(r_list,counts_list,'-',color='b',lw=4,label='old')#,color=colors[elno],lw=2.,label='%.2f%%'%(corr_list[elno]))
             ax.plot(r_list,list_of_counts[np.argmin(values_list)],'-',color='k',lw=4,label='%.2f%%'%(self.grow_corr))
             ax.legend(loc='best')
-        if showplot:plt.show()
+        if showplot:
+            plt.show()
 
 class photometry_MF:
     "This class handle the match filter photometry"
@@ -590,11 +596,13 @@ class photometry_PSF:
             or out of the aperture. If subpixels=1, this method is equivalent to 'center'. 
             The aperture weights will contain values between 0 and 1.
             The default is 'subpixel'.
+
         Returns
         -------
         None.
 
         '''
+
         fitter=LevMarLSQFitter()
         daogroup = DAOGroup(2*self.fwhm)#*gaussian_sigma_to_fwhm)
         psf_model = FittableImageModel(self.psf,normalize=True)

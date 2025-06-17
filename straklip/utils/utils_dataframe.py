@@ -1,13 +1,11 @@
 """
 utilities functions that can be use by or with the dataframe class
 """
-
-import sys
-sys.path.append('/')
-from ancillary import distances_cube
-from stralog import getLogger
 import numpy as np
 import pandas as pd
+from straklip.utils.ancillary import distances_cube
+from straklip.stralog import getLogger
+
 
 ######################
 # Ancillary routines #

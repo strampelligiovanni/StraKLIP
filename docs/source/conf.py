@@ -19,6 +19,7 @@
 import os
 import sys
 from pathlib import Path
+sys.path.insert(0, os.path.abspath(os.path.join('..', '..')))
 
 try:
     import tomllib
@@ -54,7 +55,7 @@ extensions = [
     'sphinx.ext.todo',
     'sphinx.ext.mathjax',
     'sphinx.ext.viewcode',
-    'sphinx_automodapi.automodapi',
+    # 'sphinx_automodapi.automodapi',
     'nbsphinx'
     # 'sphinx.ext.githubpages',
 ]

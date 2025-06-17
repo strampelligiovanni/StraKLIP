@@ -1,16 +1,15 @@
-from stralog import getLogger
-import numpy as np
-from concurrent.futures import ProcessPoolExecutor
-from tiles import Tile
-import numpy.ma as ma
-from astropy.io import fits
-import pandas as pd
-from utils_tile import perform_PSF_subtraction
-from utils_plot import mk_raw_contrast_curves,mk_residual_tile_plots
-from itertools import repeat
-from ancillary import parallelization_package
-from straklip import config
 import os
+import numpy as np
+import numpy.ma as ma
+from straklip.stralog import getLogger
+from straklip.tiles import Tile
+from straklip.utils.utils_tile import perform_PSF_subtraction
+from straklip.utils.utils_plot import mk_residual_tile_plots
+from straklip.utils.ancillary import parallelization_package
+from straklip import config
+from concurrent.futures import ProcessPoolExecutor
+from astropy.io import fits
+from itertools import repeat
 from scipy.ndimage import median_filter
 
 def replace_badpx_with(image,pxdq_temp,mode='median', mask_size=5):

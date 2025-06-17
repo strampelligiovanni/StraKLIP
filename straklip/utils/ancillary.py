@@ -1,10 +1,10 @@
 """
 set of ancillary routines needed by the pipeline or to perform analysis
 """
-import math,os
+import math
 import numpy as np
 import pandas as pd
-from stralog import getLogger
+from straklip.stralog import getLogger
 
 from numpy import unravel_index
 import matplotlib.pyplot as plt
@@ -25,7 +25,6 @@ from tabulate import tabulate
 from scipy.odr import Model,RealData,ODR
 from synphot import ExtinctionModel1D,Observation,SourceSpectrum,SpectralElement
 from stsynphot import band
-from astropy.time import Time
 from synphot.units import FLAM
 from dust_extinction.parameter_averages import CCM89
 from synphot.reddening import ExtinctionCurve

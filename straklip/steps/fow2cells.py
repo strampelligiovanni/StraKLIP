@@ -1,10 +1,9 @@
-from utils_plot import fow_stamp
-from utils_dataframe import update_flags,update_type
+from straklip.utils.utils_plot import fow_stamp
+from straklip.utils.utils_dataframe import update_flags,update_type
+from straklip.utils.ancillary import parallelization_package
+from straklip.stralog import getLogger
 from concurrent.futures import ProcessPoolExecutor
 from itertools import repeat
-from ancillary import parallelization_package
-from stralog import getLogger
-
 def break_FOW_in_cells(DF, filter, suffix='', goodness_phot_label='e', showplot=False, path2savedir='./',
                        workers=None, chunksize=None, psf_nmin=5, qx=10, qy=10, sep_wide=2, sat_px=3,
                        psf_sat_px=3, bad_px=3, psf_bad_px=3, mag_limit=10,

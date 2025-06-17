@@ -1,5 +1,7 @@
 import os, copy, sys,yaml,shutil,corner,emcee,textwrap,pickle
-from tiles import Tile
+from straklip import config
+from straklip.tiles import Tile
+from straklip.stralog import getLogger
 from copy import deepcopy
 from glob import glob
 import pyklip.fakes as fakes
@@ -15,19 +17,14 @@ import pyklip.rdi as rdi
 import pyklip.fmlib.fmpsf as fmpsf
 import pyklip.fm as fm
 import pyklip.fitpsf as fitpsf
-from stralog import getLogger
 from io import StringIO
 import scipy.ndimage.interpolation as sinterp
-from functools import partial
 from scipy.ndimage import fourier_shift
 from scipy.ndimage import shift
 from astropy.io import fits
 from astropy.wcs import WCS
 import astropy.units as u
-from scipy.optimize import minimize
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from scipy.ndimage import zoom
-from straklip import config
 from photutils import psf as pupsf
 
 

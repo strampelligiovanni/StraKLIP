@@ -1,9 +1,11 @@
 import os, sys
-from utils_tile import small_tiles
-from ancillary import parallelization_package
-from utils_tile import allign_images
-from tiles import Tile
+from straklip.utils.utils_tile import small_tiles
+from straklip.utils.ancillary import parallelization_package
+from straklip.utils.utils_tile import allign_images
+from straklip.tiles import Tile
 from straklip import config
+from straklip.stralog import getLogger
+
 import numpy as np
 import matplotlib.pyplot as plt
 from concurrent.futures import ProcessPoolExecutor
@@ -13,7 +15,6 @@ from IPython.display import display
 from matplotlib.colors import PowerNorm,ListedColormap
 from collections import Counter
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from stralog import getLogger
 
 def check4duplicants(DF,filter,mvs_ids_list,showduplicants=False):
     '''

@@ -2,25 +2,20 @@
 utilities functions that can be use by or with the tile class
 """
 import os,math
-from tiles import Tile
-from ancillary import truncate_colormap
-
-from pyklip.klip import klip_math
-
-import pandas as pd 
 import numpy as np
 import matplotlib.pyplot as plt
-
+import matplotlib.patches as patches
+import pyklip.rdi as rdi
+import pyklip.parallelized as parallelized
+from straklip.tiles import Tile
+from straklip.utils.ancillary import truncate_colormap
+from straklip.stralog import getLogger
 from scipy.ndimage import zoom,rotate,fourier_shift
 from skimage.registration import phase_cross_correlation
 from functools import reduce
-from stralog import getLogger
 from astropy.visualization import simple_norm
-import matplotlib.patches as patches
 from astropy.io import fits
 from pyklip.instruments.Instrument import GenericData
-import pyklip.rdi as rdi
-import pyklip.parallelized as parallelized
 
 def allign_images(target_images,rot_angles,PAV_3s,filter,fig=None,ax=None,shift_list=None,cmap='Greys_r',tile_base=15,inst='WFC3',simplenorm='linear',min_percent=0,max_percent=100,power=1,log=1000,xy_m=True,xy_cen=False,legend=False,showplot=False,verbose=False,cbar=True,title='',xy_dmax=None,zfactor=10,alignment_box=0,step=1,Python_origin=True,method='median',kill=False,kill_plots=True,mk_arrow=False):
     '''

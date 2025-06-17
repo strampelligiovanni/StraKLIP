@@ -4,9 +4,9 @@ manipulation of the data tables (multivisits detections, average visits detectio
 through  all the pipeline
 '''
 
-from utils.ancillary import keys_list_from_dic
+from straklip.utils.ancillary import keys_list_from_dic
 import pandas as pd
-from stralog import getLogger
+from straklip.stralog import getLogger
 from glob import glob
 
 class DataFrame():

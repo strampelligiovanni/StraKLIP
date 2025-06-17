@@ -1,24 +1,19 @@
 """
 utilities functions that can be use by or with the photometry class
 """
-import sys
-sys.path.append('/')
-from photometry import Detection,photometry_AP,flux_converter
-from ancillary import poly_regress
-from tiles import Tile
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy.ma as ma
-
+from straklip.photometry import Detection,photometry_AP,flux_converter
+from straklip.utils.ancillary import poly_regress
+from straklip.tiles import Tile
 from astropy.io import fits
 from astropy.stats import sigma_clip,sigma_clipped_stats
-from pathlib import Path
-from reftools.interpretdq import ImageDQ, DQParser
 from scipy.interpolate import interp1d
 from photutils.segmentation import SegmentationImage
-from stralog import getLogger
+from straklip.stralog import getLogger
 
 def get_rough_sky(data,sigma=3.0,nsigma=2, npixels=5, dilate_size=11,mask_stars=False):
     '''

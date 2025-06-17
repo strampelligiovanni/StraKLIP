@@ -2,14 +2,10 @@
 utilities functions for the false positives analysis
 """
 
-import sys
-sys.path.append('/')
-from ancillary import frac_above_thresh,find_closer
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-
+from straklip.utils.ancillary import frac_above_thresh,find_closer
 from scipy.interpolate import interp1d
 from sklearn import metrics
 

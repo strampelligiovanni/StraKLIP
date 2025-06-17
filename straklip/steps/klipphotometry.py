@@ -1,23 +1,20 @@
+import os
 import numpy as np
-import sys, os
-sys.path.append('/')
-import numpy as np
-from stralog import getLogger
 import pandas as pd
+import matplotlib.pyplot as plt
+from straklip.tiles import Tile
+from straklip.utils.utils_photometry import mvs_aperture_photometry,read_dq_from_tile,KLIP_aperture_photometry_handler
+from straklip.utils.ancillary import print_mean_median_and_std_sigmacut,rotate_point,parallelization_package
+from straklip.utils.utils_tile import allign_images
+from straklip.utils.utils_dataframe import create_empty_df
+from straklip.steps.buildhdf import make_candidates_dataframes
+from straklip.stralog import getLogger
 from concurrent.futures import ProcessPoolExecutor
 from itertools import repeat
-from ancillary import parallelization_package
 from astropy.io import fits
 from pathlib import Path
-from tiles import Tile
-from utils_photometry import mvs_aperture_photometry,read_dq_from_tile,KLIP_aperture_photometry_handler
-import matplotlib.pyplot as plt
 from IPython.display import display
-from ancillary import print_mean_median_and_std_sigmacut,rotate_point,parallelization_package
-from utils_tile import allign_images
 from scipy.spatial import distance_matrix
-from utils_dataframe import create_empty_df
-from buildhdf import make_candidates_dataframes
 from scipy.stats import sigmaclip
 
 def task_mvs_tiles_and_photometry(DF, fitsname, ids_list, filter, use_xy_SN, use_xy_m, use_xy_cen, xy_shift_list,

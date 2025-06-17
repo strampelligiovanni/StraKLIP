@@ -1,5 +1,5 @@
-from stralog import getLogger
-from utils_dataframe import mk_crossmatch_ids_df,mk_unq_targets_df,mk_mvs_targets_df,mk_unq_candidates_df,mk_mvs_candidates_df
+from straklip.stralog import getLogger
+from straklip.utils.utils_dataframe import mk_crossmatch_ids_df,mk_unq_targets_df,mk_mvs_targets_df,mk_unq_candidates_df,mk_mvs_candidates_df
 
 def mk_targets_df(DF,dataset):
     '''

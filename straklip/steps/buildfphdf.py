@@ -1,16 +1,16 @@
 import sys
 sys.path.append('/')
 from glob import glob
-from utils_dataframe import fk_writing,mk_fakes_df
-from utils_fpanalysis import task_fake_reference_infos,task_fake_infos
+from straklip.utils.utils_dataframe import fk_writing,mk_fakes_df
+from straklip.utils.utils_fpanalysis import task_fake_reference_infos,task_fake_infos
+from straklip.stralog import getLogger
+from straklip.utils.ancillary import parallelization_package
+
 from concurrent.futures import ProcessPoolExecutor
 from itertools import repeat
-
 import numpy as np
-from stralog import getLogger
 from random import choice
 from astropy.io import fits
-from ancillary import parallelization_package
 
 def psf_scale(psfdata):
     psfdata[psfdata<0]=0

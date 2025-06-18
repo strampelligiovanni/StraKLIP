@@ -7,7 +7,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Documentation for StraKLIP &mdash; StraKLIP</title>
-      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
       <link rel="stylesheet" type="text/css" href="_static/wider_docs.css?v=13a472fc" />
 
@@ -18,6 +18,8 @@
       <script src="_static/doctools.js?v=9bcbadda"></script>
       <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -52,11 +54,9 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorial Notebooks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tutorials/tutorial_join_catalogues_DRC.html">Tutorial: Joining DRC catalogues</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tutorials/tutorial_recenter_close_binary.html">Tutorial: Recenter Close Binaries</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tutorials/tutorial_data_reduction.html">Tutorial: Data Reduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tutorials/tutorial_psf_subtraction.html">Tutorial: PSF Subtraction</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tutorials/tutorial_analysis.html">Tutorial: Analysis</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tutorials/tutorial_show_binaries.html">Turorial: Showroom</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/tutorial_analysis.html">Tutorial: Analysis (work in progress)</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">About</span></p>
 <ul>
@@ -122,11 +122,28 @@ It is built on top of <a class="reference external" href="https://pyklip.readthe
 <li class="toctree-l2"><a class="reference internal" href="tutorials/tutorial_join_catalogues_DRC.html#Lets-populate-the-`unq_dataframe'">Lets populate the `unq_dataframe’</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="tutorials/tutorial_recenter_close_binary.html">Tutorial: Recenter Close Binaries</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tutorials/tutorial_data_reduction.html">Tutorial: Data Reduction</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tutorials/tutorial_psf_subtraction.html">Tutorial: PSF Subtraction</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tutorials/tutorial_analysis.html">Tutorial: Analysis</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tutorials/tutorial_show_binaries.html">Turorial: Showroom</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/tutorial_data_reduction.html">Tutorial: Data Reduction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/tutorial_data_reduction.html#Initial-imports">Initial imports</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/tutorial_data_reduction.html#Loading-the-pipeline-configuration-file-for-the-project">Loading the pipeline configuration file for the project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/tutorial_data_reduction.html#Building-the-dataframes">Building the dataframes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/tutorial_data_reduction.html#Tiles">Tiles</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/tutorial_data_reduction.html#Photometry">Photometry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/tutorial_data_reduction.html#FOW2CELL">FOW2CELL</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/tutorial_psf_subtraction.html">Tutorial: PSF Subtraction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/tutorial_psf_subtraction.html#Initial-imports">Initial imports</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/tutorial_psf_subtraction.html#Loading-the-dataframe">Loading the dataframe</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/tutorial_psf_subtraction.html#PSF-subtraction">PSF subtraction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/tutorial_psf_subtraction.html#Photmetry">Photmetry</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/tutorial_analysis.html">Tutorial: Analysis (work in progress)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/tutorial_analysis.html#Initial-imports">Initial imports</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/tutorial_analysis.html#Loading-the-dataframe">Loading the dataframe</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/tutorial_analysis.html#Running-the-analysis">Running the analysis</a></li>
+</ul>
+</li>
 </ul>
 </div>
 <div class="toctree-wrapper compound">
@@ -142,130 +159,14 @@ It is built on top of <a class="reference external" href="https://pyklip.readthe
 <p class="caption" role="heading"><span class="caption-text">Package content (Unfinished)</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="StraKLIP.html">Detailed StraKLIP API</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="StraKLIP.html#module-straklip.config">straklip.config module</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="StraKLIP.html#straklip.config.cannonizekey"><code class="docutils literal notranslate"><span class="pre">cannonizekey()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="StraKLIP.html#straklip.config.cannonizevalue"><code class="docutils literal notranslate"><span class="pre">cannonizevalue()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="StraKLIP.html#straklip.config.closing_statement"><code class="docutils literal notranslate"><span class="pre">closing_statement()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="StraKLIP.html#straklip.config.configure_data"><code class="docutils literal notranslate"><span class="pre">configure_data()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="StraKLIP.html#straklip.config.configure_dataframe"><code class="docutils literal notranslate"><span class="pre">configure_dataframe()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="StraKLIP.html#straklip.config.configure_pipeline"><code class="docutils literal notranslate"><span class="pre">configure_pipeline()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="StraKLIP.html#straklip.config.dequote"><code class="docutils literal notranslate"><span class="pre">dequote()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="StraKLIP.html#straklip.config.get_paths"><code class="docutils literal notranslate"><span class="pre">get_paths()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="StraKLIP.html#straklip.config.get_zpt"><code class="docutils literal notranslate"><span class="pre">get_zpt()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="StraKLIP.html#straklip.config.load"><code class="docutils literal notranslate"><span class="pre">load()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="StraKLIP.html#straklip.config.loadoldconfig"><code class="docutils literal notranslate"><span class="pre">loadoldconfig()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="StraKLIP.html#straklip.config.make_paths"><code class="docutils literal notranslate"><span class="pre">make_paths()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="StraKLIP.html#straklip.config.objectify"><code class="docutils literal notranslate"><span class="pre">objectify</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="StraKLIP.html#straklip.config.validate"><code class="docutils literal notranslate"><span class="pre">validate()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="StraKLIP.html#straklip.config.validation_summary"><code class="docutils literal notranslate"><span class="pre">validation_summary()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="StraKLIP.html#straklip.config.verify_paths"><code class="docutils literal notranslate"><span class="pre">verify_paths()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="StraKLIP.html#module-straklip.dataframe">straklip.dataframe module</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="StraKLIP.html#straklip.dataframe.DataFrame"><code class="docutils literal notranslate"><span class="pre">DataFrame</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.dataframe.DataFrame.list_of_HDF5_keys"><code class="docutils literal notranslate"><span class="pre">DataFrame.list_of_HDF5_keys()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.dataframe.DataFrame.load_dataframe"><code class="docutils literal notranslate"><span class="pre">DataFrame.load_dataframe()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.dataframe.DataFrame.remove_HDF5_key"><code class="docutils literal notranslate"><span class="pre">DataFrame.remove_HDF5_key()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.dataframe.DataFrame.save_dataframes"><code class="docutils literal notranslate"><span class="pre">DataFrame.save_dataframes()</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="StraKLIP.html#module-straklip.fake_star">straklip.fake_star module</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="StraKLIP.html#straklip.fake_star.Fake_Star"><code class="docutils literal notranslate"><span class="pre">Fake_Star</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.fake_star.Fake_Star.combine"><code class="docutils literal notranslate"><span class="pre">Fake_Star.combine()</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="StraKLIP.html#module-straklip.input_tables">straklip.input_tables module</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="StraKLIP.html#straklip.input_tables.Tables"><code class="docutils literal notranslate"><span class="pre">Tables</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.input_tables.Tables.ancillary_info"><code class="docutils literal notranslate"><span class="pre">Tables.ancillary_info()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.input_tables.Tables.canonize"><code class="docutils literal notranslate"><span class="pre">Tables.canonize()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.input_tables.Tables.check_fits_file_existence"><code class="docutils literal notranslate"><span class="pre">Tables.check_fits_file_existence()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.input_tables.Tables.load_table_into_df"><code class="docutils literal notranslate"><span class="pre">Tables.load_table_into_df()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.input_tables.Tables.rename_df"><code class="docutils literal notranslate"><span class="pre">Tables.rename_df()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.input_tables.Tables.select_tables"><code class="docutils literal notranslate"><span class="pre">Tables.select_tables()</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="StraKLIP.html#module-straklip.photometry">straklip.photometry module</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="StraKLIP.html#straklip.photometry.Detection"><code class="docutils literal notranslate"><span class="pre">Detection</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.photometry.Detection.find_peaks"><code class="docutils literal notranslate"><span class="pre">Detection.find_peaks()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.photometry.Detection.find_sources"><code class="docutils literal notranslate"><span class="pre">Detection.find_sources()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="StraKLIP.html#straklip.photometry.flux_converter"><code class="docutils literal notranslate"><span class="pre">flux_converter</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.photometry.flux_converter.counts_and_errors"><code class="docutils literal notranslate"><span class="pre">flux_converter.counts_and_errors()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.photometry.flux_converter.flux2mag"><code class="docutils literal notranslate"><span class="pre">flux_converter.flux2mag()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.photometry.flux_converter.mag2flux"><code class="docutils literal notranslate"><span class="pre">flux_converter.mag2flux()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.photometry.flux_converter.radial_profile"><code class="docutils literal notranslate"><span class="pre">flux_converter.radial_profile()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="StraKLIP.html#straklip.photometry.photometry_AP"><code class="docutils literal notranslate"><span class="pre">photometry_AP</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.photometry.photometry_AP.aperture_mask"><code class="docutils literal notranslate"><span class="pre">photometry_AP.aperture_mask()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.photometry.photometry_AP.aperture_stats"><code class="docutils literal notranslate"><span class="pre">photometry_AP.aperture_stats()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.photometry.photometry_AP.grow_curves"><code class="docutils literal notranslate"><span class="pre">photometry_AP.grow_curves()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.photometry.photometry_AP.mask_aperture_data"><code class="docutils literal notranslate"><span class="pre">photometry_AP.mask_aperture_data()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="StraKLIP.html#straklip.photometry.photometry_MF"><code class="docutils literal notranslate"><span class="pre">photometry_MF</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.photometry.photometry_MF.mf_stats"><code class="docutils literal notranslate"><span class="pre">photometry_MF.mf_stats()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="StraKLIP.html#straklip.photometry.photometry_PSF"><code class="docutils literal notranslate"><span class="pre">photometry_PSF</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.photometry.photometry_PSF.equivalent_noise_area"><code class="docutils literal notranslate"><span class="pre">photometry_PSF.equivalent_noise_area()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.photometry.photometry_PSF.psf_stats"><code class="docutils literal notranslate"><span class="pre">photometry_PSF.psf_stats()</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="StraKLIP.html#module-straklip.showroom">straklip.showroom module</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="StraKLIP.html#straklip.showroom.ShowRoom"><code class="docutils literal notranslate"><span class="pre">ShowRoom</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.showroom.ShowRoom.build_candidates_box"><code class="docutils literal notranslate"><span class="pre">ShowRoom.build_candidates_box()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.showroom.ShowRoom.build_targets_box"><code class="docutils literal notranslate"><span class="pre">ShowRoom.build_targets_box()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.showroom.ShowRoom.candidate_buttons_and_text_area"><code class="docutils literal notranslate"><span class="pre">ShowRoom.candidate_buttons_and_text_area()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.showroom.ShowRoom.display_mvs_df"><code class="docutils literal notranslate"><span class="pre">ShowRoom.display_mvs_df()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.showroom.ShowRoom.display_mvs_flags"><code class="docutils literal notranslate"><span class="pre">ShowRoom.display_mvs_flags()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.showroom.ShowRoom.display_text_boxes"><code class="docutils literal notranslate"><span class="pre">ShowRoom.display_text_boxes()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.showroom.ShowRoom.display_unq_df"><code class="docutils literal notranslate"><span class="pre">ShowRoom.display_unq_df()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.showroom.ShowRoom.load_and_plot_tiles"><code class="docutils literal notranslate"><span class="pre">ShowRoom.load_and_plot_tiles()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.showroom.ShowRoom.matchingExactKeys"><code class="docutils literal notranslate"><span class="pre">ShowRoom.matchingExactKeys()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.showroom.ShowRoom.matchingKeys"><code class="docutils literal notranslate"><span class="pre">ShowRoom.matchingKeys()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.showroom.ShowRoom.selectors"><code class="docutils literal notranslate"><span class="pre">ShowRoom.selectors()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.showroom.ShowRoom.show_candidate_SNR_tiles_and_df"><code class="docutils literal notranslate"><span class="pre">ShowRoom.show_candidate_SNR_tiles_and_df()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.showroom.ShowRoom.show_candidate_tiles_and_df"><code class="docutils literal notranslate"><span class="pre">ShowRoom.show_candidate_tiles_and_df()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.showroom.ShowRoom.show_model_tiles_and_df"><code class="docutils literal notranslate"><span class="pre">ShowRoom.show_model_tiles_and_df()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.showroom.ShowRoom.show_target_tiles_and_df"><code class="docutils literal notranslate"><span class="pre">ShowRoom.show_target_tiles_and_df()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.showroom.ShowRoom.showroom"><code class="docutils literal notranslate"><span class="pre">ShowRoom.showroom()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.showroom.ShowRoom.target_buttons_and_text_area"><code class="docutils literal notranslate"><span class="pre">ShowRoom.target_buttons_and_text_area()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.showroom.ShowRoom.upon_clicked_on_candidate_flag_button"><code class="docutils literal notranslate"><span class="pre">ShowRoom.upon_clicked_on_candidate_flag_button()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.showroom.ShowRoom.upon_clicked_on_target_flag_button"><code class="docutils literal notranslate"><span class="pre">ShowRoom.upon_clicked_on_target_flag_button()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.showroom.ShowRoom.upon_submitted_filter_flag_text"><code class="docutils literal notranslate"><span class="pre">ShowRoom.upon_submitted_filter_flag_text()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.showroom.ShowRoom.upon_submitted_mvs_ids_text"><code class="docutils literal notranslate"><span class="pre">ShowRoom.upon_submitted_mvs_ids_text()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.showroom.ShowRoom.upon_submitted_type_text"><code class="docutils literal notranslate"><span class="pre">ShowRoom.upon_submitted_type_text()</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="StraKLIP.html#module-straklip.stralog">straklip.stralog module</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="StraKLIP.html#straklip.stralog.MakeFileHandler"><code class="docutils literal notranslate"><span class="pre">MakeFileHandler</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="StraKLIP.html#straklip.stralog.getLogger"><code class="docutils literal notranslate"><span class="pre">getLogger()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="StraKLIP.html#straklip.stralog.mkdir_p"><code class="docutils literal notranslate"><span class="pre">mkdir_p()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="StraKLIP.html#straklip.stralog.setupLogger"><code class="docutils literal notranslate"><span class="pre">setupLogger()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="StraKLIP.html#module-straklip.tiles">straklip.tiles module</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="StraKLIP.html#straklip.tiles.Tile"><code class="docutils literal notranslate"><span class="pre">Tile</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.tiles.Tile.append_tile"><code class="docutils literal notranslate"><span class="pre">Tile.append_tile()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.tiles.Tile.load_tile"><code class="docutils literal notranslate"><span class="pre">Tile.load_tile()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.tiles.Tile.mk_tile"><code class="docutils literal notranslate"><span class="pre">Tile.mk_tile()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="StraKLIP.html#straklip.tiles.Tile.plot_tile"><code class="docutils literal notranslate"><span class="pre">Tile.plot_tile()</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="StraKLIP.html#straklip-config-module">straklip.config module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="StraKLIP.html#straklip-dataframe-module">straklip.dataframe module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="StraKLIP.html#straklip-fake-star-module">straklip.fake_star module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="StraKLIP.html#straklip-input-tables-module">straklip.input_tables module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="StraKLIP.html#straklip-photometry-module">straklip.photometry module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="StraKLIP.html#straklip-showroom-module">straklip.showroom module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="StraKLIP.html#straklip-stralog-module">straklip.stralog module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="StraKLIP.html#straklip-tiles-module">straklip.tiles module</a></li>
 </ul>
 </li>
 </ul>

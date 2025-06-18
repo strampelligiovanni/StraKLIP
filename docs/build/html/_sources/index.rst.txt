@@ -28,11 +28,9 @@ Compatible Simulated Data: `Here <https://>`_
 
    tutorials
    tutorials/tutorial_join_catalogues_DRC.ipynb
-   tutorials/tutorial_recenter_close_binary.ipynb
    tutorials/tutorial_data_reduction.ipynb
    tutorials/tutorial_psf_subtraction.ipynb
    tutorials/tutorial_analysis.ipynb
-   tutorials/tutorial_show_binaries.ipynb
 
 .. toctree::
    :caption: StraKLIP Functionality (Unfinished)

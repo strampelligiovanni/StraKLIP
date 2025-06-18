@@ -17,9 +17,9 @@ Examples of both files are provided in the `src/StraKLIP/straklip/template` dire
 
 The `data.yaml` file host three major sections:
 
-    - target: this section host the information about the target that can be applied to all the soruces in the catalog as whole
-    - mvs_table: this section host the convection use by the provided imput catalog for each column
-    - unq_table: this section host the convection use by the provided imput catalog for each column
+    - target: this section host the information about the target that can be applied to all the sources in the catalog as whole
+    - mvs_table: this section host the convection use by the provided input catalog for each column
+    - unq_table: this section host the convection use by the provided input catalog for each column
 
 The `pipe.yaml` file host 13 major sections:
 
@@ -50,9 +50,9 @@ The `pipe.yaml` file host 13 major sections:
     - analysis: here we record all the specific option for this step of the pipeline
 
 
-Before running the pipeline, you will need a series of HST `_flc` or '_flt_' images, and a catalog recording the `x`, `y`
+Before running the pipeline, you will need a series of HST `_flc` or `_flt_` images, and a catalog recording the `x`, `y`
 coordinates and a few additional information of each sources on these images. Having their photometry might help,
-but it's not mandatory. The pipeline will perform it's own aperture photometry.
+but it's not mandatory. If needed, the pipeline will perform its own aperture photometry.
 
 The mandatory columns for the `mvs_table` catalog are the following:
 
@@ -70,7 +70,7 @@ The mandatory columns for the `mvs_table` catalog are the following:
 You can use the section `mvs_table` in the `data.yaml` to tell the pipeline how to match your columns name with the
 pipeline default (stored in the `pipe.yaml`).
 
-An `average` catalog recording the `ra`, `dec` and `type` of each `unique` source is also need.
+An `unique` catalog recording the `ra`, `dec` and `type` of each `unique` source is also need.
 Having their photometry might help, but it's not mandatory. The pipeline will evaluate this as well.
 
 The mandatory columns for the `unq_table` catalog are the following:
@@ -100,8 +100,7 @@ The mandatory columns for the `unq_table` catalog are the following:
 NOTE: the pipeline will select only type 1 sources to build the base of it's PSF subtraction library. Source of type
 1, 2 or n (with n > 3) will be processed by the pipeline instead.
 
-An example of out to build these catalog is presented in the `join_catalogues.ipynb` notebook
-in 'point to tutorial'.
+An example of out to build these catalog is presented `here <https://pyklip.readthedocs.io/en/latest/tutorials.html>`_ .
 
 --------------------
 Running the Pipeline
@@ -110,7 +109,7 @@ The pipeline can be assemble to fit the specific user needs, combining its diffe
 to run the pipeline is presented in the `tutorials <https://pyklip.readthedocs.io/en/latest/tutorials.html>`_
 section.
 
-A 'default' script is provided by the `skpipe.py` routine in `src/StraKLIP/script`. use the `-p` option to point to the
+A 'default' script is provided by the `skpipe.py` routine in `./script` directory. Use the `-p` option to point to the
 `pipe.yaml` and `-d` to point to the `data.yaml` if not running the pipeline from the directory where they are stored.
 
 The `flow` section of the `pipe.yaml` lists all the steps that will be executed when running the pipeline.

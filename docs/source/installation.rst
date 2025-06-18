@@ -1,22 +1,31 @@
-Installation
-============
+Installation and Dependencies
+=============================
 
-To install StraKLIP, use pip:
+The current release of StraKLIP is not stable enough for a straightforward install with conda / pip. At this stage
+it is recommended that you clone the git repository directory for installation:
 
-.. code-block:: bash
+::
 
-   pip install straklip
+	git clone https://github.com/strampelligiovanni/StraKLIP.git
 
-Or install from source:
+If you would like a specific branch:
 
-.. code-block:: bash
+::
 
-   git clone https://github.com/strampelligiovanni/StraKLIP.git
-   cd StraKLIP
-   pip install .
+	git clone https://github.com/strampelligiovanni/StraKLIP.git@branch
 
-Requirements
-------------
+From here, it is **highly** recommended that you create a unique anaconda environment to hold all of the StraKLIP
+dependencies. StraKLIP is not currently compatible with python 3.12
 
-- Python 3.8+
-- [Other dependencies, if any]
+::
+
+	conda create -n straklip python=3.11
+	conda activate straklip
+
+With the anaconda environment created, move to the cloned directory and install most of the dependencies:
+
+::
+
+	cd where/you/installed/the/git/repo
+	pip install -r requirements.txt
+	pip install -e .

@@ -604,8 +604,13 @@ def small_tiles(DF,path2fits, path2tiles, filters, dict={},nrows=10, ncols=10, f
                 if idx in dict[f'bad_{filter}']:
                     rect = patches.Rectangle((-0.25, -0.25), 10.5, 10.5, linewidth=3, edgecolor='r', facecolor='none')
                     axes[elno][elno1].add_patch(rect)
+                    DF.loc[idx, f'flag_{filter}'.lower()] = 'rejected'
                 elif idx in dict[f'good_{filter}']:
                     DF.loc[idx, f'flag_{filter}'.lower()] = 'good_target'
+                    rect = patches.Rectangle((-0.25, -0.25), 10.5, 10.5, linewidth=3, edgecolor='g', facecolor='none')
+                    axes[elno][elno1].add_patch(rect)
+                elif idx in dict[f'kd_{filter}']:
+                    DF.loc[idx, f'flag_{filter}'.lower()] = 'known_double'
                     rect = patches.Rectangle((-0.25, -0.25), 10.5, 10.5, linewidth=3, edgecolor='g', facecolor='none')
                     axes[elno][elno1].add_patch(rect)
                 else:

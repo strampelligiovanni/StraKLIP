@@ -106,7 +106,7 @@ An example of out to build these catalog is presented `here <https://straklip.re
 Running the Pipeline
 --------------------
 The pipeline can be assemble to fit the specific user needs, combining its different building block. An example of how
-to run the pipeline is presented in the `tutorials <https://pyklip.readthedocs.io/en/latest/tutorials.html>`_
+to run the pipeline is presented in the `tutorials <https://straklip.readthedocs.io/latest/tutorials.html>`_
 section.
 
 A 'default' script is provided by the `skpipe.py` routine in `./script` directory. Use the `-p` option to point to the

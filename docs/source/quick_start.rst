@@ -5,7 +5,7 @@ Pipeline Quick Start Guide
 ---------------
 Pipeline Setup
 ---------------
-Create a pipeline environment using the `straklipenv.yaml` in `src/StraKLIP`.
+Create a pipeline environment using the instructions in `here <https://straklip.readthedocs.io/latest/installation.html>`_.
 
 Move to the directory where you want to work, and create the following yaml files:
 
@@ -100,7 +100,7 @@ The mandatory columns for the `unq_table` catalog are the following:
 NOTE: the pipeline will select only type 1 sources to build the base of it's PSF subtraction library. Source of type
 1, 2 or n (with n > 3) will be processed by the pipeline instead.
 
-An example of out to build these catalog is presented `here <https://pyklip.readthedocs.io/en/latest/tutorials.html>`_ .
+An example of out to build these catalog is presented `here <https://straklip.readthedocs.io/latest/tutorials/tutorial_join_catalogues_DRC.html>`_.
 
 --------------------
 Running the Pipeline

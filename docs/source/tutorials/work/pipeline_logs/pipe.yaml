@@ -15,23 +15,19 @@ df_ext_in: '.csv'
 df_ext_out: '.csv'
 flow:
 ########## first part of the pipeline ##########
-#- buildhdf
-#- mktiles
-#- mkphotometry
-#- fow2cells
-#- psfsubtraction
-#- klipphotometry
+- buildhdf
+- mktiles
+- mkphotometry
+- fow2cells
+- psfsubtraction
+- klipphotometry
 - analysis
-########## second part of the pipeline ##########
-#- buildfphdf
-#- mkcompleteness
-#- fpanalysis
 paths:
   pyklip: /Users/gstrampelli/pyklip
-  pam: /Users/gstrampelli/PycharmProjects/StraKLIP_tutorial_test/database/pam
-  data: /Users/gstrampelli/PycharmProjects/StraKLIP_tutorial_test/data/fits
-  database: /Users/gstrampelli/PycharmProjects/StraKLIP_tutorial_test/database
-  out: /Users/gstrampelli/PycharmProjects/StraKLIP_tutorial_test/out
+  pam: /Users/gstrampelli/StraKLIP/docs/source/tutorials/work/database/pam
+  data: /Users/gstrampelli/StraKLIP/docs/source/tutorials/work/data/fits
+  database: /Users/gstrampelli/StraKLIP/docs/source/tutorials/work/database
+  out: /Users/gstrampelli/StraKLIP/docs/source/tutorials/work/out
 unq_ids_list: []
 buildhdf:
   redo: false
@@ -136,7 +132,7 @@ klipphotometry:
   mak: 7
   pruning: true
 analysis:
-  path2iso_interp: #/Users/gstrampelli/PycharmProjects/NGC1976/database/interpolated_isochrones.pck
+  path2iso_interp:
   overwrite: false
   xycomp_list: []
   filter: ['f814w', 'f850lp']

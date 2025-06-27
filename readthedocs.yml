@@ -5,12 +5,6 @@ build:
   tools:
     python: "3.11"
 
-python:
-  install:
-    - method: pip
-      path: .
-    # - requirements: docs/requirements.txt  # uncomment if needed
-
 sphinx:
   configuration: docs/source/conf.py
 

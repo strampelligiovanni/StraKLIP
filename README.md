@@ -141,3 +141,13 @@ the `--make-dir` option enable.
 
 NOTE: The default values for these `paths` will need to be changed in the `pipe.yaml` to point to the appropriate 
 location for your computer. 
+
+## Attribution
+Maintenance and current development of ``StraKLIP`` is led by Giovanni M. Strampelli (STScI).
+A special thanks to Dr. Massimo Robberto (STScI), Dr. Laurant Pueyo (STScI), Dr. Jonathan Aguilar (STScI) and Professor
+Antonio Aparicio (ULL) for their guidance during the development of the pipeline.
+
+**Citing StraKLIP:**
+If StraKLIP is useful for your research,
+please cite
+`Strampelli, G. M. et al. 2022, aj, 164, 147`

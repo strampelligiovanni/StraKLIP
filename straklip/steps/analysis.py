@@ -1106,8 +1106,8 @@ class AnalysisTools():
 
             cc_dict[KL] = med_interp(contrast_seps)
             cc_dict['sep'] = contrast_seps
-            if arc_sec:
-                cc_dict['sep_arcsec'] = [i * pixelscale for i in contrast_seps]
+            # if arc_sec:
+            #     cc_dict['sep_arcsec'] = [i * pixelscale for i in contrast_seps]
 
         getLogger(__name__).info(f'Saving contrast curves plot in: {outputdir}')
         ax1.set_yscale('log')
@@ -1115,7 +1115,7 @@ class AnalysisTools():
         if arc_sec:
             ax1.set_xlabel('Separation ["]')
             if xlim is None:
-                ax1.set_xlim(np.nanmin(cc_dict['sep_arcsec']), np.nanmax(cc_dict['sep_arcsec']))
+                ax1.set_xlim(np.nanmin([i * pixelscale for i in cc_dict['sep']]), np.nanmax([i * pixelscale for i in cc_dict['sep']]))
             else:
                 ax1.set_xlim(xlim)
         else:
@@ -1215,8 +1215,8 @@ class AnalysisTools():
         fig3, ax3 = plt.subplots(figsize=(12, 6))
         ccc_dict={}
         ccc_dict['sep'] = seps
-        if arc_sec:
-            ccc_dict['sep_arcsec'] = [i * pixelscale for i in seps]
+        # if arc_sec:
+        #     ccc_dict['sep_arcsec'] = [i * pixelscale for i in seps]
 
         for elno in range(len(self.numbasis[::klstep])):
             KL = self.numbasis[::klstep][elno]
@@ -1275,13 +1275,13 @@ class AnalysisTools():
         if arc_sec:
             ax2.set_xlabel('Separation ["]')
             if xlim is None:
-                ax2.set_xlim(np.nanmin(cc_dict['sep_arcsec']), np.nanmax(cc_dict['sep_arcsec']))
+                ax2.set_xlim(np.nanmin([i * pixelscale for i in ccc_dict['sep']]), np.nanmax([i * pixelscale for i in ccc_dict['sep']]))
             else:
                 ax2.set_xlim(xlim)
         else:
             ax2.set_xlabel('Separation [pix]')
             if xlim is None:
-                ax2.set_xlim(int(np.nanmin(cc_dict['sep'])), int(np.nanmax(cc_dict['sep'])))
+                ax2.set_xlim(int(np.nanmin(ccc_dict['sep'])), int(np.nanmax(ccc_dict['sep'])))
             else:
                 ax2.set_xlim(xlim)
         ax2.minorticks_on()
@@ -1297,7 +1297,7 @@ class AnalysisTools():
         if arc_sec:
             ax3.set_xlabel('Separation ["]')
             if xlim is None:
-                ax3.set_xlim(np.nanmin(cc_dict['sep_arcsec']), np.nanmax(cc_dict['sep_arcsec']))
+                ax3.set_xlim(np.nanmin([i * pixelscale for i in cc_dict['sep']]), np.nanmax([i * pixelscale for i in cc_dict['sep']]))
             else:
                 ax3.set_xlim(xlim)
         else:
@@ -1320,11 +1320,11 @@ class AnalysisTools():
         with open(outputdir + f"/{filter}_corr_contrast_curves.pkl", "wb") as f:
             pickle.dump(ccc_dict, f)
 
-    def mk_mass_sensitivity_curves(self,filter, outputdir, path2iso_interp, klstep=1, arc_sec=False, pixelscale=1,ylim=None,xlim=None):
+    def mk_mass_sensitivity_curves(self,filter, outputdir, path2iso_interp, klstep=1, arc_sec=False, pixelscale=1,ylim=None,xlim=None, ext='_contrast_curves.pkl'):
         getLogger(__name__).info(f'Making mass sensitivity curves.')
         os.makedirs(outputdir, exist_ok=True)
-        getLogger(__name__).info( f'Loading contrast curves dictionary from file: {outputdir}/{filter}_contrast_curves.pkl')
-        with open(outputdir + f"/{filter}_contrast_curves.pkl", "rb") as f:
+        getLogger(__name__).info( f'Loading contrast curves dictionary from file: {outputdir}/{filter}{ext}')
+        with open(outputdir + f"/{filter}{ext}", "rb") as f:
             cc_dict = pickle.load(f)
 
         input_contrast_list = [cc_dict[KL] for KL in self.numbasis]
@@ -1351,7 +1351,7 @@ class AnalysisTools():
                     mass = 10**interp[filter]['logmass'](appmag - 5 * np.log10(self.primary.dist / 10)-self.primary.av*self.DF.Av[self.primary.ccd][f'm_{filter}'], self.primary.age, self.primary.logSPacc)
                 mass_sensitivity_curve.append(mass)
             if arc_sec:
-                ax4.plot(cc_dict['sep_arcsec'],mass_sensitivity_curve, '-.',label=f'KL = {KL}',linewidth=3.0)
+                ax4.plot([i * pixelscale for i in cc_dict['sep']],mass_sensitivity_curve, '-.',label=f'KL = {KL}',linewidth=3.0)
             else:
                 ax4.plot(cc_dict['sep'],mass_sensitivity_curve, '-.',label=f'KL = {KL}',linewidth=3.0)
             mass_sensitivity_curves.append(mass_sensitivity_curve)  # vegamag
@@ -1363,7 +1363,7 @@ class AnalysisTools():
         if arc_sec:
             ax4.set_xlabel('Separation ["]')
             if xlim is None:
-                ax4.set_xlim(np.nanmax(cc_dict['sep_arcsec']), np.nanmax(cc_dict['sep_arcsec']))
+                ax4.set_xlim(np.nanmin([i * pixelscale for i in cc_dict['sep']]), np.nanmax([i * pixelscale for i in cc_dict['sep']]))
             else:
                 ax4.set_xlim(xlim)
         else:
@@ -1374,7 +1374,7 @@ class AnalysisTools():
                 ax4.set_xlim(xlim)
         ax4.minorticks_on()
         if ylim is None:
-            ax4.set_xlim(np.min(mass_sensitivity_curves), 1)
+            ax4.set_ylim(np.min(mass_sensitivity_curves), 1)
         else:
             ax4.set_ylim(ylim)
         fig4.legend(ncols=3, loc=1)
@@ -1384,7 +1384,7 @@ class AnalysisTools():
 
 def run_analysis(DF, unq_id, mvs_id, filter, numbasis, fwhm, dataset, obsdataset, residuals, outputdir, xycomp_list=[None, None],
              extract_candidate=True, contrast_curves=True, cal_contrast_curves=True,mass_sensitivity_curves=True, mask_candidate=True, inject_fake = True,
-             guess_contrast=1e-1, pxsc_arcsec = 0.04, KLdetect = 7, klstep = 1  ,min_corr = 0.8,
+             guess_contrast=1e-1, pxsc_arcsec = 0.04, KLdetect = 7, klstep = 1  ,min_corr = 0.8, ext='_contrast_curves.pkl',
              pa_list = [0, 45, 90, 135, 180, 225, 270, 315], seps = [1, 2, 3, 4, 5, 10, 15],overwrite=True,
              subtract_companion=False, arc_sec=False,ylim=[1e-4, 1],xlim=None,path2iso_interp=None,age=1,accr=1e-5,distance=400,av=0,logSPacc=-5,kwargs=None):
 
@@ -1446,7 +1446,7 @@ def run_analysis(DF, unq_id, mvs_id, filter, numbasis, fwhm, dataset, obsdataset
         analysistools.mk_cal_contrast_curves(filter, outputdir+f"/analysis/ID{mvs_id}", inject_fake, mask_candidate, seps,  pa_list, klstep, min_corr=min_corr, KLdetect=KLdetect, arc_sec=arc_sec, pixelscale=pxsc_arcsec,ylim=ylim,xlim=xlim)
 
     if mass_sensitivity_curves and path2iso_interp is not None:
-        analysistools.mk_mass_sensitivity_curves(filter,  outputdir+f"/analysis/ID{mvs_id}", path2iso_interp=path2iso_interp, klstep=klstep, arc_sec=arc_sec, pixelscale=pxsc_arcsec,xlim=xlim)
+        analysistools.mk_mass_sensitivity_curves(filter,  outputdir+f"/analysis/ID{mvs_id}", path2iso_interp=path2iso_interp, klstep=klstep, arc_sec=arc_sec, pixelscale=pxsc_arcsec, ylim=ylim, xlim=xlim, ext=ext)
     else:
         getLogger(__name__).warning(f'Cannot convert contrast curves in mass sensistivity curves without an interpolator!')
 
@@ -1499,6 +1499,7 @@ def run(packet):
                          pxsc_arcsec=dataset.pipe_cfg.instrument['pixelscale'],
                          klstep=dataset.pipe_cfg.analysis['klstep'],
                          min_corr=dataset.pipe_cfg.analysis['min_corr'],
+                         ext=dataset.pipe_cfg.analysis['ext'],
                          pa_list=dataset.pipe_cfg.analysis['pa_list'],
                          seps=dataset.pipe_cfg.analysis['seps'],
                          overwrite=dataset.pipe_cfg.analysis['overwrite'],

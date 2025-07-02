@@ -1345,7 +1345,10 @@ class AnalysisTools():
             for contrast in contrast_curve:
                 delmag = -2.5 * np.log10(contrast)  # mag
                 appmag = self.primary.mag + delmag
-                mass = 10**interp[filter]['logmass'](appmag - 5 * np.log10(self.primary.dist / 10)-self.primary.av*self.DF.Av[self.primary.ccd][f'm_{filter}'], self.primary.age, self.primary.logSPacc)
+                if self.primary.logSPacc is not None:
+                    mass = 10**interp[filter]['logmass'](appmag - 5 * np.log10(self.primary.dist / 10)-self.primary.av*self.DF.Av[self.primary.ccd][f'm_{filter}'], self.primary.age, self.primary.logSPacc)
+                else:
+                    mass = 10**interp[filter]['logmass'](appmag - 5 * np.log10(self.primary.dist / 10)-self.primary.av*self.DF.Av[self.primary.ccd][f'm_{filter}'], self.primary.age, self.primary.logSPacc)
                 mass_sensitivity_curve.append(mass)
             if arc_sec:
                 ax4.plot(cc_dict['sep_arcsec'],mass_sensitivity_curve, '-.',label=f'KL = {KL}',linewidth=3.0)
@@ -1458,48 +1461,59 @@ def run(packet):
     outputdir =dataset.pipe_cfg.paths['out']
     config.make_paths(config=None, paths=outputdir + '/analysis/')
 
-    for unq_id in dataset.pipe_cfg.unq_ids_list:
+    if len(dataset.pipe_cfg.unq_ids_list) == 0:
+        unq_ids_list = DF.unq_targets_df.unq_ids.unique()
+    else:
+        unq_ids_list = dataset.pipe_cfg.unq_ids_list
+
+    for unq_id in unq_ids_list:
         for filter in dataset.pipe_cfg.analysis['filter']:
             mvs_ids_lit = DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids == unq_id].mvs_ids.values
             for mvs_id in mvs_ids_lit:
-                if dataset.pipe_cfg.analysis['candidate']['coords'] is not None:
-                    xycomp_list = dataset.pipe_cfg.analysis['candidate']['coords'],
-                    KLdetect = int(dataset.pipe_cfg.analysis['candidate']['KLdetect'])
-                elif dataset.pipe_cfg.analysis['candidate']['coords'] is None and DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_id,[f'flag_{filter}']].values != 'rejected':
-                    xycomp_list = DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_id,[f'x_tile_{filter}',f'y_tile_{filter}']].values[0]+1 #xycomp_list is a 1-index array
-                    KLdetect = int(DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids == mvs_id, f'kmode_{filter}'].values[0])
-                else:
-                    if DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==mvs_id,[f'flag_{filter}']].values != 'rejected':
-                        xycomp_list = np.round(np.nanmedian(DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_lit), [ f'x_tile_{filter}', f'y_tile_{filter}']].values, axis=0))+1 #xycomp_list is a 1-index array
-                        KLdetect = int(np.nanmin(DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_lit), f'kmode_{filter}'].values))
+                if DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==mvs_id,[f'flag_{filter}']].values[0] != 'rejected':
+                    if not DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_lit), f'flag_{filter}'].empty and DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_lit), f'flag_{filter}'].values[0] != 'rejected':
+                        if dataset.pipe_cfg.analysis['candidate']['coords'] is not None:
+                            xycomp_list = dataset.pipe_cfg.analysis['candidate']['coords'],
+                            KLdetect = int(dataset.pipe_cfg.analysis['candidate']['KLdetect'])
+                        elif dataset.pipe_cfg.analysis['candidate']['coords'] is None:
+                            xycomp_list = DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids==mvs_id,[f'x_tile_{filter}',f'y_tile_{filter}']].values[0]+1 #xycomp_list is a 1-index array
+                            KLdetect = int(DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids == mvs_id, f'kmode_{filter}'].values[0])
+                        # else:
+                        #     xycomp_list = np.round(np.nanmedian(DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_lit), [ f'x_tile_{filter}', f'y_tile_{filter}']].values, axis=0))+1 #xycomp_list is a 1-index array
+                        #     KLdetect = int(np.nanmin(DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(mvs_ids_lit), f'kmode_{filter}'].values))
                     else:
-                        continue
-                if not np.isnan(KLdetect):
-                    obsdataset, residuals = setup_DATASET(DF, unq_id, mvs_id, filter, dataset.pipe_cfg)
-                    fwhm = dataset.pipe_cfg.instrument['fwhm'][filter]
-                    run_analysis(DF, unq_id, mvs_id, filter.lower(), numbasis, fwhm, dataset, obsdataset, residuals, outputdir,
-                             extract_candidate=dataset.pipe_cfg.analysis['steps']['extract_candidate'],
-                             contrast_curves=dataset.pipe_cfg.analysis['steps']['contrast_curves'],
-                             cal_contrast_curves=dataset.pipe_cfg.analysis['steps']['cal_contrast_curves'],
-                             mass_sensitivity_curves=dataset.pipe_cfg.analysis['steps']['mass_sensitivity_curves'],
-                             mask_candidate=dataset.pipe_cfg.analysis['mask_candidate'],
-                             inject_fake=dataset.pipe_cfg.analysis['inject_fake'],
-                             pxsc_arcsec=dataset.pipe_cfg.instrument['pixelscale'],
-                             klstep=dataset.pipe_cfg.analysis['klstep'],
-                             min_corr=dataset.pipe_cfg.analysis['min_corr'],
-                             pa_list=dataset.pipe_cfg.analysis['pa_list'],
-                             seps=dataset.pipe_cfg.analysis['seps'],
-                             overwrite=dataset.pipe_cfg.analysis['overwrite'],
-                             arc_sec=dataset.pipe_cfg.analysis['arc_sec'],
-                             ylim=dataset.pipe_cfg.analysis['ylim'],
-                             xlim=dataset.pipe_cfg.analysis['xlim'],
-                             path2iso_interp=dataset.pipe_cfg.analysis['path2iso_interp'],
-                             age=dataset.pipe_cfg.analysis['primay']['age'],
-                             distance=dataset.pipe_cfg.analysis['primay']['dist'],
-                             av=dataset.pipe_cfg.analysis['primay']['av'],
-                             logSPacc=dataset.pipe_cfg.analysis['primay']['logSPacc'],
-                             guess_contrast = dataset.pipe_cfg.analysis['candidate']['guess_contrast'],
-                             xycomp_list = xycomp_list,
-                             KLdetect = KLdetect,
-                             subtract_companion = dataset.pipe_cfg.analysis['candidate']['subtract_companion'],
-                             kwargs=dataset.pipe_cfg.analysis['kwargs'])
+                        xycomp_list = [np.nan, np.nan]
+                        KLdetect = np.nanmax(DF.kmodes)
+                else:
+                    continue
+                # if not np.isnan(KLdetect):
+                obsdataset, residuals = setup_DATASET(DF, unq_id, mvs_id, filter, dataset.pipe_cfg)
+                fwhm = dataset.pipe_cfg.instrument['fwhm'][filter]
+                run_analysis(DF, unq_id, mvs_id, filter.lower(), numbasis, fwhm, dataset, obsdataset, residuals, outputdir,
+                         extract_candidate=dataset.pipe_cfg.analysis['steps']['extract_candidate'],
+                         contrast_curves=dataset.pipe_cfg.analysis['steps']['contrast_curves'],
+                         cal_contrast_curves=dataset.pipe_cfg.analysis['steps']['cal_contrast_curves'],
+                         mass_sensitivity_curves=dataset.pipe_cfg.analysis['steps']['mass_sensitivity_curves'],
+                         mask_candidate=dataset.pipe_cfg.analysis['mask_candidate'],
+                         inject_fake=dataset.pipe_cfg.analysis['inject_fake'],
+                         pxsc_arcsec=dataset.pipe_cfg.instrument['pixelscale'],
+                         klstep=dataset.pipe_cfg.analysis['klstep'],
+                         min_corr=dataset.pipe_cfg.analysis['min_corr'],
+                         pa_list=dataset.pipe_cfg.analysis['pa_list'],
+                         seps=dataset.pipe_cfg.analysis['seps'],
+                         overwrite=dataset.pipe_cfg.analysis['overwrite'],
+                         arc_sec=dataset.pipe_cfg.analysis['arc_sec'],
+                         ylim=dataset.pipe_cfg.analysis['ylim'],
+                         xlim=dataset.pipe_cfg.analysis['xlim'],
+                         path2iso_interp=dataset.pipe_cfg.analysis['path2iso_interp'],
+                         age=dataset.pipe_cfg.analysis['primay']['age'],
+                         distance=dataset.pipe_cfg.analysis['primay']['dist'],
+                         av=dataset.pipe_cfg.analysis['primay']['av'],
+                         logSPacc=dataset.pipe_cfg.analysis['primay']['logSPacc'],
+                         guess_contrast = dataset.pipe_cfg.analysis['candidate']['guess_contrast'],
+                         xycomp_list = xycomp_list,
+                         KLdetect = KLdetect,
+                         subtract_companion = dataset.pipe_cfg.analysis['candidate']['subtract_companion'],
+                         kwargs=dataset.pipe_cfg.analysis['kwargs'])
+
+    DF.save_dataframes(__name__)

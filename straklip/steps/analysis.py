@@ -601,7 +601,7 @@ class AnalysisTools():
         pass
 
     #Evaluate the separation and theta angle (from +y axis toward +x) between candidate and reference, having the candidate dx and dym where dx is positive to the left, dy is positive upwards
-    def evaluate_separation_and_theta(self):
+    def evaluate_separation_and_theta(self, check=True):
         """
         Evaluate the separation and theta angle (from +x axis toward +y) between candidate and reference.
         """
@@ -625,7 +625,8 @@ class AnalysisTools():
         getLogger(__name__).info(f"Separation: {self.candidate.separation_arcsec:.4f} arcsec")
         getLogger(__name__).info(f"Theta Angle: {self.candidate.theta_angle:.2f} degrees")
         getLogger(__name__).info(f"PA Angle: {self.candidate.pa_angle:.2f} degrees")
-        self.check_sep_theta_to_dx_dy()
+        if check:
+            self.check_sep_theta_to_dx_dy()
 
     def check_sep_theta_to_dx_dy(self):
         """
@@ -907,6 +908,10 @@ class AnalysisTools():
         if self.candidate.fma.padding > 0:
             fm_bestfit = fm_bestfit[self.candidate.fma.padding:-self.candidate.fma.padding, self.candidate.fma.padding:-self.candidate.fma.padding]
 
+        self.candidate.dx = float(self.candidate.fma.fit_x.bestfit-self.obsdataset._centers[0][0])
+        self.candidate.dy = float(self.candidate.fma.fit_y.bestfit-self.obsdataset._centers[0][1])
+        self.evaluate_separation_and_theta()
+
         # make residual map
         residual_map = self.candidate.fma.data_stamp - fm_bestfit
         self.candidate.chi2.append(np.nansum(residual_map) ** 2)
@@ -914,8 +919,8 @@ class AnalysisTools():
         obj_extracted['chi2'] = float(np.nansum(residual_map) ** 2)
         obj_extracted['con'] = float(self.candidate.con)
         obj_extracted['econ'] = self.candidate.econ.tolist()
-        obj_extracted['dx'] = float(self.candidate.fma.fit_x.bestfit-self.obsdataset._centers[0][0])
-        obj_extracted['dy'] = float(self.candidate.fma.fit_y.bestfit-self.obsdataset._centers[0][1])
+        obj_extracted['dx'] = float(self.candidate.dx)
+        obj_extracted['dy'] = float(self.candidate.dy)
         obj_extracted['x'] = float(self.candidate.fma.fit_x.bestfit)+1
         obj_extracted['y'] = float(self.candidate.fma.fit_y.bestfit)+1
         obj_extracted['x_err'] = float(self.candidate.fma.fit_x.error)
@@ -1028,8 +1033,8 @@ class AnalysisTools():
         getLogger(__name__).info( f'Loading candidate dictionary from file: {outputdir}/extracted_candidate/{filter}_extracted.yaml')
         with open(outputdir+f"/extracted_candidate/{filter}_extracted.yaml", "r") as f:
             cand_extracted = yaml.safe_load(f)
-            self.xcomp = cand_extracted['x']-1
-            self.ycomp = cand_extracted['y']-1
+        #     self.xcomp = cand_extracted['x']-1
+        #     self.ycomp = cand_extracted['y']-1
 
         # self.maskeddataset = copy.deepcopy(self.obsdataset)
         # self.maskedpsflib =  copy.deepcopy(self.obspsflib)
@@ -1038,7 +1043,7 @@ class AnalysisTools():
         #                     self.obsdataset.wcs, cand_extracted['sep'], cand_extracted['PA'],
         #                     fwhm=self.fwhm)
         fakes.inject_planet(res, self.obsdataset.centers, [-self.obsPSF * np.nanmax(self.obsdataset.input[0])*cand_extracted['con']],
-                            self.obsdataset.wcs, cand_extracted['sep'], cand_extracted['PA'],
+                            self.obsdataset.wcs, cand_extracted['sep'], pa=None, thetas = [cand_extracted['theta']],
                             fwhm=self.fwhm)
 
         # Save the FITS file

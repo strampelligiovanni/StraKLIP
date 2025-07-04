@@ -612,7 +612,7 @@ class AnalysisTools():
         self.candidate.separation_pixels = np.sqrt((self.candidate.dx) ** 2 + (self.candidate.dy) ** 2)
 
         # Convert separation to arcseconds
-        # self.candidate.separation_arcsec = self.candidate.separation_pixels * self.pixelscale
+        self.candidate.separation_arcsec = self.candidate.separation_pixels * self.pixelscale
 
         self.candidate.theta_angle = np.degrees(np.arctan2(self.candidate.dy, self.candidate.dx)) % 360
 
@@ -626,7 +626,7 @@ class AnalysisTools():
         if check:
             self.check_sep_theta_to_dx_dy()
         ## This position angle is still wrong. Need to work on it
-        # self.separation_arcsec_and_pa_from_wcs()
+        self.separation_arcsec_and_pa_from_wcs()
 
     def check_sep_theta_to_dx_dy(self):
         """
@@ -647,7 +647,7 @@ class AnalysisTools():
         None
         """
         # Open FITS and load WCS
-        with fits.open(self.obsdataset.fullframe_fitsname[0]) as hdul:
+        with fits.open(self.obsdataset.filenames[0]) as hdul:
             wcs = WCS(hdul[1].header)
 
         # Target pixel position
@@ -655,8 +655,8 @@ class AnalysisTools():
         y_target = self.primary.y
 
         # Candidate pixel position
-        x_cand = self.candidate.x
-        y_cand = self.candidate.y
+        x_cand = self.candidate.x-1
+        y_cand = self.candidate.y-1
 
         # Convert to world coordinates (RA, Dec)
         self.primary.ra, self.primary.dec = wcs.pixel_to_world(x_target, y_target).ra.deg, wcs.pixel_to_world(x_target,y_target).dec.deg
@@ -672,78 +672,6 @@ class AnalysisTools():
         getLogger(__name__).info(f"Separation: {self.candidate.separation_arcsec:.4f} arcsec")
         getLogger(__name__).info(f"PA Angle: {self.candidate.pa_angle:.2f} degrees")
         pass
-
-    # def get_sep_and_posang(self, filter, cand_extracted, target, guess_flux, guess_contrast, outputdir='./', psf1=None, psf2=None, epsf=False):
-    #     # Load WCS
-    #     hdulist = fits.open(self.obsdataset.fullframe_fitsname[0])
-    #     wcs = WCS(hdulist[1].header)
-    #     # Convert pixel coordinates to world coordinates (RA, Dec)
-    #     x, y = [self.obsdataset.fullframe_x_prim[0], self.obsdataset.fullframe_y_prim[0]]
-    #     IDATA = Tile(data=hdulist[1].data, x=x, y=y, tile_base=self.DF.tilebase, delta=6, inst=self.DF.inst, Python_origin=False)
-    #     IDATA.mk_tile(pad_data=True, legend=False, showplot=False, verbose=False, xy_m=True, xy_dmax=5,
-    #                   title='OrigSCI', kill_plots=True, cbar=True)
-    #
-    #     deltax = IDATA.x_m - (IDATA.tile_base - 1) / 2
-    #     deltay = IDATA.y_m - (IDATA.tile_base - 1) / 2
-    #     self.x_ref, self.y_ref = [x + deltax, y + deltay]
-    #
-    #     self.estimate_target_candidate_position(filter,self.obsdataset.input[0],guess_flux, guess_contrast,self.obsdataset.centers[0], [cand_extracted['dx'],cand_extracted['dy']],outputdir=outputdir, psf1=psf1, psf2=psf2, epsf=epsf)
-    #     self.x_ref_err, self.y_ref_err = [self.mcmcfit.best_fit_params[0][1], self.mcmcfit.best_fit_params[0][2]]
-    #     self.x_err, self.y_err = [self.mcmcfit.best_fit_params[1][1], self.mcmcfit.best_fit_params[1][2]]
-    #     self.x_ref, self.y_ref = [x + self.mcmcfit.best_fit_params[0][0], y + self.mcmcfit.best_fit_params[1][0]]
-    #
-    #     if self.mcmcfit.visual_binary:
-    #         self.dx, self.dy = [self.mcmcfit.best_fit_params[2][0],self.mcmcfit.best_fit_params[3][0]]  # delta coordinate respect to the position of the target
-    #     else:
-    #         self.dx, self.dy = [cand_extracted['dx'], cand_extracted['dy']]
-    #
-    #     self.x, self.y = [self.x_ref - self.dx, self.y_ref + self.dy]
-    #     self.ra_dec = wcs.pixel_to_world(self.x, self.y)
-    #
-    #     self.ra_dec_ref = wcs.pixel_to_world(self.x_ref, self.y_ref)
-    #
-    #     # Compute the angular separation in arcseconds
-    #     self.separation_and_uncertanties()
-    #     self.postion_angle_and_uncertanties()
-    #
-    #     getLogger(__name__).info(f"Separation: {self.separation_arcsec:.4f} arcsec")
-    #     getLogger(__name__).info(f"Position Angle: {self.position_angle:.2f} degrees")
-    #     passdef get_sep_and_posang(self, filter, cand_extracted, target, guess_flux, guess_contrast, outputdir='./', psf1=None, psf2=None, epsf=False):
-    #     # Load WCS
-    #     hdulist = fits.open(self.obsdataset.fullframe_fitsname[0])
-    #     wcs = WCS(hdulist[1].header)
-    #     # Convert pixel coordinates to world coordinates (RA, Dec)
-    #     x, y = [self.obsdataset.fullframe_x_prim[0], self.obsdataset.fullframe_y_prim[0]]
-    #     IDATA = Tile(data=hdulist[1].data, x=x, y=y, tile_base=self.DF.tilebase, delta=6, inst=self.DF.inst, Python_origin=False)
-    #     IDATA.mk_tile(pad_data=True, legend=False, showplot=False, verbose=False, xy_m=True, xy_dmax=5,
-    #                   title='OrigSCI', kill_plots=True, cbar=True)
-    #
-    #     deltax = IDATA.x_m - (IDATA.tile_base - 1) / 2
-    #     deltay = IDATA.y_m - (IDATA.tile_base - 1) / 2
-    #     self.x_ref, self.y_ref = [x + deltax, y + deltay]
-    #
-    #     self.estimate_target_candidate_position(filter,self.obsdataset.input[0],guess_flux, guess_contrast,self.obsdataset.centers[0], [cand_extracted['dx'],cand_extracted['dy']],outputdir=outputdir, psf1=psf1, psf2=psf2, epsf=epsf)
-    #     self.x_ref_err, self.y_ref_err = [self.mcmcfit.best_fit_params[0][1], self.mcmcfit.best_fit_params[0][2]]
-    #     self.x_err, self.y_err = [self.mcmcfit.best_fit_params[1][1], self.mcmcfit.best_fit_params[1][2]]
-    #     self.x_ref, self.y_ref = [x + self.mcmcfit.best_fit_params[0][0], y + self.mcmcfit.best_fit_params[1][0]]
-    #
-    #     if self.mcmcfit.visual_binary:
-    #         self.dx, self.dy = [self.mcmcfit.best_fit_params[2][0],self.mcmcfit.best_fit_params[3][0]]  # delta coordinate respect to the position of the target
-    #     else:
-    #         self.dx, self.dy = [cand_extracted['dx'], cand_extracted['dy']]
-    #
-    #     self.x, self.y = [self.x_ref - self.dx, self.y_ref + self.dy]
-    #     self.ra_dec = wcs.pixel_to_world(self.x, self.y)
-    #
-    #     self.ra_dec_ref = wcs.pixel_to_world(self.x_ref, self.y_ref)
-    #
-    #     # Compute the angular separation in arcseconds
-    #     self.separation_and_uncertanties()
-    #     self.postion_angle_and_uncertanties()
-    #
-    #     getLogger(__name__).info(f"Separation: {self.separation_arcsec:.4f} arcsec")
-    #     getLogger(__name__).info(f"Position Angle: {self.position_angle:.2f} degrees")
-    #     pass
 
     def run_FMAstrometry(self,obj,sep,pa,filter,PSF,chaindir,boxsize,dr,fileprefix,outputdir,fitkernel,corr_len_guess,corr_len_range,xrange,yrange,frange,nwalkers,nburn,nsteps,nthreads,wkl):
         getLogger(__name__).info(f'Running forward modeling')
@@ -960,12 +888,12 @@ class AnalysisTools():
         obj_extracted['x_err'] = float(self.candidate.fma.fit_x.error)
         obj_extracted['y_err'] = float(self.candidate.fma.fit_y.error)
         self.evaluate_separation_and_theta()
-        # obj_extracted['ra'] = float(self.candidate.ra)
-        # obj_extracted['dec'] = float(self.candidate.dec)
+        obj_extracted['ra'] = float(self.candidate.ra)
+        obj_extracted['dec'] = float(self.candidate.dec)
         obj_extracted['sep'] = float(self.candidate.separation_pixels)
         obj_extracted['theta'] = float(self.candidate.theta_angle)
-        # obj_extracted['sep_arcsec'] = float(self.candidate.separation_arcsec)
-        # obj_extracted['PA'] = float(self.candidate.pa_angle)
+        obj_extracted['sep_arcsec'] = float(self.candidate.separation_arcsec)
+        obj_extracted['PA'] = float(self.candidate.pa_angle)
 
         return obj_extracted
 
@@ -1027,7 +955,12 @@ class AnalysisTools():
         cand_extracted['dmag'] = float(self.candidate.dmag)
 
         self.evaluate_separation_and_theta()
-
+        cand_extracted['ra'] = float(self.candidate.ra)
+        cand_extracted['dec'] = float(self.candidate.dec)
+        cand_extracted['sep'] = float(self.candidate.separation_pixels)
+        cand_extracted['theta'] = float(self.candidate.theta_angle)
+        cand_extracted['sep_arcsec'] = float(self.candidate.separation_arcsec)
+        cand_extracted['PA'] = float(self.candidate.pa_angle)
         guess_flux = np.max(self.obsdataset.input[0] - residuals)
         fuess_comp_contrast = cand_extracted['con']
         psf1=(self.obsdataset.input[0] - residuals)/guess_flux

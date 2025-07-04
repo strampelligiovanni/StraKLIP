@@ -622,10 +622,11 @@ class AnalysisTools():
         #### but it's not the right approach and can lead to a wrong final estimate of the PA angle.
 
         getLogger(__name__).info(f"Separation: {self.candidate.separation_pixels:.4f} pixels")
-        getLogger(__name__).info(f"PA Angle: {self.candidate.pa_angle:.2f} degrees")
+        getLogger(__name__).info(f"Theta Angle: {self.candidate.theta_angle:.2f} degrees")
         if check:
             self.check_sep_theta_to_dx_dy()
-        self.separation_arcsec_and_pa_from_wcs()
+        ## This position angle is still wrong. Need to work on it
+        # self.separation_arcsec_and_pa_from_wcs()
 
     def check_sep_theta_to_dx_dy(self):
         """
@@ -654,20 +655,20 @@ class AnalysisTools():
         y_target = self.primary.y
 
         # Candidate pixel position
-        x_cand = self.primary.x + self.candidate.dx
-        y_cand = self.primary.y + self.candidate.dy
+        x_cand = self.candidate.x
+        y_cand = self.candidate.y
 
         # Convert to world coordinates (RA, Dec)
-        ra_target, dec_target = wcs.pixel_to_world(x_target, y_target).ra.deg, wcs.pixel_to_world(x_target,y_target).dec.deg
-        ra_cand, dec_cand = wcs.pixel_to_world(x_cand, y_cand).ra.deg, wcs.pixel_to_world(x_cand, y_cand).dec.deg
+        self.primary.ra, self.primary.dec = wcs.pixel_to_world(x_target, y_target).ra.deg, wcs.pixel_to_world(x_target,y_target).dec.deg
+        self.candidate.ra, self.candidate.dec = wcs.pixel_to_world(x_cand, y_cand).ra.deg, wcs.pixel_to_world(x_cand, y_cand).dec.deg
 
         # Compute separation (arcsec)
-        c1 = SkyCoord(ra_target, dec_target, unit='deg')
-        c2 = SkyCoord(ra_cand, dec_cand, unit='deg')
+        c1 = SkyCoord(self.primary.ra, self.primary.dec, unit='deg')
+        c2 = SkyCoord(self.candidate.ra, self.candidate.dec, unit='deg')
         self.candidate.separation_arcsec = c1.separation(c2).arcsec
 
         # Compute position angle (East of North, degrees)
-        self.candidate.pa_deg = c1.position_angle(c2).deg
+        self.candidate.pa_angle = c1.position_angle(c2).deg
         getLogger(__name__).info(f"Separation: {self.candidate.separation_arcsec:.4f} arcsec")
         getLogger(__name__).info(f"PA Angle: {self.candidate.pa_angle:.2f} degrees")
         pass
@@ -959,10 +960,12 @@ class AnalysisTools():
         obj_extracted['x_err'] = float(self.candidate.fma.fit_x.error)
         obj_extracted['y_err'] = float(self.candidate.fma.fit_y.error)
         self.evaluate_separation_and_theta()
-        obj_extracted['sep_arcsec'] = float(self.candidate.separation_arcsec)
+        # obj_extracted['ra'] = float(self.candidate.ra)
+        # obj_extracted['dec'] = float(self.candidate.dec)
         obj_extracted['sep'] = float(self.candidate.separation_pixels)
         obj_extracted['theta'] = float(self.candidate.theta_angle)
-        obj_extracted['PA'] = float(self.candidate.pa_angle)
+        # obj_extracted['sep_arcsec'] = float(self.candidate.separation_arcsec)
+        # obj_extracted['PA'] = float(self.candidate.pa_angle)
 
         return obj_extracted
 

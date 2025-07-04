@@ -616,7 +616,7 @@ class AnalysisTools():
 
         self.candidate.theta_angle = np.degrees(np.arctan2(self.candidate.dy, self.candidate.dx)) % 360
 
-        #### TO DO: this is not the canonical PA since the wcs is wrong for these images so it's asuming noth is always up.
+        #TODO: this is not the canonical PA since the wcs is wrong for these images so it's asuming noth is always up.
         #### To fix the WCS saved in the fits file, and then change how we evaluate the PA angle.
         ### For now it works, because in our reference frame we assume Noth is up, eas in left (as the default wcs),
         #### but it's not the right approach and can lead to a wrong final estimate of the PA angle.
@@ -1145,7 +1145,7 @@ class AnalysisTools():
             os.makedirs(outputdir + '/inj_candidates', exist_ok=True)
             elno=1
 
-            ### TO DO: interpolate over a smaller sample of separations instead of using all the one from the raw contrast curves
+            # TODO: interpolate over a smaller sample of separations instead of using all the one from the raw contrast curves
             getLogger(__name__).info(f'Getting ready to inject {int(len(seps)*len(pa_list))} for filter {filter}')
             for input_planet_flux, sep in zip(input_planet_fluxes, seps):
                 for pa in pa_list:

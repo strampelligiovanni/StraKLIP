@@ -20,7 +20,7 @@ from astropy.wcs import WCS
 from reproject import reproject_interp
 from reproject.mosaicking import find_optimal_celestial_wcs
 
-# TO DO: this function is rotating too much, it should only rotate the image to make North up and East left, not to make the image square
+# TODO: this function is rotating too much, it should only rotate the image to make North up and East left, not to make the image square
 def rotate_fits_north_up_east_left(input_fits, ext=1,hext=1):
     """
     Rotate a FITS image so North is up and East is left, pad to keep square, and save to file.

@@ -486,7 +486,7 @@ def task_mvs_targets_infos(DF,avg_id,skip_filters,aptype,verbose,noBGsub,sigma,k
         plt.show()
     return(candidate_df)
 
-# TO DO: move this task at psfsubtraction stage, instead of klipphotometry
+# TODO: move this task at psfsubtraction stage, instead of klipphotometry
 def task_median_candidate_infos(DF,id,filter,column_name,zfactor,alignment_box,label):
     '''
     Taks perfomed in the update_median_candidate_tile

@@ -1,11 +1,10 @@
 import os, sys
-from straklip.utils.utils_tile import small_tiles
+from straklip.utils.utils_tile import small_tiles, merge_images, rotate_fits_north_up_east_left
 from straklip.utils.ancillary import parallelization_package
-from straklip.utils.utils_tile import allign_images
+# from straklip.utils.utils_tile import allign_images
 from straklip.tiles import Tile
 from straklip import config
 from straklip.stralog import getLogger
-
 import numpy as np
 import matplotlib.pyplot as plt
 from concurrent.futures import ProcessPoolExecutor
@@ -15,11 +14,8 @@ from IPython.display import display
 from matplotlib.colors import PowerNorm,ListedColormap
 from collections import Counter
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-
-# from astropy.io import fits
 from astropy.wcs import WCS
-# from reproject import reproject_interp
-# from reproject.mosaicking import find_optimal_celestial_wcs
+
 
 def update_wcs_for_cutout(original_header, x0, y0):
     """
@@ -43,20 +39,6 @@ def update_wcs_for_cutout(original_header, x0, y0):
     wcs.wcs.crpix[0] -= x0
     wcs.wcs.crpix[1] -= y0
     return wcs
-
-# # Example usage:
-# # Load original FITS and WCS
-# with fits.open('full_image.fits') as hdul:
-#     original_header = hdul[1].header  # or hdul[0].header, depending on your data
-#
-# # Suppose your cutout starts at (x0, y0) in the original image
-# x0, y0 = 100, 200  # example values
-#
-# # Update WCS for the cutout
-# new_wcs = update_wcs_for_cutout(original_header, x0, y0)
-#
-# # When saving the cutout, use new_wcs.to_header() as the header
-# # fits.writeto('cutout.fits', cutout_data, header=new_wcs.to_header(), overwrite=True)
 
 def copy_header(DF,dataset,filter,unq_ids_list=[]):
     '''
@@ -421,6 +403,77 @@ def make_mvs_tiles(DF,filter,pipe_cfg, unq_ids_test_list=[],redo=False, debug=Fa
                          ext=DF.fitsext, fistsroot=pipe_cfg.buildhdf['default_mvs_table']['fitsroot'])
 
 
+# def task_median_tiles(DF,id,filter,zfactor,alignment_box,legend,showplot,method,cr_remove,la_cr_remove,kill,
+#                       kill_plots,skip_flag,overwrite):
+#     '''
+#     Taks perfomed in the update_median_targets_tile.
+#     Note: all multivisits targets with FILTER_flag == 'rejected' are considered NaN
+#     when arranging the median tile. If all are 'rejected', the final median tile for
+#     that FILTER will be all NaN.
+#
+#     '''
+#
+#     target_images=[]
+#     mvs_ids_list=DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids==id].mvs_ids.unique()
+#     PAV_3s=[]
+#     ROTAs=[]
+#     path2tile = '%s/median_tiles/%s/tile_ID%i.fits' % (DF.path2out, filter, id)
+#     getLogger(__name__).info(f'Making median tile {path2tile}')
+#     if not os.path.exists(path2tile) or overwrite:
+#         for mvs_ids in mvs_ids_list:
+#             try:
+#                 if not DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==mvs_ids,'flag_%s'%filter].str.contains(skip_flag).values[0]:
+#                     sel_ids=(DF.mvs_targets_df.mvs_ids==mvs_ids)
+#                     DATA=Tile(x=(DF.tilebase-1)/2,y=(DF.tilebase-1)/2,tile_base=DF.tilebase,delta=0,inst=DF.inst,Python_origin=True)
+#                     DATA.load_tile('%s/mvs_tiles/%s/tile_ID%i.fits' % (DF.path2out, filter, mvs_ids),ext=1,
+#                                    raise_errors=False)
+#                     if not np.all(np.isnan(DATA.data)):
+#                         target_images.append(DATA.data)
+#                         PAV_3s.append(DF.mvs_targets_df.loc[sel_ids,'pav3_%s'%filter].values[0])
+#                         ROTAs.append(DF.mvs_targets_df.loc[sel_ids,'rota_%s'%filter].values[0])
+#
+#                     else:
+#                         getLogger(__name__).critical(
+#                             f'Not able to make median tile {path2tile}. All data is NaN.')
+#                 else:
+#                     getLogger(__name__).critical(
+#                         f'Not able to make median tile {path2tile}. {skip_flag}.')
+#
+#             except:
+#                 getLogger(__name__).critical(f'Not able to make media tile {path2tile}. Check your dataframe and paths!')
+#                 raise ValueError
+#
+#
+#         if len(target_images)>0:
+#             target_images=np.array(target_images)
+#             return_Datacube=False
+#             try:
+#                 target_tile,shift_list=allign_images(target_images,ROTAs,PAV_3s,filter,legend=legend,showplot=showplot,verbose=False,zfactor=zfactor,alignment_box=alignment_box,title='%s Median Target'%(filter),method=method,tile_base=DF.tilebase,kill=kill,kill_plots=kill_plots)
+#                 if cr_remove or la_cr_remove: return_Datacube=True
+#                 Datacube=target_tile.append_tile(path2tile,Datacube=None,verbose=False,name='SCI',return_Datacube=return_Datacube)
+#             except:
+#                 print(mvs_ids_list,len(target_images),ROTAs,PAV_3s)
+#                 sys.exit()
+#             if cr_remove or la_cr_remove:
+#                 crtarget_images=[]
+#                 try:
+#                     for mvs_ids in mvs_ids_list:
+#                         if not DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==mvs_ids,'flag_%s'%filter].str.contains(skip_flag).values[0] :
+#                             CRDATA=Tile(x=(DF.tilebase-1)/2,y=(DF.tilebase-1)/2,tile_base=DF.tilebase,delta=0,inst=DF.inst,Python_origin=True)
+#                             CRDATA.load_tile('%s/mvs_tiles/%s/tile_ID%i.fits' % (DF.path2out, filter, mvs_ids),ext=4)
+#                             crtarget_images.append(CRDATA.data)
+#                     if len(crtarget_images)>0:
+#                         crtarget_images=np.array(crtarget_images)
+#                         crtarget_tile,shift_list=allign_images(crtarget_images,ROTAs,PAV_3s,filter,legend=legend,showplot=showplot,verbose=False,zfactor=zfactor,alignment_box=alignment_box,title='%s CR clean Median Target'%(filter),method=method,tile_base=DF.tilebase,kill=kill,kill_plots=kill_plots)
+#                         crtarget_tile.append_tile(path2tile,Datacube=Datacube,verbose=False,name='CRcleanSCI',return_Datacube=False)
+#                 except:
+#                     getLogger(__name__).critical(
+#                         f'Not able to make CR media tile {path2tile}. Check your dataframe and paths!')
+#                     raise ValueError
+#             if return_Datacube: Datacube.close()
+#     else:
+#         getLogger(__name__).info(f'Median Tile {path2tile} already exist. Skipping.')
+
 def task_median_tiles(DF,id,filter,zfactor,alignment_box,legend,showplot,method,cr_remove,la_cr_remove,kill,
                       kill_plots,skip_flag,overwrite):
     '''
@@ -431,89 +484,41 @@ def task_median_tiles(DF,id,filter,zfactor,alignment_box,legend,showplot,method,
 
     '''
 
-    target_images=[]
     mvs_ids_list=DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids==id].mvs_ids.unique()
     PAV_3s=[]
     ROTAs=[]
     path2tile = '%s/median_tiles/%s/tile_ID%i.fits' % (DF.path2out, filter, id)
     getLogger(__name__).info(f'Making median tile {path2tile}')
+    rotated_images=[]
     if not os.path.exists(path2tile) or overwrite:
         for mvs_ids in mvs_ids_list:
-            try:
-                if not DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==mvs_ids,'flag_%s'%filter].str.contains(skip_flag).values[0]:
-                    sel_ids=(DF.mvs_targets_df.mvs_ids==mvs_ids)
-                    DATA=Tile(x=(DF.tilebase-1)/2,y=(DF.tilebase-1)/2,tile_base=DF.tilebase,delta=0,inst=DF.inst,Python_origin=True)
-                    DATA.load_tile('%s/mvs_tiles/%s/tile_ID%i.fits' % (DF.path2out, filter, mvs_ids),ext=1,
-                                   raise_errors=False)
-                    if not np.all(np.isnan(DATA.data)):
-                        target_images.append(DATA.data)
-                        PAV_3s.append(DF.mvs_targets_df.loc[sel_ids,'pav3_%s'%filter].values[0])
-                        ROTAs.append(DF.mvs_targets_df.loc[sel_ids,'rota_%s'%filter].values[0])
-                    else:
-                        getLogger(__name__).critical(
-                            f'Not able to make median tile {path2tile}. All data is NaN.')
-                else:
-                    getLogger(__name__).critical(
-                        f'Not able to make median tile {path2tile}. {skip_flag}.')
+            input_fits = '%s/mvs_tiles/%s/tile_ID%i.fits' % (DF.path2out, filter, mvs_ids)
+            rotated_image = rotate_fits_north_up_east_left(input_fits)
+            rotated_images.append(rotated_image)
 
+        target_tile = merge_images(np.array(rotated_images), tile_base=DF.tilebase, inst=DF.inst, legend=legend,showplot=showplot,verbose=False,title='%s Median Target'%(filter),method=method,kill=kill,kill_plots=kill_plots)
+        if cr_remove or la_cr_remove:
+            return_Datacube=True
+        Datacube=target_tile.append_tile(path2tile,Datacube=None,verbose=False,name='SCI',return_Datacube=False)
+        if cr_remove or la_cr_remove:
+            crtarget_images=[]
+            try:
+                for mvs_ids in mvs_ids_list:
+                    if not DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==mvs_ids,'flag_%s'%filter].str.contains(skip_flag).values[0] :
+                        CRDATA=Tile(x=(DF.tilebase-1)/2,y=(DF.tilebase-1)/2,tile_base=DF.tilebase,delta=0,inst=DF.inst,Python_origin=True)
+                        CRDATA.load_tile('%s/mvs_tiles/%s/tile_ID%i.fits' % (DF.path2out, filter, mvs_ids),ext=4)
+                        crtarget_images.append(CRDATA.data)
+                if len(crtarget_images)>0:
+                    crtarget_images=np.array(crtarget_images)
+                    crtarget_tile,shift_list=allign_images(crtarget_images,ROTAs,PAV_3s,filter,legend=legend,showplot=showplot,verbose=False,zfactor=zfactor,alignment_box=alignment_box,title='%s CR clean Median Target'%(filter),method=method,tile_base=DF.tilebase,kill=kill,kill_plots=kill_plots)
+                    crtarget_tile.append_tile(path2tile,Datacube=Datacube,verbose=False,name='CRcleanSCI',return_Datacube=False)
             except:
-                getLogger(__name__).critical(f'Not able to make media tile {path2tile}. Check your dataframe and paths!')
+                getLogger(__name__).critical(
+                    f'Not able to make CR media tile {path2tile}. Check your dataframe and paths!')
                 raise ValueError
-
-
-        if len(target_images)>0:
-            target_images=np.array(target_images)
-            return_Datacube=False
-            try:
-                target_tile,shift_list=allign_images(target_images,ROTAs,PAV_3s,filter,legend=legend,showplot=showplot,verbose=False,zfactor=zfactor,alignment_box=alignment_box,title='%s Median Target'%(filter),method=method,tile_base=DF.tilebase,kill=kill,kill_plots=kill_plots)
-                if cr_remove or la_cr_remove: return_Datacube=True
-                Datacube=target_tile.append_tile(path2tile,Datacube=None,verbose=False,name='SCI',return_Datacube=return_Datacube)
-            except:
-                print(mvs_ids_list,len(target_images),ROTAs,PAV_3s)
-                sys.exit()
-            if cr_remove or la_cr_remove:
-                crtarget_images=[]
-                try:
-                    for mvs_ids in mvs_ids_list:
-                        if not DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids==mvs_ids,'flag_%s'%filter].str.contains(skip_flag).values[0] :
-                            CRDATA=Tile(x=(DF.tilebase-1)/2,y=(DF.tilebase-1)/2,tile_base=DF.tilebase,delta=0,inst=DF.inst,Python_origin=True)
-                            CRDATA.load_tile('%s/mvs_tiles/%s/tile_ID%i.fits' % (DF.path2out, filter, mvs_ids),ext=4)
-                            crtarget_images.append(CRDATA.data)
-                    if len(crtarget_images)>0:
-                        crtarget_images=np.array(crtarget_images)
-                        crtarget_tile,shift_list=allign_images(crtarget_images,ROTAs,PAV_3s,filter,legend=legend,showplot=showplot,verbose=False,zfactor=zfactor,alignment_box=alignment_box,title='%s CR clean Median Target'%(filter),method=method,tile_base=DF.tilebase,kill=kill,kill_plots=kill_plots)
-                        crtarget_tile.append_tile(path2tile,Datacube=Datacube,verbose=False,name='CRcleanSCI',return_Datacube=False)
-                except:
-                    getLogger(__name__).critical(
-                        f'Not able to make CR media tile {path2tile}. Check your dataframe and paths!')
-                    raise ValueError
             if return_Datacube: Datacube.close()
     else:
         getLogger(__name__).info(f'Median Tile {path2tile} already exist. Skipping.')
-
-
-# def rotate_fits_north_up_east_left(fits_path, output_path):
-#     """
-#     Load a FITS file, rotate so North is up and East is left, update WCS, and save to output_path.
-#     """
-#     # Load FITS and WCS
-#     with fits.open(fits_path) as hdul:
-#         hdu = hdul[0]
-#         wcs_in = WCS(hdu.header)
-#         data = hdu.data
-#         # Get the celestial frame
-#         frame = wcs_in.celestial.frame
-#
-#         # Find optimal WCS for North up, East left
-#         wcs_out, shape_out = find_optimal_celestial_wcs([(data, wcs_in)], frame=frame, auto_rotate=True)
-#
-#         # Reproject the image
-#         array, _ = reproject_interp((data, wcs_in), wcs_out, shape_out=shape_out)
-#
-#         # Create new HDU and update header
-#         new_hdu = fits.PrimaryHDU(array, header=wcs_out.to_header())
-#         new_hdul = fits.HDUList([new_hdu])
-#         new_hdul.writeto(output_path, overwrite=True)
 
 def make_median_tiles(DF,filter,unq_ids_list=[],workers=None,
                    zfactor=10,alignment_box=3,legend=False,showplot=False,

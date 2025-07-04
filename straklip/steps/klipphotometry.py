@@ -1179,12 +1179,12 @@ def update_candidate_dataframe(DF, unq_ids_list=[], suffix='', verbose=False, wo
                       parallel_runs=parallel_runs, label=label, kill_plots=kill_plots,
                       delta=delta, radius=radius, skip_filters=skip_filters , needs_filters=needs_filters, sat_thr=sat_thr, mfk=mfk, mdf=mdf, mad=mad, mak=mak)
 
-    if not no_median_tile_update:
-        getLogger(__name__).info('Updating the median tiles for the candidates')
-        # unq_ids_list_in=DF.unq_candidates_df.unq_ids.unique()
-        update_median_candidates_tile(DF, unq_ids_list=unq_ids_list_in, workers=workers, zfactor=zfactor,
-                                      alignment_box=alignment_box, parallel_runs=parallel_runs, chunksize=chunksize,
-                                      label=label, kill_plots=kill_plots, skip_filters=skip_filters)
+    # if not no_median_tile_update:
+    #     getLogger(__name__).info('Updating the median tiles for the candidates')
+    #     # unq_ids_list_in=DF.unq_candidates_df.unq_ids.unique()
+    #     update_median_candidates_tile(DF, unq_ids_list=unq_ids_list_in, workers=workers, zfactor=zfactor,
+    #                                   alignment_box=alignment_box, parallel_runs=parallel_runs, chunksize=chunksize,
+    #                                   label=label, kill_plots=kill_plots, skip_filters=skip_filters)
     if pruning:
         DF = pruning_catalogs(DF)
 

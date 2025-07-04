@@ -72,7 +72,6 @@ def copy_header(DF,dataset,filter,unq_ids_list=[]):
 
             mvs_file = dataset.pipe_cfg.paths['out'] + f'/mvs_tiles/{filter}/tile_ID{mvs_id}.fits'
             mvs_hdul = fits.open(mvs_file)
-            # new_wcs = update_wcs_for_cutout(hdul[0].header, x0 if x0 >0 else 0, y0 if y0>0 else 0)
             new_wcs1 = update_wcs_for_cutout(hdul[1].header, x0 if x0 >0 else 0, y0 if y0>0 else 0)
             mvs_hdul[0].header=hdul[0].header
             mvs_hdul[1].header.update(new_wcs1.to_header())
@@ -569,17 +568,17 @@ def run(packet):
                         debug=dataset.pipe_cfg.mktiles['debug'],
                         xy_dmax=dataset.pipe_cfg.mktiles['xy_dmax'])
 
-        #The median tiles produced have North  up and East left.
-        make_median_tiles(DF, filter,
-                            unq_ids_list=dataset.pipe_cfg.unq_ids_list,
-                            workers=int(dataset.pipe_cfg.ncpu),
-                            zfactor=dataset.pipe_cfg.mktiles['zfactor'],
-                            alignment_box=dataset.pipe_cfg.mktiles['alignment_box'],
-                            parallel_runs=dataset.pipe_cfg.mktiles['parallel_runs'],
-                            cr_remove=dataset.pipe_cfg.mktiles['cr_remove'],
-                            la_cr_remove=dataset.pipe_cfg.mktiles['la_cr_remove'],
-                            kill_plots=dataset.pipe_cfg.mktiles['kill_plots'],
-                            redo=dataset.pipe_cfg.mktiles['redo'])
+        #Removed the generation of median tile. All the work is don on the mvs_tiles
+        # make_median_tiles(DF, filter,
+        #                     unq_ids_list=dataset.pipe_cfg.unq_ids_list,
+        #                     workers=int(dataset.pipe_cfg.ncpu),
+        #                     zfactor=dataset.pipe_cfg.mktiles['zfactor'],
+        #                     alignment_box=dataset.pipe_cfg.mktiles['alignment_box'],
+        #                     parallel_runs=dataset.pipe_cfg.mktiles['parallel_runs'],
+        #                     cr_remove=dataset.pipe_cfg.mktiles['cr_remove'],
+        #                     la_cr_remove=dataset.pipe_cfg.mktiles['la_cr_remove'],
+        #                     kill_plots=dataset.pipe_cfg.mktiles['kill_plots'],
+        #                     redo=dataset.pipe_cfg.mktiles['redo'])
 
         copy_header(DF, dataset, filter, dataset.pipe_cfg.unq_ids_list)
 

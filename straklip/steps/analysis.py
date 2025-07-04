@@ -26,7 +26,8 @@ from astropy.wcs import WCS
 import astropy.units as u
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from photutils import psf as pupsf
-
+from astropy.coordinates import SkyCoord
+from astropy import units as u
 
 def star2epsf(stamp,weights=None, center=[20, 20]):
     """Get the stamp and uncertainties from a Star object and provide it to EPSFStar"""
@@ -169,8 +170,10 @@ def generate_psflib(DF, mvs_id, dataset, filter, d=3, KL=1, dir='./', min_corr=N
     return (psflib, PSF)
 
 class Candidate:
-    def __init__(self, input, chi2=[], fma=None, mag=None, emag=None, dmag=None, con=None, econ=None, mass=None,
+    def __init__(self, input, x=None, y=None, chi2=[], fma=None, mag=None, emag=None, dmag=None, con=None, econ=None, mass=None,
                  emass=None,teff=None,av=None,R=None,ext='cand'):
+        self.x = x
+        self.y = y
         self.input = input
         self.chi2 = chi2
         self.mag = mag
@@ -186,7 +189,9 @@ class Candidate:
         self.ext = ext
 
 class Primary:
-    def __init__(self, mag=None, emag=None, age=None, dist=None, accr=None, av=None, logSPacc=None, ccd=None, ext='prim'):
+    def __init__(self, x=None, y=None, mag=None, emag=None, age=None, dist=None, accr=None, av=None, logSPacc=None, ccd=None, ext='prim'):
+        self.x = x
+        self.y = y
         self.mag = mag
         self.emag = emag
         self.age = age
@@ -442,7 +447,7 @@ class MCMCfit:
 
 class AnalysisTools():
     def __init__(self,DF=None,dataset=None,resdataset=None,maskeddataset=None, KLdetect=None, obspsflib = None, obsPSF = None,
-                 pixelscale=None, xcomp=None, ycomp=None, guess_contrast=None, numbasis = None, extract_candidate = None,
+                 pixelscale=None, guess_contrast=None, numbasis = None, extract_candidate = None,
                  mask_candidate = None, contrast_curves = None, cal_contrast_curves = None, fwhm=None,
                  subtract_companion=False):
         self.DF=DF
@@ -453,8 +458,6 @@ class AnalysisTools():
         self.masked = maskeddataset
         self.KLdetect = KLdetect
         self.pixelscale=pixelscale
-        self.xcomp = xcomp
-        self.ycomp = ycomp
         self.guess_contrast = guess_contrast
         self.numbasis = numbasis
         self.extract_candidate = extract_candidate
@@ -609,7 +612,7 @@ class AnalysisTools():
         self.candidate.separation_pixels = np.sqrt((self.candidate.dx) ** 2 + (self.candidate.dy) ** 2)
 
         # Convert separation to arcseconds
-        self.candidate.separation_arcsec = self.candidate.separation_pixels * self.pixelscale
+        # self.candidate.separation_arcsec = self.candidate.separation_pixels * self.pixelscale
 
         self.candidate.theta_angle = np.degrees(np.arctan2(self.candidate.dy, self.candidate.dx)) % 360
 
@@ -617,16 +620,12 @@ class AnalysisTools():
         #### To fix the WCS saved in the fits file, and then change how we evaluate the PA angle.
         ### For now it works, because in our reference frame we assume Noth is up, eas in left (as the default wcs),
         #### but it's not the right approach and can lead to a wrong final estimate of the PA angle.
-        self.candidate.pa_angle = float(self.candidate.theta_angle-90)
-
-        #### TO DO: add errors to sep, theta and PA
 
         getLogger(__name__).info(f"Separation: {self.candidate.separation_pixels:.4f} pixels")
-        getLogger(__name__).info(f"Separation: {self.candidate.separation_arcsec:.4f} arcsec")
-        getLogger(__name__).info(f"Theta Angle: {self.candidate.theta_angle:.2f} degrees")
         getLogger(__name__).info(f"PA Angle: {self.candidate.pa_angle:.2f} degrees")
         if check:
             self.check_sep_theta_to_dx_dy()
+        self.separation_arcsec_and_pa_from_wcs()
 
     def check_sep_theta_to_dx_dy(self):
         """
@@ -637,6 +636,41 @@ class AnalysisTools():
         dx = self.candidate.separation_pixels * np.cos(self.candidate.theta_angle* np.pi / 180.)
         dy = self.candidate.separation_pixels * np.sin(self.candidate.theta_angle* np.pi / 180.)
         getLogger(__name__).info(f"Checking we are able to retive the correct dx: {dx}, and dy: {dy} from separation: {self.candidate.separation_pixels} and theta angle: {self.candidate.theta_angle}")
+
+    def separation_arcsec_and_pa_from_wcs(self):
+        """
+        Given a FITS file with WCS, the target's pixel position, and dx, dy offsets,
+        return the separation (arcsec) and position angle (deg, East of North) of the candidate.
+        Returns
+        -------
+        None
+        """
+        # Open FITS and load WCS
+        with fits.open(self.obsdataset.fullframe_fitsname[0]) as hdul:
+            wcs = WCS(hdul[1].header)
+
+        # Target pixel position
+        x_target = self.primary.x
+        y_target = self.primary.y
+
+        # Candidate pixel position
+        x_cand = self.primary.x + self.candidate.dx
+        y_cand = self.primary.y + self.candidate.dy
+
+        # Convert to world coordinates (RA, Dec)
+        ra_target, dec_target = wcs.pixel_to_world(x_target, y_target).ra.deg, wcs.pixel_to_world(x_target,y_target).dec.deg
+        ra_cand, dec_cand = wcs.pixel_to_world(x_cand, y_cand).ra.deg, wcs.pixel_to_world(x_cand, y_cand).dec.deg
+
+        # Compute separation (arcsec)
+        c1 = SkyCoord(ra_target, dec_target, unit='deg')
+        c2 = SkyCoord(ra_cand, dec_cand, unit='deg')
+        self.candidate.separation_arcsec = c1.separation(c2).arcsec
+
+        # Compute position angle (East of North, degrees)
+        self.candidate.pa_deg = c1.position_angle(c2).deg
+        getLogger(__name__).info(f"Separation: {self.candidate.separation_arcsec:.4f} arcsec")
+        getLogger(__name__).info(f"PA Angle: {self.candidate.pa_angle:.2f} degrees")
+        pass
 
     # def get_sep_and_posang(self, filter, cand_extracted, target, guess_flux, guess_contrast, outputdir='./', psf1=None, psf2=None, epsf=False):
     #     # Load WCS
@@ -910,21 +944,21 @@ class AnalysisTools():
 
         self.candidate.dx = float(self.candidate.fma.fit_x.bestfit-self.obsdataset._centers[0][0])
         self.candidate.dy = float(self.candidate.fma.fit_y.bestfit-self.obsdataset._centers[0][1])
-        self.evaluate_separation_and_theta()
-
-        # make residual map
+        obj_extracted['PSFref'] = str(self.obspsflib.master_filenames[elno])
         residual_map = self.candidate.fma.data_stamp - fm_bestfit
         self.candidate.chi2.append(np.nansum(residual_map) ** 2)
-        obj_extracted['PSFref'] = str(self.obspsflib.master_filenames[elno])
         obj_extracted['chi2'] = float(np.nansum(residual_map) ** 2)
         obj_extracted['con'] = float(self.candidate.con)
         obj_extracted['econ'] = self.candidate.econ.tolist()
-        obj_extracted['dx'] = float(self.candidate.dx)
-        obj_extracted['dy'] = float(self.candidate.dy)
         obj_extracted['x'] = float(self.candidate.fma.fit_x.bestfit)+1
         obj_extracted['y'] = float(self.candidate.fma.fit_y.bestfit)+1
+        self.candidate.x = self.candidate.fma.fit_x.bestfit
+        self.candidate.y = self.candidate.fma.fit_y.bestfit
+        obj_extracted['dx'] = float(self.candidate.dx)
+        obj_extracted['dy'] = float(self.candidate.dy)
         obj_extracted['x_err'] = float(self.candidate.fma.fit_x.error)
         obj_extracted['y_err'] = float(self.candidate.fma.fit_y.error)
+        self.evaluate_separation_and_theta()
         obj_extracted['sep_arcsec'] = float(self.candidate.separation_arcsec)
         obj_extracted['sep'] = float(self.candidate.separation_pixels)
         obj_extracted['theta'] = float(self.candidate.theta_angle)
@@ -943,8 +977,8 @@ class AnalysisTools():
         self.candidate.chi2 = []
         self.guess_flux = np.nanmax(self.obsdataset.input[0]) * self.guess_contrast
 
-        self.candidate.dx = self.xcomp - self.obsdataset._centers[0][0]
-        self.candidate.dy = self.ycomp - self.obsdataset._centers[0][1]
+        self.candidate.dx =self.candidate.x - self.obsdataset._centers[0][0]
+        self.candidate.dy =self.candidate.y - self.obsdataset._centers[0][1]
         getLogger(__name__).info(f'Getting preliminary sep and theta angle from rough estimate of dx and dy: {self.candidate.dx}, {self.candidate.dy}')
 
         path2yalms=glob(test_outputdir + f"/{filter}_cand_*_extracted.yaml")
@@ -979,6 +1013,8 @@ class AnalysisTools():
         self.candidate.chi2=cand_extracted['chi2']
         self.candidate.con=cand_extracted['con']
         self.candidate.econ=cand_extracted['econ']
+        self.candidate.x = cand_extracted['x']
+        self.candidate.y = cand_extracted['y']
         self.candidate.dx=cand_extracted['dx']
         self.candidate.dy=cand_extracted['dy']
         self.candidate.dmag=-2.5 * np.log10(cand_extracted['con'])
@@ -1401,8 +1437,6 @@ def run_analysis(DF, unq_id, mvs_id, filter, numbasis, fwhm, dataset, obsdataset
                                   KLdetect = KLdetect,
                                   obspsflib = psflib,
                                   obsPSF = PSF,
-                                  xcomp = xcomp,
-                                  ycomp = ycomp,
                                   guess_contrast=guess_contrast,
                                   numbasis = numbasis,
                                   extract_candidate = extract_candidate,
@@ -1413,6 +1447,8 @@ def run_analysis(DF, unq_id, mvs_id, filter, numbasis, fwhm, dataset, obsdataset
                                   subtract_companion=subtract_companion)
 
     analysistools.primary = Primary(
+        x=obsdataset._centers[0][0],
+        y=obsdataset._centers[0][1],
         mag=DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids == mvs_id, f'm_{filter.lower()}'].values[0],
         emag=DF.mvs_targets_df.loc[DF.mvs_targets_df.mvs_ids == mvs_id, f'e_{filter.lower()}'].values[0],
         age=DF.unq_targets_df.loc[DF.unq_targets_df.unq_ids == unq_id, age].values[0] if isinstance(age,str) else age,
@@ -1422,6 +1458,8 @@ def run_analysis(DF, unq_id, mvs_id, filter, numbasis, fwhm, dataset, obsdataset
         logSPacc = DF.unq_targets_df.loc[DF.unq_targets_df.unq_ids == unq_id, logSPacc].values[0] if isinstance(logSPacc, str) else logSPacc)
 
     analysistools.candidate = Candidate(input=obsdataset,
+                                        x=xcomp,
+                                        y=ycomp,
                                         chi2=[],
                                         ext='cand')
     if extract_candidate:

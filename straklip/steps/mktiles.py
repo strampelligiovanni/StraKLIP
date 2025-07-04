@@ -16,6 +16,11 @@ from matplotlib.colors import PowerNorm,ListedColormap
 from collections import Counter
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
+# from astropy.io import fits
+# from astropy.wcs import WCS
+# from reproject import reproject_interp
+# from reproject.mosaicking import find_optimal_celestial_wcs
+
 def copy_header(DF,dataset,filter,unq_ids_list=[]):
     '''
     Copy the header from the fits file to the median and mvs tiles.
@@ -42,18 +47,12 @@ def copy_header(DF,dataset,filter,unq_ids_list=[]):
         for mvs_id in mvs_ids[:1]:
             fits_file = os.path.join(dataset.pipe_cfg.paths['data'], DF.mvs_targets_df.loc[mvs_id, f'fits_{filter}'] + f'{dataset.data_cfg.target["fitsext"]}.fits')
             hdul = fits.open(fits_file)
-            unq_file = dataset.pipe_cfg.paths['out'] + f'/median_tiles/{filter}/tile_ID{unq_id}.fits'
-            unq_hdul = fits.open(unq_file)
             mvs_file = dataset.pipe_cfg.paths['out'] + f'/mvs_tiles/{filter}/tile_ID{mvs_id}.fits'
             mvs_hdul = fits.open(mvs_file)
-            unq_hdul[0].header = hdul[0].header
             mvs_hdul[0].header = hdul[0].header
-            unq_hdul[1].header = hdul[1].header
             mvs_hdul[1].header = hdul[1].header
-            unq_hdul.writeto(unq_file, overwrite=True)  # overwrite=True allows overwriting if the file exists
             mvs_hdul.writeto(mvs_file, overwrite=True)  # overwrite=True allows overwriting if the file exists
             hdul.close()
-            unq_hdul.close()
             mvs_hdul.close()
 
 
@@ -450,6 +449,30 @@ def task_median_tiles(DF,id,filter,zfactor,alignment_box,legend,showplot,method,
     else:
         getLogger(__name__).info(f'Median Tile {path2tile} already exist. Skipping.')
 
+
+# def rotate_fits_north_up_east_left(fits_path, output_path):
+#     """
+#     Load a FITS file, rotate so North is up and East is left, update WCS, and save to output_path.
+#     """
+#     # Load FITS and WCS
+#     with fits.open(fits_path) as hdul:
+#         hdu = hdul[0]
+#         wcs_in = WCS(hdu.header)
+#         data = hdu.data
+#         # Get the celestial frame
+#         frame = wcs_in.celestial.frame
+#
+#         # Find optimal WCS for North up, East left
+#         wcs_out, shape_out = find_optimal_celestial_wcs([(data, wcs_in)], frame=frame, auto_rotate=True)
+#
+#         # Reproject the image
+#         array, _ = reproject_interp((data, wcs_in), wcs_out, shape_out=shape_out)
+#
+#         # Create new HDU and update header
+#         new_hdu = fits.PrimaryHDU(array, header=wcs_out.to_header())
+#         new_hdul = fits.HDUList([new_hdu])
+#         new_hdul.writeto(output_path, overwrite=True)
+
 def make_median_tiles(DF,filter,unq_ids_list=[],workers=None,
                    zfactor=10,alignment_box=3,legend=False,showplot=False,
                    parallel_runs=True,method='median',cr_remove=False,la_cr_remove=False,
@@ -499,7 +522,7 @@ def run(packet):
                         debug=dataset.pipe_cfg.mktiles['debug'],
                         xy_dmax=dataset.pipe_cfg.mktiles['xy_dmax'])
 
-
+        #The median tiles produced have North  up and East left.
         make_median_tiles(DF, filter,
                             unq_ids_list=dataset.pipe_cfg.unq_ids_list,
                             workers=int(dataset.pipe_cfg.ncpu),
@@ -511,6 +534,6 @@ def run(packet):
                             kill_plots=dataset.pipe_cfg.mktiles['kill_plots'],
                             redo=dataset.pipe_cfg.mktiles['redo'])
 
-        copy_header(DF, dataset, filter, unq_ids_list)
+        copy_header(DF, dataset, filter, dataset.pipe_cfg.unq_ids_list)
 
     DF.save_dataframes(__name__)

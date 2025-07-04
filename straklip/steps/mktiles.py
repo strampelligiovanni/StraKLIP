@@ -17,9 +17,46 @@ from collections import Counter
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 # from astropy.io import fits
-# from astropy.wcs import WCS
+from astropy.wcs import WCS
 # from reproject import reproject_interp
 # from reproject.mosaicking import find_optimal_celestial_wcs
+
+def update_wcs_for_cutout(original_header, x0, y0):
+    """
+    Update the WCS for a cutout image.
+
+    Parameters
+    ----------
+    original_header : astropy.io.fits.Header
+        The FITS header from the original (full) image.
+    x0, y0 : int
+        The pixel coordinates (0-based) in the original image where the cutout starts
+        (i.e., the lower-left corner of the cutout).
+
+    Returns
+    -------
+    new_wcs : astropy.wcs.WCS
+        The updated WCS for the cutout.
+    """
+    wcs = WCS(original_header).deepcopy()
+    # Subtract the cutout origin from the reference pixel
+    wcs.wcs.crpix[0] -= x0
+    wcs.wcs.crpix[1] -= y0
+    return wcs
+
+# # Example usage:
+# # Load original FITS and WCS
+# with fits.open('full_image.fits') as hdul:
+#     original_header = hdul[1].header  # or hdul[0].header, depending on your data
+#
+# # Suppose your cutout starts at (x0, y0) in the original image
+# x0, y0 = 100, 200  # example values
+#
+# # Update WCS for the cutout
+# new_wcs = update_wcs_for_cutout(original_header, x0, y0)
+#
+# # When saving the cutout, use new_wcs.to_header() as the header
+# # fits.writeto('cutout.fits', cutout_data, header=new_wcs.to_header(), overwrite=True)
 
 def copy_header(DF,dataset,filter,unq_ids_list=[]):
     '''
@@ -45,14 +82,19 @@ def copy_header(DF,dataset,filter,unq_ids_list=[]):
     for unq_id in unq_ids_list:
         mvs_ids = DF.crossmatch_ids_df[DF.crossmatch_ids_df['unq_ids'] == unq_id].mvs_ids.values
         for mvs_id in mvs_ids[:1]:
-            fits_file = os.path.join(dataset.pipe_cfg.paths['data'], DF.mvs_targets_df.loc[mvs_id, f'fits_{filter}'] + f'{dataset.data_cfg.target["fitsext"]}.fits')
+            fits_file = os.path.join(dataset.pipe_cfg.paths['data'], DF.mvs_targets_df.loc[DF.mvs_targets_df['mvs_ids']==mvs_id, f'fits_{filter}'].values[0] + f'{dataset.data_cfg.target["fitsext"]}.fits')
             hdul = fits.open(fits_file)
+            tile_base = (dataset.pipe_cfg.mktiles['tile_base']-1)/2
+            x0 = int(DF.mvs_targets_df.loc[DF.mvs_targets_df['mvs_ids']==mvs_id, f'x_{filter}'].values[0])-tile_base
+            y0 = int(DF.mvs_targets_df.loc[DF.mvs_targets_df['mvs_ids']==mvs_id, f'y_{filter}'].values[0])-tile_base
+
             mvs_file = dataset.pipe_cfg.paths['out'] + f'/mvs_tiles/{filter}/tile_ID{mvs_id}.fits'
             mvs_hdul = fits.open(mvs_file)
-            mvs_hdul[0].header = hdul[0].header
-            mvs_hdul[1].header = hdul[1].header
+            # new_wcs = update_wcs_for_cutout(hdul[0].header, x0 if x0 >0 else 0, y0 if y0>0 else 0)
+            new_wcs1 = update_wcs_for_cutout(hdul[1].header, x0 if x0 >0 else 0, y0 if y0>0 else 0)
+            mvs_hdul[0].header=hdul[0].header
+            mvs_hdul[1].header.update(new_wcs1.to_header())
             mvs_hdul.writeto(mvs_file, overwrite=True)  # overwrite=True allows overwriting if the file exists
-            hdul.close()
             mvs_hdul.close()
 
 

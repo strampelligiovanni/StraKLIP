@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 from straklip.tiles import Tile
 from straklip.utils.utils_photometry import mvs_aperture_photometry,read_dq_from_tile,KLIP_aperture_photometry_handler
 from straklip.utils.ancillary import print_mean_median_and_std_sigmacut,rotate_point,parallelization_package
-from straklip.utils.utils_tile import allign_images
+# from straklip.utils.utils_tile import allign_images
+from straklip.utils.utils_tile import rotate_fits_north_up_east_left, merge_images
 from straklip.utils.utils_dataframe import create_empty_df
 from straklip.steps.buildhdf import make_candidates_dataframes
 from straklip.stralog import getLogger
@@ -485,7 +486,7 @@ def task_mvs_targets_infos(DF,avg_id,skip_filters,aptype,verbose,noBGsub,sigma,k
         plt.show()
     return(candidate_df)
 
-
+# TO DO: move this task at psfsubtraction stage, instead of klipphotometry
 def task_median_candidate_infos(DF,id,filter,column_name,zfactor,alignment_box,label):
     '''
     Taks perfomed in the update_median_candidate_tile
@@ -510,20 +511,15 @@ def task_median_candidate_infos(DF,id,filter,column_name,zfactor,alignment_box,l
     None.
 
     '''
-    label_dict={'data':1,'crclean_data':4}
     hdul_dict={'data':1,'crclean_data':2}
     KLIP_label_dict={'data':'Kmode','crclean_data':'crclean_Kmode'}
     path2tile=DF.path2out+f'/median_tiles/{filter}/tile_ID{id}.fits'
 
     cand_mvs_ids_list=DF.mvs_candidates_df.loc[DF.mvs_candidates_df.mvs_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids==id].mvs_ids.unique())].mvs_ids.unique()
 
-    # sel_ids=DF.mvs_targets_df.mvs_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids==id].mvs_ids.unique())
     sel_flag=(DF.mvs_targets_df[f'flag_{filter}']!='rejected')
     mvs_ids_list=DF.mvs_targets_df.loc[sel_flag&DF.mvs_targets_df.mvs_ids.isin(DF.crossmatch_ids_df.loc[DF.crossmatch_ids_df.unq_ids==id].mvs_ids.unique())].mvs_ids.unique()
-    # sel_ids=DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list)
     sel_ids = DF.mvs_targets_df.mvs_ids.isin(mvs_ids_list) & DF.mvs_targets_df.mvs_ids.isin(cand_mvs_ids_list)
-    PAV_3s=DF.mvs_targets_df.loc[sel_ids&sel_flag,f'pav3_{filter}'].values
-    ROTAs=DF.mvs_targets_df.loc[sel_ids&sel_flag,f'rota_{filter}'].values
 
     IMAGE=Tile(x=(DF.tilebase-1)/2,y=(DF.tilebase-1)/2,tile_base=DF.tilebase,delta=0,inst=DF.inst,Python_origin=True)
     Datacube=IMAGE.load_tile(path2tile,return_Datacube=True,hdul_max=hdul_dict[label],verbose=False,mode='update',raise_errors=False)
@@ -532,30 +528,17 @@ def task_median_candidate_infos(DF,id,filter,column_name,zfactor,alignment_box,l
     for Kmode in DF.kmodes:
         getLogger(__name__).info(f'KLIPmode: {Kmode} ,unq_ids: {id}, mvs_ids: {mvs_ids_list}')
 
-        target_images = []
-        candidate_images = []
 
+        rotated_images = []
         for mvs_ids in mvs_ids_list:
-            IMAGE = Tile(x=(DF.tilebase - 1) / 2, y=(DF.tilebase - 1) / 2, tile_base=DF.tilebase, delta=0, inst=DF.inst,
-                         Python_origin=True)
-            IMAGE.load_tile('%s/mvs_tiles/%s/tile_ID%i.fits'%(DF.path2out,filter,mvs_ids),ext=label_dict[label],raise_errors=False)
-            image=np.array(IMAGE.data)
-            if not np.all(np.isnan(image)):
-                target_images.append(image)
+            input_fits = '%s/mvs_tiles/%s/tile_ID%i.fits' % (DF.path2out, filter, mvs_ids)
+            rotated_image = rotate_fits_north_up_east_left(input_fits,ext='%s%s'%(KLIP_label_dict[label],Kmode))
+            rotated_images.append(rotated_image)
 
-            if len(target_images)>0:
-                target_tile,shift_list=allign_images(target_images,ROTAs,PAV_3s,filter,zfactor=zfactor,alignment_box=alignment_box,tile_base=DF.tilebase)
-                CANDIDATE=Tile(x=(DF.tilebase-1)/2,y=(DF.tilebase-1)/2,tile_base=DF.tilebase,delta=0,inst=DF.inst,Python_origin=True)
-                CANDIDATE.load_tile('%s/mvs_tiles/%s/tile_ID%i.fits'%(DF.path2out,filter,mvs_ids),ext='%s%s'%(KLIP_label_dict[label],Kmode),raise_errors=False)
-                image=np.array(CANDIDATE.data)
-                if not np.all(np.isnan(image)):
-                    candidate_images.append(image)
 
-        if len(candidate_images)>0:
-            candidate_tile,shift_list=allign_images(candidate_images,ROTAs,PAV_3s,filter,shift_list=shift_list,zfactor=zfactor,alignment_box=alignment_box,title=column_name+f'{Kmode}',tile_base=DF.tilebase)
+        candidate_tile = merge_images(np.array(rotated_images), tile_base=DF.tilebase, inst=DF.inst,verbose=False,title='%s Median Target'%(filter),showplot=False,kill_plots=True)
+        candidate_tile.append_tile(path2tile,Datacube=Datacube,verbose=False,name=f'{(KLIP_label_dict[label])}{Kmode}',return_Datacube=False,write=False)
 
-            if Datacube!=None:
-                candidate_tile.append_tile(path2tile,Datacube=Datacube,verbose=False,name=f'{(KLIP_label_dict[label])}{Kmode}',return_Datacube=False,write=False)
 
 def task_mvs_candidates_infos(DF,avg_id,d,skip_filters,needs_filters,aptype,verbose,noBGsub,sigma,DF_fk,label,kill_plots,delta,radius,sat_thr,mfk,mdf,mad,mak):
     '''

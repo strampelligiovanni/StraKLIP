@@ -16,6 +16,47 @@ from matplotlib.colors import PowerNorm,ListedColormap
 from collections import Counter
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
+def copy_header(DF,dataset,filter,unq_ids_list=[]):
+    '''
+    Copy the header from the fits file to the median and mvs tiles.
+
+    Parameters
+    DF : DataFrame
+        DataFrame containing the targets and tiles information.
+    pipe_cfg: dict
+        Configuration dictionary containing paths and other settings.
+    filter : str
+        The filter for which the headers are to be copied.
+    unq_ids_list : int
+        List of unique identifier for the targets. If empty, all unique ids will be used.
+        Defaults to empty list.
+    Returns
+    -------
+    None
+    '''
+    if len(unq_ids_list)==0:
+        unq_ids_list=DF.unq_targets_df.unq_ids.unique()
+
+    for unq_id in unq_ids_list:
+        mvs_ids = DF.crossmatch_ids_df[DF.crossmatch_ids_df['unq_ids'] == unq_id].mvs_ids.values
+        for mvs_id in mvs_ids[:1]:
+            fits_file = os.path.join(dataset.pipe_cfg.paths['data'], DF.mvs_targets_df.loc[mvs_id, f'fits_{filter}'] + f'{dataset.data_cfg.target["fitsext"]}.fits')
+            hdul = fits.open(fits_file)
+            unq_file = dataset.pipe_cfg.paths['out'] + f'/median_tiles/{filter}/tile_ID{unq_id}.fits'
+            unq_hdul = fits.open(unq_file)
+            mvs_file = dataset.pipe_cfg.paths['out'] + f'/mvs_tiles/{filter}/tile_ID{mvs_id}.fits'
+            mvs_hdul = fits.open(mvs_file)
+            unq_hdul[0].header = hdul[0].header
+            mvs_hdul[0].header = hdul[0].header
+            unq_hdul[1].header = hdul[1].header
+            mvs_hdul[1].header = hdul[1].header
+            unq_hdul.writeto(unq_file, overwrite=True)  # overwrite=True allows overwriting if the file exists
+            mvs_hdul.writeto(mvs_file, overwrite=True)  # overwrite=True allows overwriting if the file exists
+            hdul.close()
+            unq_hdul.close()
+            mvs_hdul.close()
+
+
 def check4duplicants(DF,filter,mvs_ids_list,showduplicants=False):
     '''
     check for duplicated tiles in the tiles dataframe
@@ -469,5 +510,7 @@ def run(packet):
                             la_cr_remove=dataset.pipe_cfg.mktiles['la_cr_remove'],
                             kill_plots=dataset.pipe_cfg.mktiles['kill_plots'],
                             redo=dataset.pipe_cfg.mktiles['redo'])
+
+        copy_header(DF, dataset, filter, unq_ids_list)
 
     DF.save_dataframes(__name__)

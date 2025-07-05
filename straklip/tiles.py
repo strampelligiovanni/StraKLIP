@@ -2,19 +2,16 @@
 This module implements the Tile class, which help create/load/save 
 tiles cubes centered around each target (data, error, dq, modles, residuals)
 '''
-import sys
-sys.path.append('/')
-
-from ancillary import find_max,find_centroid,cosmic_ray_filter,cosmic_ray_filter_la,my_circle_scatter
+from straklip.utils.ancillary import find_max,find_centroid,cosmic_ray_filter,cosmic_ray_filter_la,my_circle_scatter
 
 import numpy as np
 from astropy.io import fits
 import matplotlib.pyplot as plt
 
-from utils_plot import mk_arrows
+from straklip.utils.utils_plot import mk_arrows
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from astropy.visualization import simple_norm
-from stralog import getLogger
+from straklip.stralog import getLogger
 
 class Tile():
     def __init__(self,data=[],delta=0,x=np.nan,y=np.nan,tile_base=1,inst=None,dqdata=[],Python_origin=True,raise_errors=False):

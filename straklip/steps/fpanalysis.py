@@ -1,8 +1,6 @@
-import sys
-sys.path.append('/')
 import numpy as np
-from stralog import getLogger
-from utils_fpanalysis import update_candidates_photometry
+from straklip.stralog import getLogger
+from straklip.utils.utils_fpanalysis import update_candidates_photometry
 
 def run_false_positive_analysis(DF, avg_ids_list=[], label='crclean_data', aptype='square', verbose=False,
                                 sigma=2.5, DF_fk=None, delta=5, skip_filters=[], sat_thr=np.inf,

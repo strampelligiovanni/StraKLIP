@@ -1,0 +1,206 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Documentation for StraKLIP &mdash; StraKLIP</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/wider_docs.css?v=13a472fc" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=3ce10a4d"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Installation and Dependencies" href="installation.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="#">
+            
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation and Dependencies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quick_start.html">Pipeline Quick Start Guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials (Unfinished)</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorial Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/tutorial_join_catalogues_DRC.html">Tutorial: Joining DRC catalogues</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/tutorial_data_reduction.html">Tutorial: Data Reduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/tutorial_psf_subtraction.html">Tutorial: PSF Subtraction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/tutorial_analysis.html">Tutorial: Analysis (work in progress)</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">About</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Contact.html">Contact</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Attribution.html">Attribution</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Package content (Unfinished)</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="StraKLIP.html">Detailed StraKLIP API</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">StraKLIP</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Documentation for StraKLIP</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/strampelligiovanni/StraKLIP/blob/main/docs/index.rst" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="documentation-for-straklip">
+<h1>Documentation for StraKLIP<a class="headerlink" href="#documentation-for-straklip" title="Link to this heading"></a></h1>
+<a class="reference internal image-reference" href="_static/logo.png"><img alt="_static/logo.png" class="align-center" src="_static/logo.png" style="width: 200px;" />
+</a>
+<p>StraKLIP is a Python-based data reduction and analysis toolkit for HST wide field imaging data.
+The development has mostly been focused on ACS and WFC3-IR/UVIS imaging.
+It is built on top of <a class="reference external" href="https://pyklip.readthedocs.io/en/latest/">pyKLIP</a> and provides functionality and customizations specific to HST data.</p>
+<p>Compatible Simulated Data: <a class="reference external" href="https://">Here</a></p>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation and Dependencies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quick_start.html">Pipeline Quick Start Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="quick_start.html#pipeline-setup">Pipeline Setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quick_start.html#running-the-pipeline">Running the Pipeline</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Tutorials (Unfinished)</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorial Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/tutorial_join_catalogues_DRC.html">Tutorial: Joining DRC catalogues</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/tutorial_join_catalogues_DRC.html#Setup-and-imports">Setup and imports</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/tutorial_join_catalogues_DRC.html#Loading-input-catalog">Loading input catalog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/tutorial_join_catalogues_DRC.html#Lets-populate-the-mvs_targets_df">Lets populate the mvs_targets_df</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/tutorial_join_catalogues_DRC.html#Lets-populate-the-`unq_dataframe'">Lets populate the `unq_dataframe’</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/tutorial_data_reduction.html">Tutorial: Data Reduction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/tutorial_data_reduction.html#Initial-imports">Initial imports</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/tutorial_data_reduction.html#Loading-the-pipeline-configuration-file-for-the-project">Loading the pipeline configuration file for the project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/tutorial_data_reduction.html#Building-the-dataframes">Building the dataframes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/tutorial_data_reduction.html#Tiles">Tiles</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/tutorial_data_reduction.html#Photometry">Photometry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/tutorial_data_reduction.html#FOW2CELL">FOW2CELL</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/tutorial_psf_subtraction.html">Tutorial: PSF Subtraction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/tutorial_psf_subtraction.html#Initial-imports">Initial imports</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/tutorial_psf_subtraction.html#Loading-the-dataframe">Loading the dataframe</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/tutorial_psf_subtraction.html#PSF-subtraction">PSF subtraction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/tutorial_psf_subtraction.html#Photmetry">Photmetry</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/tutorial_analysis.html">Tutorial: Analysis (work in progress)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/tutorial_analysis.html#Initial-imports">Initial imports</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/tutorial_analysis.html#Loading-the-dataframe">Loading the dataframe</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/tutorial_analysis.html#Running-the-analysis">Running the analysis</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+</div>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">About</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Contact.html">Contact</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Attribution.html">Attribution</a></li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Package content (Unfinished)</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="StraKLIP.html">Detailed StraKLIP API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="StraKLIP.html#straklip-config-module">straklip.config module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="StraKLIP.html#straklip-dataframe-module">straklip.dataframe module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="StraKLIP.html#straklip-fake-star-module">straklip.fake_star module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="StraKLIP.html#straklip-input-tables-module">straklip.input_tables module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="StraKLIP.html#straklip-photometry-module">straklip.photometry module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="StraKLIP.html#straklip-showroom-module">straklip.showroom module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="StraKLIP.html#straklip-stralog-module">straklip.stralog module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="StraKLIP.html#straklip-tiles-module">straklip.tiles module</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="installation.html" class="btn btn-neutral float-right" title="Installation and Dependencies" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright Giovanni M. Strampelli.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

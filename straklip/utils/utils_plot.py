@@ -2,27 +2,21 @@
 generic utilities functions to create plots by the pipeline or final analysis
 """
 
-import sys
-# sys.path.append('/')
-from ancillary import auc,solve,dataframe_2D_finer_interpolator,KDE,find_closer,print_mean_median_and_std_sigmacut,power_law_fitting,latex_table
-from utils_completeness import mk_histogram_from_completeness
-# from mcmc_utils import read_samples
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-
-from astropy import units as u
 import matplotlib.ticker as ticker
+import matplotlib.patches as mpatches
+import pyklip.klip as klip
+from straklip.utils.ancillary import auc,dataframe_2D_finer_interpolator,KDE,find_closer,print_mean_median_and_std_sigmacut,power_law_fitting,latex_table
+from straklip.utils.utils_completeness import mk_histogram_from_completeness
+from straklip.stralog import getLogger
+from astropy import units as u
 from pathlib import PurePath
 from matplotlib.lines import Line2D
-import matplotlib.patches as mpatches
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-# from kde import KDE as KDE0
 from scipy.stats import norm
-# from astropy.stats import sigma_clip
-from stralog import getLogger
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-import pyklip.klip as klip
 
 def add_subplot_axes(ax,rect,axisbg='w'):
     fig = plt.gcf()

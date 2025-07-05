@@ -2,124 +2,236 @@
 utilities functions that can be use by or with the tile class
 """
 import os,math
-from tiles import Tile
-from ancillary import truncate_colormap
-
-from pyklip.klip import klip_math
-
-import pandas as pd 
 import numpy as np
 import matplotlib.pyplot as plt
-
+import matplotlib.patches as patches
+import pyklip.rdi as rdi
+import pyklip.parallelized as parallelized
+from straklip.tiles import Tile
+from straklip.utils.ancillary import truncate_colormap
+from straklip.stralog import getLogger
 from scipy.ndimage import zoom,rotate,fourier_shift
 from skimage.registration import phase_cross_correlation
 from functools import reduce
-from stralog import getLogger
 from astropy.visualization import simple_norm
-import matplotlib.patches as patches
-from astropy.io import fits
 from pyklip.instruments.Instrument import GenericData
-import pyklip.rdi as rdi
-import pyklip.parallelized as parallelized
+from astropy.io import fits
+from astropy.wcs import WCS
+from reproject import reproject_interp
+from reproject.mosaicking import find_optimal_celestial_wcs
 
-def allign_images(target_images,rot_angles,PAV_3s,filter,fig=None,ax=None,shift_list=None,cmap='Greys_r',tile_base=15,inst='WFC3',simplenorm='linear',min_percent=0,max_percent=100,power=1,log=1000,xy_m=True,xy_cen=False,legend=False,showplot=False,verbose=False,cbar=True,title='',xy_dmax=None,zfactor=10,alignment_box=0,step=1,Python_origin=True,method='median',kill=False,kill_plots=True,mk_arrow=False):
-    '''
-    shift, derotate and allign each image in the input list of images to the first one
+# TODO: this function is rotating too much, it should only rotate the image to make North up and East left, not to make the image square
+def rotate_fits_north_up_east_left(input_fits, ext=1,hext=1):
+    """
+    Rotate a FITS image so North is up and East is left, pad to keep square, and save to file.
 
     Parameters
     ----------
-    target_images : list
-        list of input images.
-    PAV_3s : float
-        list of position angles to use to derotate each image.
-    filter : str
-        filter name.
+    input_fits : str
+        Path to input FITS file.
+    output_fits : str
+        Path to output FITS file.
+    ext : int
+        FITS data extension to use (default: 1).
+    hext : int
+        FITS header extension to use (default: 1).
+    """
+    # Open FITS and get data/WCS
+    with fits.open(input_fits) as hdul:
+        data = hdul[ext].data
+        header = hdul[hext].header
+        wcs_in = WCS(header)
+
+        # Find optimal WCS for North up, East left, keeping square shape
+        wcs_out, shape_out = find_optimal_celestial_wcs([(data, wcs_in)], auto_rotate=True)
+        # # Make sure output is square
+        max_dim = max(shape_out)
+        shape_out = (max_dim, max_dim)
+
+        # Reproject
+        array, _ = reproject_interp((data, wcs_in), wcs_out, shape_out=shape_out)
+
+    return array
+
+# def allign_images(target_images,rot_angles,PAV_3s,filter,fig=None,ax=None,shift_list=None,cmap='Greys_r',tile_base=15,inst='WFC3',simplenorm='linear',min_percent=0,max_percent=100,power=1,log=1000,xy_m=True,xy_cen=False,legend=False,showplot=False,verbose=False,cbar=True,title='',xy_dmax=None,zfactor=10,alignment_box=0,step=1,Python_origin=True,method='median',kill=False,kill_plots=True,mk_arrow=False):
+#     '''
+#     shift, derotate and allign each image in the input list of images to the first one
+#
+#     Parameters
+#     ----------
+#     target_images : list
+#         list of input images.
+#     PAV_3s : float
+#         list of position angles to use to derotate each image.
+#     filter : str
+#         filter name.
+#     fig : matplotlib figure, optional
+#         figure for plot. The default is None.
+#     ax : matplotlib axis, optional
+#         axixs for plot. The default is None.
+#     shift_list : list, optional
+#         input list of shift. The default is None.
+#     cmap : str, optional
+#         color map. The default is 'Greys_r'.
+#     tile_base : TYPE
+#         side of the square tile. MUST be odd
+#     inst : str
+#         instrument related to the data input.
+#     simplenorm : TYPE, optional
+#         use simplenorm normalization. The default is None.
+#     min_percent: float, optional
+#         The percentile value used to determine the pixel value of minimum cut level.
+#         The default is 0.0. min_percent overrides percent.
+#     max_percent: float, optional
+#         The percentile value used to determine the pixel value of maximum cut level.
+#         The default is 100.0. max_percent overrides percent.
+#     power: float, optional
+#         The power index for stretch='power'. The default is 1.0.
+#     log: float, optional
+#         The log index for stretch='log'. The default is 1000.
+#     xy_m : bool, optional
+#         choose to look for the position of the maximum in the tile.
+#         The default is True.
+#     xy_cen : bool, optional
+#         choose to look for the position of the centroid in the tile.
+#         The default is False.
+#     legend : bool, optional
+#         choose to show legends in plots. The default is False.
+#     showplot : bool, optional
+#         choose to show plots. The default is False.
+#     verbose : bool, optional
+#         choose to show prints. The default is False.
+#     cbar : bool, optional
+#         choose to show color bar in the plot. The default is True.
+#     title : str, optional
+#         title for the plot. The default is ''.
+#     xy_dmax: int, optional
+#         distance from the center to look for maximum. The default is 2
+#     zfactor : int, optional
+#         zoom factor to apply to re/debin each image.
+#         The default is 10.
+#     alignment_box : bool, optional
+#         half base of the square box centered at the center of the tile employed by the allignment process to allign the images.
+#         The box is constructed as alignment_box-x,x+alignment_box and alignment_box-y,y+alignment_box, where x,y are the
+#         coordinate of the center of the tile.
+#         The default is 2.
+#     step : int, optional
+#         DESCRIPTION. The default is 1.
+#     Python_origin : bool
+#         Choose to specify the origin of the xy input coordinates. For exmaple python array star counting from 0,
+#         so a position obtained on a python image will have 0 as first pixel.
+#         On the other hand, normal catalogs start counting from 1 (see coordinate on ds9 for example)
+#         so we need to subtract 1 to make them compatible when we use those coordinates on python
+#         The default is True
+#     metod : str, optional
+#         choose between median image or mean image. The default is median.
+#     kill : bool, optional
+#         choose to kill bad pixels instead of using the median of the neighbouring pixels. The default is False.
+#     kill_plots:
+#         choose to kill all plots created. The default is False.
+#
+#     Returns
+#     -------
+#     None.
+#
+#     '''
+#     if xy_dmax!=None: xy_dmax=xy_dmax*zfactor
+#
+#     if len(target_images)>1:
+#         rotated_images,rotated_angles=rotate_images(target_images,rot_angles=rot_angles,zfactor=zfactor)
+#         shifted_images,shift_list=shift_images(rotated_images,zfactor=zfactor,alignment_box=alignment_box,shift_list_in=shift_list)
+#     else:
+#         rotated_images, rotated_angles = rotate_images(target_images, rot_angles=rot_angles, zfactor=1)
+#         shifted_images = rotated_images.copy()
+#
+#     for elno in range(len(shifted_images)):
+#         shifted_images[elno][shifted_images[elno] == 0] = np.nan
+#
+#     if method == 'median':
+#         image = np.nanmedian(shifted_images, axis=0)
+#     elif method == 'mean':
+#         image = np.nanmean(shifted_images, axis=0)
+#     else:
+#         raise ValueError('method MUST be either median or mean.')
+#
+#     x=int((image.shape[1]-1)/2)
+#     y=int((image.shape[0]-1)/2)
+#
+#     tile=Tile(data=image,x=x,y=y,tile_base=tile_base,inst=inst,Python_origin=Python_origin)
+#
+#     if np.all(np.isnan(image)): tile.mk_tile(fig=fig,ax=ax,verbose=verbose,cmap=cmap,showplot=showplot,keep_size=False,title=title,step=step,kill=kill,kill_plots=kill_plots)
+#     else: tile.mk_tile(fig=fig,ax=ax,verbose=verbose,min_percent=min_percent,max_percent=max_percent,power=power,log=log,simplenorm=simplenorm,cmap=cmap,xy_m=xy_m,xy_cen=xy_cen,legend=legend,showplot=showplot,keep_size=False,xy_dmax=xy_dmax,cbar=cbar,title=title,step=step,kill=kill,kill_plots=kill_plots)
+#     return(tile,shift_list)
+
+def merge_images(rotated_images,method='median',tile_base=15,inst='WFC3',fig=None,ax=None,cmap='Greys_r',min_percent=0,max_percent=100,power=1,log=1000,simplenorm='linear',xy_m=True,xy_cen=False,legend=False,showplot=True,verbose=False,cbar=True,title='',step=1,Python_origin=True,xy_dmax=None,kill=False,kill_plots=True):
+    '''
+    Align a list of rotated images by taking the median or mean of the images
+    Parameters
+    ----------
+    rotated_images : numpy ndarray
+        list of rotated images.
+    method : str, optional
+        choose between median image or mean image. The default is 'median'.
+    tile_base : int, optional
+        side of the square tile. MUST be odd. The default is 15.
+    inst : str, optional
+        instrument related to the data input. The default is 'WFC3'.
     fig : matplotlib figure, optional
         figure for plot. The default is None.
     ax : matplotlib axis, optional
-        axixs for plot. The default is None.
-    shift_list : list, optional
-        input list of shift. The default is None.
+        axis for plot. The default is None.
     cmap : str, optional
         color map. The default is 'Greys_r'.
-    tile_base : TYPE
-        side of the square tile. MUST be odd
-    inst : str
-        instrument related to the data input.
-    simplenorm : TYPE, optional
-        use simplenorm normalization. The default is None.
     min_percent: float, optional
-        The percentile value used to determine the pixel value of minimum cut level. 
+        The percentile value used to determine the pixel value of minimum cut level.
         The default is 0.0. min_percent overrides percent.
     max_percent: float, optional
-        The percentile value used to determine the pixel value of maximum cut level. 
+        The percentile value used to determine the pixel value of maximum cut level.
         The default is 100.0. max_percent overrides percent.
     power: float, optional
         The power index for stretch='power'. The default is 1.0.
     log: float, optional
         The log index for stretch='log'. The default is 1000.
+    simplenorm : str, optional
+        use simplenorm normalization. The default is 'linear'.
     xy_m : bool, optional
-        choose to look for the position of the maximum in the tile. 
+        choose to look for the position of the maximum in the tile.
         The default is True.
     xy_cen : bool, optional
-        choose to look for the position of the centroid in the tile. 
+        choose to look for the position of the centroid in the tile.
         The default is False.
     legend : bool, optional
         choose to show legends in plots. The default is False.
     showplot : bool, optional
-        choose to show plots. The default is False.
+        choose to show plots. The default is True.
     verbose : bool, optional
         choose to show prints. The default is False.
     cbar : bool, optional
         choose to show color bar in the plot. The default is True.
     title : str, optional
         title for the plot. The default is ''.
-    xy_dmax: int, optional
-        distance from the center to look for maximum. The default is 2
-    zfactor : int, optional
-        zoom factor to apply to re/debin each image. 
-        The default is 10.
-    alignment_box : bool, optional
-        half base of the square box centered at the center of the tile employed by the allignment process to allign the images. 
-        The box is constructed as alignment_box-x,x+alignment_box and alignment_box-y,y+alignment_box, where x,y are the 
-        coordinate of the center of the tile.
-        The default is 2.    
     step : int, optional
-        DESCRIPTION. The default is 1.
+        step for the plot. The default is 1.
     Python_origin : bool
-        Choose to specify the origin of the xy input coordinates. For exmaple python array star counting from 0, 
-        so a position obtained on a python image will have 0 as first pixel. 
-        On the other hand, normal catalogs start counting from 1 (see coordinate on ds9 for example) 
+        Choose to specify the origin of the xy input coordinates. For exmaple python array star counting from 0,
+        so a position obtained on a python image will have 0 as first pixel.
+        On the other hand, normal catalogs start counting from 1 (see coordinate on ds9 for example)
         so we need to subtract 1 to make them compatible when we use those coordinates on python
         The default is True
-    metod : str, optional
-        choose between median image or mean image. The default is median.
+    xy_dmax: int, optional
+        distance from the center to look for maximum. The default is None.
     kill : bool, optional
         choose to kill bad pixels instead of using the median of the neighbouring pixels. The default is False.
     kill_plots:
-        choose to kill all plots created. The default is False.
-
+        choose to kill all plots created. The default is True.
     Returns
     -------
-    None.
-
+    tile : Tile
     '''
-    if xy_dmax!=None: xy_dmax=xy_dmax*zfactor
-
-    if len(target_images)>1:
-        rotated_images,rotated_angles=rotate_images(target_images,rot_angles=rot_angles,zfactor=zfactor)
-        shifted_images,shift_list=shift_images(rotated_images,zfactor=zfactor,alignment_box=alignment_box,shift_list_in=shift_list)
-    else:
-        rotated_images, rotated_angles = rotate_images(target_images, rot_angles=rot_angles, zfactor=1)
-        shifted_images = rotated_images.copy()
-
-    for elno in range(len(shifted_images)):
-        shifted_images[elno][shifted_images[elno] == 0] = np.nan
-
     if method == 'median':
-        image = np.nanmedian(shifted_images, axis=0)
+        image = np.nanmedian(rotated_images, axis=0)
     elif method == 'mean':
-        image = np.nanmean(shifted_images, axis=0)
+        image = np.nanmean(rotated_images, axis=0)
     else:
         raise ValueError('method MUST be either median or mean.')
 
@@ -130,7 +242,7 @@ def allign_images(target_images,rot_angles,PAV_3s,filter,fig=None,ax=None,shift_
 
     if np.all(np.isnan(image)): tile.mk_tile(fig=fig,ax=ax,verbose=verbose,cmap=cmap,showplot=showplot,keep_size=False,title=title,step=step,kill=kill,kill_plots=kill_plots)
     else: tile.mk_tile(fig=fig,ax=ax,verbose=verbose,min_percent=min_percent,max_percent=max_percent,power=power,log=log,simplenorm=simplenorm,cmap=cmap,xy_m=xy_m,xy_cen=xy_cen,legend=legend,showplot=showplot,keep_size=False,xy_dmax=xy_dmax,cbar=cbar,title=title,step=step,kill=kill,kill_plots=kill_plots)
-    return(tile,shift_list)
+    return(tile)
 
 def flatten_tile_axes(array):
     """
@@ -609,8 +721,13 @@ def small_tiles(DF,path2fits, path2tiles, filters, dict={},nrows=10, ncols=10, f
                 if idx in dict[f'bad_{filter}']:
                     rect = patches.Rectangle((-0.25, -0.25), 10.5, 10.5, linewidth=3, edgecolor='r', facecolor='none')
                     axes[elno][elno1].add_patch(rect)
+                    DF.loc[idx, f'flag_{filter}'.lower()] = 'rejected'
                 elif idx in dict[f'good_{filter}']:
                     DF.loc[idx, f'flag_{filter}'.lower()] = 'good_target'
+                    rect = patches.Rectangle((-0.25, -0.25), 10.5, 10.5, linewidth=3, edgecolor='g', facecolor='none')
+                    axes[elno][elno1].add_patch(rect)
+                elif idx in dict[f'kd_{filter}']:
+                    DF.loc[idx, f'flag_{filter}'.lower()] = 'known_double'
                     rect = patches.Rectangle((-0.25, -0.25), 10.5, 10.5, linewidth=3, edgecolor='g', facecolor='none')
                     axes[elno][elno1].add_patch(rect)
                 else:

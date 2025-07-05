@@ -2,7 +2,7 @@
 
 We present a new pipeline developed to detect and characterize faint astronomical companions at small angular 
 separation from the host star using sets of wide-field imaging observations not specifically designed for 
-High Contrast Imaging analysis. The core of the pipeline relies on Karhunen-Lo`eve trun- cated transformation 
+High Contrast Imaging analysis. The core of the pipeline relies on Karhunen-Lo`eve truncated transformation 
 of the reference PSF library to perform PSF subtraction and identify candidates. Tests of reliability of detections 
 and characterization of companions are made through simulation of binaries and generation of Receiver Operating 
 Characteristic curves for false positive/true positive analysis. The algorithm has been successfully tested on 
@@ -132,9 +132,6 @@ flow:
 - fow2cells
 - psfsubtraction
 - klipphotometry
-########## second part of the pipeline ##########
-- buildfphdf
-- mkcompleteness
 - analysis
 ```
 
@@ -144,3 +141,13 @@ the `--make-dir` option enable.
 
 NOTE: The default values for these `paths` will need to be changed in the `pipe.yaml` to point to the appropriate 
 location for your computer. 
+
+## Attribution
+Maintenance and current development of ``StraKLIP`` is led by Giovanni M. Strampelli (STScI).
+A special thanks to Dr. Massimo Robberto (STScI), Dr. Laurant Pueyo (STScI), Dr. Jonathan Aguilar (STScI) and Professor
+Antonio Aparicio (ULL) for their guidance during the development of the pipeline.
+
+**Citing StraKLIP:**
+If StraKLIP is useful for your research,
+please cite
+`Strampelli, G. M. et al. 2022, aj, 164, 147`

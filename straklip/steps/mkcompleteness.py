@@ -1,12 +1,10 @@
-import sys
-sys.path.append('/')
-from utils_dataframe import mk_fk_completeness_df
-from utils_fpanalysis import mk_completeness_from_fakes,mvs_plot_completness,unq_plot_completness
-from utils_completeness import flatten_matrix_completeness_curves_df,mk_completeness_curves_df,make_matrix_completeness_curves_df
-from ancillary import interpND
+from straklip.utils.utils_dataframe import mk_fk_completeness_df
+from straklip.utils.utils_fpanalysis import mk_completeness_from_fakes,mvs_plot_completness,unq_plot_completness
+from straklip.utils.utils_completeness import flatten_matrix_completeness_curves_df,mk_completeness_curves_df,make_matrix_completeness_curves_df
+from straklip.utils.ancillary import interpND
+from straklip.stralog import getLogger
 
 import numpy as np
-from stralog import getLogger
 import pandas as pd
 
 

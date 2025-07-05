@@ -3,21 +3,18 @@ utilities functions for the complteness analysis
 """
 
 import sys
-sys.path.append('/')
-from ancillary import round2closerint,parallelization_package
-from utils_dataframe import create_empty_df
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-
+from straklip.utils.ancillary import parallelization_package
+from straklip.utils.utils_dataframe import create_empty_df
+from straklip.stralog import getLogger
 from itertools import repeat
 from concurrent.futures import ProcessPoolExecutor
 from IPython.display import display
 from dynesty import NestedSampler,plotting,utils
 from scipy.interpolate import interp2d
 from scipy.integrate import quad
-from stralog import getLogger
 
 
 def P_s(s):

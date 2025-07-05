@@ -1,7 +1,6 @@
 import pandas as pd
-from config import objectify, load
-from stralog import getLogger
-import sys,glob
+from straklip.stralog import getLogger
+import glob
 import numpy as np
 from astropy.io import fits
 

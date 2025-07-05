@@ -1,0 +1,164 @@
+instrument:
+  name: WFC3
+  detector: UVIS
+  pixelscale: 0.04
+  gain: 1.5
+  AVs: { 1: 'wfc3,uvis2' }
+  pam: None
+  ee_name: { 1: 'wfc3uvis2_aper_007_syn.csv' }
+  ccd_pix: {'x': 2047, 'y': 2050}
+  fwhm: {'f814w': 1.844, 'f850lp': 1.844}
+ncpu: 8
+redo: true
+debug: false
+df_ext_in: '.csv'
+df_ext_out: '.csv'
+flow:
+########## first part of the pipeline ##########
+- buildhdf
+- mktiles
+- mkphotometry
+- fow2cells
+- psfsubtraction
+- klipphotometry
+- analysis
+paths:
+  pyklip: /Users/gstrampelli/pyklip
+  pam: /Users/gstrampelli/StraKLIP/docs/source/tutorials/work/database/pam
+  data: /Users/gstrampelli/StraKLIP/docs/source/tutorials/work/data/fits
+  database: /Users/gstrampelli/StraKLIP/docs/source/tutorials/work/database
+  out: /Users/gstrampelli/StraKLIP/docs/source/tutorials/work/out
+unq_ids_list: []
+buildhdf:
+  redo: false
+  dq2mask: []
+  default_mvs_table:
+    id: mvs_ids
+    vis: vis
+    ext: ext
+    x: x
+    y: y
+    rota: rota
+    exptime: exptime
+    pav3: pav3
+    flag: flag
+    fitsroot: fits
+  default_unq_table:
+    id: unq_ids
+    ra: ra
+    dec: dec
+    mag: m
+    emag: e
+    type: type
+  distance_cube:
+    shwoplot: false
+mktiles:
+  redo: false
+  debug: false
+  xy_dmax: 5
+  tile_base: 41
+  max_separation: 2
+  min_separation: 0
+  xy_m : true
+  cr_remove: false
+  la_cr_remove : false
+  parallel_runs : false
+  python_origin : false
+  look4duplicants : false
+  cr_radius: 0.2
+  kill_plots: true
+  multiply_by_exptime: true # true to convert from counts/s or e-/s to counts or e- or counts
+  multiply_by_PAM: false #true when not working with drc images
+  multiply_by_gain: false # true to convert from counts to e-
+  zfactor: 10
+  alignment_box: 3
+mkphotometry:
+  redo: false
+  debug: true
+  parallel_runs: true
+  sat_thr: 78000
+  radius_ap: 0.15
+  radius_sky_inner : 0.25
+  radius_sky_outer : 0.5
+  grow_curves: false
+  p: 30
+  gstep: 0.01
+  bad_pixel_flags: [4,16,512,1024]
+  sat_pixel_flags: [256,2048]
+  skip_flags:
+    - rejected
+fow2cells:
+  add_flags: false
+  qx: 1
+  qy: 1
+  psf_nmin: 10
+  sat_px: 3
+  psf_sat_px: 3
+  bad_px: 30
+  psf_bad_px: 30
+  mag_limit: [10,10]
+  psf_goodness_limit: 0.02
+  goodness_limit: 0.1
+psfsubtraction:
+  redo: true
+  parallel_runs: true
+  skipDQ: true
+  PSF_sub_flags: 'good|unresolved'
+  kmodes: [1,2,3,4,5,6,7,8,9,10,15,20,25,30,35,45,50]
+  skip_flags:
+    - rejected
+    - known_double
+klipphotometry:
+  redo: true
+  parallel_runs: true
+  verbose: false
+  suffix: ''
+  min_mag_list: []
+  max_mag_list: []
+  aptype: 'square'
+  no_median_tile_update: false
+  zfactor: 10
+  alignment_box: 3
+  label: 'data'
+  kill_plots: true
+  delta: 5
+  radius: 3
+  skip_filters: []
+  needs_filters: ['f850lp']
+  sat_thr: inf
+  mfk: 1
+  mdf: 1
+  mad: 0.01
+  mak: 7
+  pruning: true
+analysis:
+  path2iso_interp:
+  overwrite: false
+  xycomp_list: []
+  filter: ['f814w', 'f850lp']
+  epsf: false
+  arc_sec: true
+  mask_candidate: true
+  inject_fake: true
+  klstep: 1
+  min_corr: 0.
+  xlim:
+  ylim:
+  pa_list: [0, 45, 90, 135, 180, 225, 270, 315]
+  seps: [1, 2, 3, 4, 5, 10, 15]
+  kwargs: {'xrange': 3, 'yrange': 3, 'nwalkers': 50}
+  primay:
+    age:
+    dist:
+    av:
+    logSPacc:
+  candidate:
+    subtract_companion: false
+    coords:
+    guess_contrast: 1e-1
+    KLdetect: 7
+  steps:
+    extract_candidate: true
+    contrast_curves: false
+    cal_contrast_curves: false
+    mass_sensitivity_curves: false

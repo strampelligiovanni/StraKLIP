@@ -734,9 +734,11 @@ class AnalysisTools():
                                 dr=dr,
                                 exclusion_radius=5)
 
+        guess_flux = np.nanmax(fma.data_stamp) / np.nanmax(fma.fm_stamp)
         corr_len_label = r'$l$'
         fma.set_kernel(fitkernel, [corr_len_guess], [corr_len_label])
-        fma.set_bounds(xrange, yrange, frange, [corr_len_range])
+        fma.set_bounds(xrange, yrange, [guess_flux/10,guess_flux*10], [corr_len_range])
+        # fma.set_bounds(xrange, yrange, frange, [corr_len_range])
 
 
         # Make sure that the noise map is invertible.
@@ -758,6 +760,9 @@ class AnalysisTools():
 
         obj.con = np.round(fma.fit_flux.bestfit * self.guess_contrast,3)
         obj.econ = np.round(fma.fit_flux.error_2sided * self.guess_contrast,3)
+        obj.flux = np.round(fma.fit_flux.bestfit * self.guess_contrast,3)
+        obj.eflux = np.round(fma.fit_flux.error_2sided * self.guess_contrast,3)
+
         getLogger(__name__).info(f' contrast: {obj.con}, error: {obj.econ}')
         obj.fma = fma
 
@@ -932,14 +937,17 @@ class AnalysisTools():
 
         else:
             chi2_list=[]
+            con_list=[]
             for file in path2yalms:
                 with open(file, "r") as f:
                     cand_extracted = yaml.safe_load(f)
                     chi2_list.append(float(cand_extracted['chi2']))
-            chi2_list=np.array(chi2_list)
+                    con_list.append(float(cand_extracted['con']))
+            con_list=np.array(con_list)
+            chi2_list=np.array(chi2_list)[con_list<=1]
             q_cand = np.where(chi2_list == np.nanmin(chi2_list))[0][0]
 
-            path2loadyalm = path2yalms[q_cand]
+            path2loadyalm = np.array(path2yalms)[con_list<=1][q_cand]
 
         with open(path2loadyalm, "r") as f:
             cand_extracted = yaml.safe_load(f)
@@ -952,10 +960,14 @@ class AnalysisTools():
         self.candidate.dx=cand_extracted['dx']
         self.candidate.dy=cand_extracted['dy']
         self.candidate.dmag=-2.5 * np.log10(cand_extracted['con'])
+        self.candidate.edmag= 2.5 / np.log(10.) * np.sqrt(cand_extracted['econ'][0]**2+cand_extracted['econ'][1]**2)/2 / cand_extracted['con']
         self.candidate.mag=self.primary.mag -2.5 * np.log10(cand_extracted['con'])
+        self.candidate.emag=np.sqrt(self.primary.emag ** 2 + self.candidate.edmag ** 2)
 
         cand_extracted['mag'] = float(self.candidate.mag)
+        cand_extracted['emag'] = float(self.candidate.emag)
         cand_extracted['dmag'] = float(self.candidate.dmag)
+        cand_extracted['edmag'] = float(self.candidate.edmag)
 
         self.evaluate_separation_and_theta()
         cand_extracted['ra'] = float(self.candidate.ra)
@@ -1335,7 +1347,7 @@ def run_analysis(DF, unq_id, mvs_id, filter, numbasis, fwhm, dataset, obsdataset
              extract_candidate=True, contrast_curves=True, cal_contrast_curves=True,mass_sensitivity_curves=True, mask_candidate=True, inject_fake = True,
              guess_contrast=1e-1, pxsc_arcsec = 0.04, KLdetect = 7, klstep = 1  ,min_corr = 0.8, ext='_contrast_curves.pkl',
              pa_list = [0, 45, 90, 135, 180, 225, 270, 315], seps = [1, 2, 3, 4, 5, 10, 15],overwrite=True,
-             subtract_companion=False, arc_sec=False,ylim=[1e-4, 1],xlim=None,path2iso_interp=None,age=1,accr=1e-5,distance=400,av=0,logSPacc=-5,kwargs=None):
+             subtract_companion=False, arc_sec=False,ylim=[1e-4, 1],xlim=None,path2iso_interp=None,age=None,accr=None,distance=None,av=None,logSPacc=None,kwargs=None):
 
     print_readme_to_file(output_path=outputdir+f"/analysis/")
     psflib, PSF = generate_psflib(DF, mvs_id, obsdataset, filter,
@@ -1479,3 +1491,4 @@ def run(packet):
                          kwargs=dataset.pipe_cfg.analysis['kwargs'])
 
     DF.save_dataframes(__name__)
+

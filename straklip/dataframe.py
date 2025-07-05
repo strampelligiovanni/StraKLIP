@@ -13,7 +13,7 @@ class DataFrame():
     # def __getstate__(self):
     #     return {"data": self.values, "columns": self.columns}
 
-    def __init__(self,path2data='',path2out='',path2database='',path2pam='',target='',inst='',pixscale=1,gain=1,PAMdict={},tilebase=15,radec=[],filters=[],xyaxis=[],fitsext='_flt',skipphot=False,dq2mask=[],zpt={},Av={},dist=0,kmodes=[],type='type',maxsep=2,minsep=0,df_ext_in='.h5',df_ext_out='.h5',steps=[]):
+    def __init__(self,path2data='',path2out='',path2database='',path2pam='',target='',inst='',pixscale=1,gain=1,PAMdict={},tilebase=15,radec=[],filters=[],xyaxis=[],fitsext='_flt',skipphot=False,dq2mask=[],zpt={},Av={},dist=0,kmodes=[],type='type',maxsep=2,minsep=0,df_ext_in='.csv',df_ext_out='.csv',steps=[]):
         '''
         Create the dataframe object
 
@@ -53,7 +53,10 @@ class DataFrame():
             automatically load existing Data Frame.
         name : str, optional
             name of the Data Frame.
-
+        df_ext_in: str, optional
+            specify the extension of the input Data Frame to be read. Default is '.csv'.
+        df_ext_in: str, optional
+            specify the extension of the output Data Frame to be saved. Default is '.csv'.
         Returns
         -------
         None.

@@ -4,11 +4,6 @@
 Documentation for StraKLIP
 ===========================
 
-.. image:: _static/logo.png
-   :align: center
-   :width: 200px
-
-
 StraKLIP is a Python-based data reduction and analysis toolkit for HST wide field imaging data.
 The development has mostly been focused on ACS and WFC3-IR/UVIS imaging.
 It is built on top of `pyKLIP <https://pyklip.readthedocs.io/en/latest/>`_ and provides functionality and customizations specific to HST data.

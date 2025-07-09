@@ -223,7 +223,7 @@ html_title = u'StraKLIP'
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
 #
-html_logo = '_static/logo.png'
+html_logo = '_static/StraKLIPlogo2.png'
 
 
 # The name of an image file (relative to this directory) to use as a favicon of
